@@ -1,122 +1,103 @@
-# zio
+<p align="center">
+  <img src="./zio-logo.svg" alt="zio" width="720">
+</p>
 
-**Bounded, explicit readiness I/O for Rust.**
+<p align="center">
+  <strong>Bounded, explicit readiness I/O for Rust.</strong>
+</p>
 
-`zio` is a small, synchronous readiness poller built directly on epoll and
-kqueue. It makes registration ownership, event capacity, wake behavior, and
-uncertain operating-system mutations explicit without becoming an async
-runtime.
+<p align="center">
+  zio is a small, synchronous readiness poller built directly on epoll and
+  kqueue, without becoming an async runtime.
+</p>
 
-The crate is under active development and is not release-ready yet.
+<p align="center">
+  <a href="#model">Model</a>
+  <span> · </span>
+  <a href="#crates">Crates</a>
+  <span> · </span>
+  <a href="#start">Start</a>
+  <span> · </span>
+  <a href="#qualification">Qualification</a>
+</p>
+
+<br />
+
+## Model
+
+```text
+Linux                          epoll + eventfd
+64-bit macOS, FreeBSD, NetBSD  kqueue + EVFILT_USER
+```
+
+Callers choose registration and event limits, readiness interests, delivery
+modes, event keys, and blocking behavior. Ordinary waits reuse fixed storage.
+
+### Registration ownership
+
+A registration is a move-only capability owned by one poller. Duplicate keys
+are valid; duplicate descriptors and handles from another poller are rejected.
+The poller retains its own descriptor duplicate, so caller close and numeric
+descriptor reuse cannot redirect later mutations.
+`Poll::delete` releases it early; dropping the capability alone leaves the
+registration retained until the poller is dropped.
+
+### Readiness modes
+
+Level mode reports while a source remains ready. One-shot mode disarms after
+delivery and requires an explicit modification whose backend mutation is
+applied.
+
+### Mutation outcomes
+
+A failed mutation exposes what happened and returns or preserves a capability
+when backend state may remain:
+
+| Status | Register | Modify | Delete |
+| --- | --- | --- | --- |
+| `NotApplied` | release the reservation; return no capability | preserve the prior state | return the capability in its prior state |
+| `Applied` | return a registered, armed capability | commit and rearm | return a stale capability after retirement |
+| `Unknown` | return an uncertain capability | mark uncertain | return an uncertain, retryable capability |
+
+An uncertain outcome is never silently presented as a successful rollback.
+Constructing a bounded kqueue recovery failure still allocates; removing that
+recovery-only allocation remains pre-release work.
+
+Unsafe code is confined to the epoll, eventfd, and kqueue syscall leaves. zio
+does not provide edge triggering, Windows support, timers, signals, process
+watching, socket construction, an executor, or an async runtime.
+
+## Crates
+
+| Crate | Purpose |
+| --- | --- |
+| `zio` | Synchronous readiness polling, ownership, and native backends |
+| `zio-testkit` | Workspace-private deterministic mutation conformance |
+
+The testkit drives the same portable mutation reducer through an opt-in support
+feature. Normal builds contain no testkit dependency, and its public vocabulary
+exposes no raw descriptors, syscall structures, or native backend trait.
 
 ## Start
 
 ```rust
-use std::{net::TcpListener, time::Duration};
-use zio::{Event, Interest, Key, Mode, Poll, Wait};
+use std::net::TcpListener;
+use zio::{Interest, Key, Mode, Poll, Wait};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let listener = TcpListener::bind("127.0.0.1:0")?;
     listener.set_nonblocking(true)?;
 
     let mut poll = Poll::new()?;
-    let registration = poll.register(
-        &listener,
-        Key::new(7),
-        Interest::READABLE,
-        Mode::Level,
-    )?;
+    let registration =
+        poll.register(&listener, Key::new(7), Interest::READABLE, Mode::Level)?;
 
     let mut events = poll.events()?;
-    poll.wait(&mut events, Wait::For(Duration::from_millis(100)))?;
-    for event in &events {
-        if let Event::Resource { key, readiness } = event {
-            println!("{key:?}: {readiness:?}");
-        }
-    }
-
+    poll.wait(&mut events, Wait::NoBlock)?;
     poll.delete(registration)?;
     Ok(())
 }
 ```
-
-## Scope
-
-The initial implementation targets:
-
-- Linux through epoll and eventfd.
-- 64-bit macOS, FreeBSD, and NetBSD through kqueue and `EVFILT_USER`.
-- Level-triggered and one-shot descriptor readiness.
-- Caller-selected event keys and bounded, allocation-stable event batches.
-- Move-only registrations owned by exactly one poller.
-- Mutation failures classified as applied, not applied, or unknown.
-
-Duplicate keys are valid. Registering the same descriptor twice is rejected,
-including while its earlier registration remains retained for recovery.
-
-## Registration ownership
-
-A registration is a move-only capability owned by one poller. The poller rejects
-duplicate descriptors and handles from another poller, while caller-selected
-keys may be shared intentionally. The poller retains its own duplicate of each
-descriptor, so caller close and descriptor-number reuse cannot redirect later
-mutations. Pass the capability to `Poll::delete` for early release; dropping the
-capability alone leaves the registration retained until the poller is dropped.
-
-## Readiness modes
-
-Level mode continues reporting readiness while the source remains ready.
-One-shot mode disarms after delivery and requires an explicit successful rearm.
-
-## Mutation outcomes
-
-A failed registration mutation reports whether the requested kernel change was
-applied, was not applied, or cannot be proven. An uncertain outcome is never
-silently presented as a successful rollback.
-
-The same reducer drives every backend and preserves the caller's move-only
-capability explicitly:
-
-| Failure status | Register | Modify | Delete |
-| --- | --- | --- | --- |
-| `NotApplied` | release the reservation; return no capability | preserve the complete prior state | return the capability with its prior state |
-| `Applied` | return a registered, armed capability | commit the desired state and rearm | return a now-stale capability after retirement |
-| `Unknown` | return an uncertain capability | mark the capability uncertain | return an uncertain capability that can be retried |
-
-Ordinary waits reuse fixed storage. Constructing a wait-time recovery failure
-currently allocates its bounded affected-registration list; removing that
-recovery-only allocation remains pre-release work.
-
-## Deterministic testing
-
-The workspace-private `zio-testkit` crate drives the same portable mutation
-state machine with finite, normalized backend scripts. Its reference suite
-checks every success, not-applied, applied, and unknown branch without relying
-on operating-system fault timing:
-
-```rust
-let report = zio_testkit::run_all();
-assert!(report.into_result().is_ok());
-```
-
-The companion crate depends on the exact workspace version of `zio`. Its
-support feature is absent from normal builds, and its public vocabulary exposes
-no raw descriptors, syscall structures, or native backend trait.
-
-Windows, edge-triggered mode, timers, signals, process watching, socket
-construction, executors, and async-runtime integration are intentionally out of
-scope for the first release.
-
-## Safety
-
-Unsafe code is limited to the epoll, eventfd, and kqueue syscall leaves. Each
-leaf documents the operating-system contract that makes its pointer, lifetime,
-and descriptor assumptions valid. Portable state and policy remain safe Rust.
-
-## Minimum supported Rust version
-
-`zio` supports Rust 1.88 and newer. The canonical qualification graph runs the
-MSRV directly in addition to the repository-pinned toolchain.
 
 ## Qualification
 
@@ -125,10 +106,15 @@ zcheck run check
 zrail diff --base HEAD --deny-grants
 ```
 
-The graph covers repository policy, formatting, Clippy, rustdoc, MSRV and
-current-toolchain tests, doctests, and the publishable crate archive. CI runs
-the native Linux and macOS backends and cross-compiles FreeBSD and NetBSD on
-both supported compiler lanes.
+`zcheck` is the complete local gate for source shape, zrail architecture,
+formatting, Clippy, rustdoc, MSRV and current-toolchain tests, doctests, package
+contents, and diff hygiene. The zrail diff separately reviews changes to
+architectural authority. Use zcheck 0.0.2 and zrail 0.0.2, matching CI and the
+reviewed lock.
+
+CI runs native Linux and macOS backend tests and cross-compiles FreeBSD and
+NetBSD. zio supports Rust 1.88 and newer. `0.0.1-dev.0` is a packageable
+pre-alpha and is not release-ready yet.
 
 ## License
 

@@ -21,6 +21,7 @@ inputs = [
   "Cargo.toml",
   "Cargo.lock",
   "README.md",
+  "zio-logo.svg",
   "LICENSE",
   "rust-toolchain.toml",
   "rustfmt.toml",

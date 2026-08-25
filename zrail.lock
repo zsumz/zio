@@ -2,7 +2,7 @@
 schema = 1
 semantics = 2
 producer = "0.0.2"
-contract_sha256 = "88a38b05e0b2509d74b55691107a695f0f1fe67ee8650e28b7676fdbfa351079"
+contract_sha256 = "3334505b017b057ef18fbba7589a79d3a441943b8fd60eb5f436093eb717225e"
 ratchet = []
 
 [[package]]
@@ -85,7 +85,7 @@ sha256 = "41c06435b7ef5c7e5a7c9c439f0801add1ad420af80c998fd3f2d5f163ab96d8"
 
 [[gate.input]]
 path = "Cargo.toml"
-sha256 = "7100c703220aa2d868cf02b10102bd43fa91311084cc699cf563b2bd44502081"
+sha256 = "2afa9a6b34543d7c9852dd20141c01479c7f341d1420942ae2da6edae984399b"
 
 [[gate.input]]
 path = "LICENSE"
@@ -93,7 +93,7 @@ sha256 = "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
 
 [[gate.input]]
 path = "README.md"
-sha256 = "6f2eb84e4c6c89822476a088279e8e05b2db18daab80a27300a1f0eb92dd9705"
+sha256 = "739640b9cbf8a0296f4e871b6b65c4fc7a070433d953ed985e607095b543d1d9"
 
 [[gate.input]]
 path = "clippy.toml"
@@ -114,6 +114,10 @@ sha256 = "279d77167cec5426fa80f457cd066dc74a360fbe4e2816f4f3fa01487a918fdc"
 [[gate.input]]
 path = "rustfmt.toml"
 sha256 = "45e07033c8cd89ed400ee4e96ec608e338e89822233abd6e56c85040ece66520"
+
+[[gate.input]]
+path = "zio-logo.svg"
+sha256 = "e63c2cd05f6e85cfa28391cc966a29530ec95f038e85f10707ea4df1fb94e390"
 
 [[gate]]
 name = "ci"
