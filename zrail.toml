@@ -25,6 +25,8 @@ inputs = [
   "rust-toolchain.toml",
   "rustfmt.toml",
   "clippy.toml",
+  "crates/zio-testkit/Cargo.toml",
+  "crates/zio-testkit/README.md",
 ]
 reason = "The declarative canonical qualification graph and its reviewed inputs."
 
@@ -60,11 +62,18 @@ evidence = [
 
 [[invariant]]
 id = "MUTATION-01"
-title = "Failed kernel restoration is classified as an unknown mutation"
+title = "Mutation outcomes preserve exact state and capabilities"
 status = "enforced"
 document = "README.md#mutation-outcomes"
 evidence = [
   "rust-test:src/sys/kqueue_group/kqueue_policy_test.rs::failed_modify_with_failed_restore_is_unknown",
+  "rust-test:src/sys/kqueue_group/kqueue_policy_test.rs::partial_register_failure_with_cleanup_is_not_applied",
+  "rust-test:src/sys/kqueue_group/kqueue_policy_test.rs::partial_register_failure_with_failed_cleanup_is_unknown",
+  "rust-test:src/sys/kqueue_group/kqueue_policy_test.rs::failed_delete_cleanup_is_unknown_and_retains_failed_filter",
+  "rust-test:crates/zio-testkit/tests/public_api.rs::full_report_covers_every_scenario",
+  "rust-test:crates/zio-testkit/tests/register_conformance.rs::register_branches_preserve_error_state_and_capabilities",
+  "rust-test:crates/zio-testkit/tests/modify_conformance.rs::modify_branches_preserve_error_state_and_retries",
+  "rust-test:crates/zio-testkit/tests/delete_conformance.rs::delete_branches_preserve_returned_handles_and_retries",
   "gate:check",
   "gate:ci",
 ]
@@ -131,6 +140,21 @@ reason = "One focused readiness library owns its portable vocabulary and native 
 
 [layer.dependencies]
 external = "locked"
+
+[[layer]]
+name = "verification"
+packages = ["zio-testkit"]
+may_depend_on = ["library"]
+reason = "Deterministic conformance support may exercise the public library without entering the product dependency graph."
+
+[layer.dependencies]
+external = "none"
+
+[[dependency]]
+name = "library-remains-verification-free"
+from = "zio"
+deny = ["zio-testkit"]
+reason = "The published readiness library must not depend on workspace-private conformance machinery."
 
 [[scope]]
 name = "caller-supplied-io-boundary"

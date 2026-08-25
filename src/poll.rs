@@ -111,7 +111,7 @@ impl Poll {
     }
 }
 
-fn next_poll_id() -> Result<PollId, Error> {
+pub(crate) fn next_poll_id() -> Result<PollId, Error> {
     static NEXT: AtomicU64 = AtomicU64::new(1);
     NEXT.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |value| {
         value.checked_add(1)

@@ -18,7 +18,9 @@ use super::super::{
 use super::{
     kqueue::{KeventBatch, Kqueue},
     kqueue_change::{Action, Change, ChangeList, Filter},
-    kqueue_policy::{cleanup, exact, modify_descriptor, push_interests, register_descriptor},
+    kqueue_policy::{
+        delete_descriptor, exact, modify_descriptor, push_interests, register_descriptor,
+    },
 };
 
 /// Fixed kqueue event storage.
@@ -143,8 +145,7 @@ impl Backend {
         source: BorrowedFd<'_>,
         _interest: Interest,
     ) -> Result<(), MutationFailure> {
-        cleanup(&*self.queue, source.as_raw_fd())
-            .map_err(|source| MutationFailure::new(CommitStatus::Unknown, source))
+        delete_descriptor(&*self.queue, source.as_raw_fd())
     }
 
     pub(crate) fn wait(&self, batch: &mut RawBatch, wait: Wait) -> io::Result<usize> {

@@ -2,7 +2,10 @@
 
 use std::{io, os::fd::BorrowedFd};
 
-use crate::{ArmState, Interest, Mode, Wait};
+use crate::{
+    ArmState, Interest, Mode, Wait,
+    mutation::{DeleteRequest, ModifyRequest, MutationDriver, RegisterRequest},
+};
 
 use super::{
     failure::{MutationFailure, SetupFailure},
@@ -193,5 +196,36 @@ impl Backend {
         interest: Interest,
     ) -> Result<(), MutationFailure> {
         self.kqueue.disarm(descriptor, interest)
+    }
+}
+
+impl MutationDriver for Backend {
+    fn register(&mut self, request: RegisterRequest<'_>) -> Result<(), MutationFailure> {
+        let _ = request.key;
+        Backend::register(
+            self,
+            request.descriptor,
+            request.registration.get(),
+            request.interest,
+            request.mode,
+        )
+    }
+
+    fn modify(&mut self, request: ModifyRequest<'_>) -> Result<(), MutationFailure> {
+        Backend::modify(
+            self,
+            request.descriptor,
+            request.registration.get(),
+            request.previous_interest,
+            request.previous_mode,
+            request.previous_arm,
+            request.desired_interest,
+            request.desired_mode,
+        )
+    }
+
+    fn delete(&mut self, request: DeleteRequest<'_>) -> Result<(), MutationFailure> {
+        let _ = (request.registration, request.state);
+        Backend::delete(self, request.descriptor, request.interest)
     }
 }

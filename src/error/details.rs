@@ -130,7 +130,11 @@ impl std::error::Error for RecoveryFailure {
     }
 }
 
-/// Registration failure that may preserve an uncertain partial registration.
+/// Registration failure that preserves any possibly installed registration.
+///
+/// [`Self::registration`] is `None` for preflight failures and mutations proven
+/// not applied. It contains a registered capability for an applied mutation and
+/// an uncertain capability when the backend result cannot be proven.
 #[derive(Debug)]
 pub struct RegisterError {
     error: Error,
@@ -150,7 +154,7 @@ impl RegisterError {
         &self.error
     }
 
-    /// Borrows an uncertain partial registration, when one exists.
+    /// Borrows the retained applied or uncertain registration, when one exists.
     pub const fn registration(&self) -> Option<&Registration> {
         self.registration.as_ref()
     }
@@ -173,7 +177,10 @@ impl std::error::Error for RegisterError {
     }
 }
 
-/// Delete failure that returns the move-only registration capability.
+/// Delete failure that returns the same move-only registration capability.
+///
+/// The capability remains registered after a not-applied failure, is stale
+/// after an applied failure, and is uncertain after an unknown failure.
 #[derive(Debug)]
 pub struct DeleteError {
     error: Error,

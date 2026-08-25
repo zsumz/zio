@@ -37,6 +37,7 @@ description = "Run Clippy on every target with warnings denied."
 run = [
   "cargo",
   "clippy",
+  "--workspace",
   "--all-targets",
   "--locked",
   "--offline",
@@ -48,8 +49,8 @@ tools = ["cargo"]
 resources = ["cargo-target"]
 
 [tasks.docs]
-description = "Build library documentation with warnings denied."
-run = ["cargo", "doc", "--no-deps", "--locked", "--offline"]
+description = "Build workspace documentation with warnings denied."
+run = ["cargo", "doc", "--workspace", "--no-deps", "--locked", "--offline"]
 env = { RUSTDOCFLAGS = "-D warnings" }
 tools = ["cargo"]
 resources = ["cargo-target"]
@@ -59,20 +60,20 @@ description = "Validate formatting, lints, and documentation."
 needs = ["format", "clippy", "docs"]
 
 [tasks.test-msrv]
-description = "Run every test target on Rust 1.88."
-run = ["cargo", "+1.88.0", "test", "--all-targets", "--locked", "--offline"]
+description = "Run every workspace test target on Rust 1.88."
+run = ["cargo", "+1.88.0", "test", "--workspace", "--all-targets", "--locked", "--offline"]
 tools = ["cargo"]
 resources = ["cargo-target"]
 
 [tasks.test-current]
-description = "Run every test target on the repository-pinned toolchain."
-run = ["cargo", "test", "--all-targets", "--locked", "--offline"]
+description = "Run every workspace test target on the repository-pinned toolchain."
+run = ["cargo", "test", "--workspace", "--all-targets", "--locked", "--offline"]
 tools = ["cargo"]
 resources = ["cargo-target"]
 
 [tasks.doctest]
-description = "Run public API examples and documentation tests."
-run = ["cargo", "test", "--doc", "--locked", "--offline"]
+description = "Run workspace public API examples and documentation tests."
+run = ["cargo", "test", "--workspace", "--doc", "--locked", "--offline"]
 tools = ["cargo"]
 resources = ["cargo-target"]
 
@@ -81,8 +82,8 @@ description = "Validate behavior on the MSRV and repository toolchains."
 needs = ["test-msrv", "test-current", "doctest"]
 
 [tasks.package]
-description = "Build and verify the publishable crate archive."
-run = ["cargo", "package", "--allow-dirty", "--locked", "--offline"]
+description = "Build and verify the publishable zio crate archive."
+run = ["cargo", "package", "-p", "zio", "--allow-dirty", "--locked", "--offline"]
 tools = ["cargo"]
 resources = ["cargo-target"]
 

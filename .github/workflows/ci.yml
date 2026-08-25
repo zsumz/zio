@@ -84,18 +84,20 @@ jobs:
         run: cargo +1.88.0 fetch --locked
 
       - name: Run kqueue tests on the MSRV
-        run: cargo +1.88.0 test --all-targets --locked --offline
+        run: cargo +1.88.0 test --workspace --all-targets --locked --offline
 
       - name: Run kqueue tests on the pinned toolchain
-        run: cargo +1.97.1 test --all-targets --locked --offline
+        run: cargo +1.97.1 test --workspace --all-targets --locked --offline
 
       - name: Lint the kqueue implementation
-        run: cargo +1.97.1 clippy --all-targets --locked --offline -- -D warnings
+        run: >-
+          cargo +1.97.1 clippy --workspace --all-targets
+          --locked --offline -- -D warnings
 
       - name: Build kqueue documentation
         env:
           RUSTDOCFLAGS: -D warnings
-        run: cargo +1.97.1 doc --no-deps --locked --offline
+        run: cargo +1.97.1 doc --workspace --no-deps --locked --offline
 
   bsd:
     name: BSD compile checks
@@ -122,13 +124,13 @@ jobs:
       - name: Compile BSD backends on the MSRV
         run: |
           cargo +1.88.0 check --target x86_64-unknown-freebsd \
-            --all-targets --locked --offline
+            --workspace --all-targets --locked --offline
           cargo +1.88.0 check --target x86_64-unknown-netbsd \
-            --all-targets --locked --offline
+            --workspace --all-targets --locked --offline
 
       - name: Lint BSD backends on the pinned toolchain
         run: |
           cargo +1.97.1 clippy --target x86_64-unknown-freebsd \
-            --all-targets --locked --offline -- -D warnings
+            --workspace --all-targets --locked --offline -- -D warnings
           cargo +1.97.1 clippy --target x86_64-unknown-netbsd \
-            --all-targets --locked --offline -- -D warnings
+            --workspace --all-targets --locked --offline -- -D warnings

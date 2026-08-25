@@ -74,9 +74,34 @@ A failed registration mutation reports whether the requested kernel change was
 applied, was not applied, or cannot be proven. An uncertain outcome is never
 silently presented as a successful rollback.
 
+The same reducer drives every backend and preserves the caller's move-only
+capability explicitly:
+
+| Failure status | Register | Modify | Delete |
+| --- | --- | --- | --- |
+| `NotApplied` | release the reservation; return no capability | preserve the complete prior state | return the capability with its prior state |
+| `Applied` | return a registered, armed capability | commit the desired state and rearm | return a now-stale capability after retirement |
+| `Unknown` | return an uncertain capability | mark the capability uncertain | return an uncertain capability that can be retried |
+
 Ordinary waits reuse fixed storage. Constructing a wait-time recovery failure
 currently allocates its bounded affected-registration list; removing that
 recovery-only allocation remains pre-release work.
+
+## Deterministic testing
+
+The workspace-private `zio-testkit` crate drives the same portable mutation
+state machine with finite, normalized backend scripts. Its reference suite
+checks every success, not-applied, applied, and unknown branch without relying
+on operating-system fault timing:
+
+```rust
+let report = zio_testkit::run_all();
+assert!(report.into_result().is_ok());
+```
+
+The companion crate depends on the exact workspace version of `zio`. Its
+support feature is absent from normal builds, and its public vocabulary exposes
+no raw descriptors, syscall structures, or native backend trait.
 
 Windows, edge-triggered mode, timers, signals, process watching, socket
 construction, executors, and async-runtime integration are intentionally out of

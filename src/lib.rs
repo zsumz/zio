@@ -1,4 +1,32 @@
 //! Bounded, explicit readiness I/O.
+//!
+//! # Quick start
+//!
+//! ```no_run
+//! use std::{net::TcpListener, time::Duration};
+//! use zio::{Event, Interest, Key, Mode, Poll, Wait};
+//!
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! let listener = TcpListener::bind("127.0.0.1:0")?;
+//! listener.set_nonblocking(true)?;
+//! let mut poll = Poll::new()?;
+//! let registration = poll.register(
+//!     &listener,
+//!     Key::new(7),
+//!     Interest::READABLE,
+//!     Mode::Level,
+//! )?;
+//! let mut events = poll.events()?;
+//! poll.wait(&mut events, Wait::For(Duration::from_millis(100)))?;
+//! for event in &events {
+//!     if let Event::Resource { key, readiness } = event {
+//!         println!("{key:?}: {readiness:?}");
+//!     }
+//! }
+//! poll.delete(registration)?;
+//! # Ok(())
+//! # }
+//! ```
 
 #![deny(unsafe_code)]
 
@@ -7,6 +35,7 @@ mod error;
 mod event;
 mod interest;
 mod mode;
+mod mutation;
 mod observe;
 mod pending;
 mod pending_kqueue;
@@ -17,6 +46,10 @@ mod sys;
 mod table;
 mod token;
 mod wait;
+
+#[cfg(feature = "test-support")]
+#[doc(hidden)]
+pub mod test_support;
 
 pub use error::{
     CommitStatus, DeleteError, Error, MutationError, Operation, RecoveryFailure, RegisterError,

@@ -73,6 +73,13 @@ pub(super) fn modify_descriptor<E: ChangeExecutor + ?Sized>(
     }
 }
 
+pub(super) fn delete_descriptor<E: ChangeExecutor + ?Sized>(
+    queue: &E,
+    descriptor: RawFd,
+) -> Result<(), MutationFailure> {
+    cleanup(queue, descriptor).map_err(|source| MutationFailure::new(CommitStatus::Unknown, source))
+}
+
 pub(super) fn cleanup<E: ChangeExecutor + ?Sized>(queue: &E, descriptor: RawFd) -> io::Result<()> {
     let mut changes = ChangeList::new();
     let _ = changes.push(Change::new(descriptor, Filter::Read, Action::Delete, 0));
