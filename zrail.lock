@@ -2,7 +2,7 @@
 schema = 2
 semantics = 3
 producer = "0.0.3-rc.4"
-contract_sha256 = "77172b909e6bc52a1a8a1872817ee96b61a43a27cf020b967a9b9381136744e5"
+contract_sha256 = "5fcf2e749c78ff5c4d20785050032c014c6e2b5dedfef6c56af9d74c76e006bf"
 
 [analysis]
 inventory_sha256 = "089a30828a2d2589ebdc5594b783dca0dfbce5a79358f85caac9d8f2ae8c1cc5"
@@ -13,7 +13,7 @@ targets = 18
 physical_rust_files = 105
 base_source_contexts = 183
 derived_source_contexts = 0
-source_facts = 26443
+source_facts = 26450
 projection_queries = 0
 projected_facts = 0
 unresolved_bindings = 0
@@ -21,7 +21,7 @@ analyzer_semantics = 3
 
 [[analysis.contract_source]]
 path = "zrail.toml"
-sha256 = "6beb8a8d972ee79c156f366b6a0ebe133b6667182fe1690ff780c78edca2acbf"
+sha256 = "d84f5c0a71088d041c1a1e533f4c777d1883991abfa9944eac63b735b2c9b94c"
 
 [[package]]
 name = "zio"
@@ -131,7 +131,7 @@ sha256 = "2d81793d1942bfa0dd24f8e6ad0e2e1d26b9aef2a5513efde45e9da6ec27d3cb"
 
 [[gate.input]]
 path = "Cargo.toml"
-sha256 = "2164e27cd439022d35f764754ec66e4180e9ebcb0b42cb6c360afdcb1bf9e835"
+sha256 = "ff3e1a4623074de4c3d180c18508e3922eda9efde3aea47c7d8a4d24d86f8542"
 
 [[gate.input]]
 path = "LICENSE"
@@ -139,7 +139,7 @@ sha256 = "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
 
 [[gate.input]]
 path = "README.md"
-sha256 = "269de50749fca302b90e53797e13aae5847cfafc1b1777bea8bc67cee121c000"
+sha256 = "5f31fba121aa1fc323a5a4f8bf5c146b4e99b6566b9e7c517c4fa2f67c81195a"
 
 [[gate.input]]
 path = "clippy.toml"
@@ -151,7 +151,15 @@ sha256 = "5229cf64ee5757245471bee57d65eaf1816c10fdfdcedca63fec550ca534452a"
 
 [[gate.input]]
 path = "crates/zio-testkit/README.md"
-sha256 = "938c8a9f7f331474f463814b40922359b6d558a76f785cbb9c17bf94675004fc"
+sha256 = "71465a17a993ef11e66dc31577c0065ab257f95c299e4b6e8dc5efaa09d2ae1d"
+
+[[gate.input]]
+path = "docs/contracts.md"
+sha256 = "1cedc355f1a6d3d90b36fc757e26d852c1b7ba840d91044f5bee8a07b6ecaf37"
+
+[[gate.input]]
+path = "docs/qualification.md"
+sha256 = "b2c05b8cac4f901f7b0dc616b1768845c7203a0f88da455d4142c6d0be0adf69"
 
 [[gate.input]]
 path = "rust-toolchain.toml"

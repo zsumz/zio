@@ -35,6 +35,8 @@ include = [
   "/Cargo.toml",
   "/Cargo.lock",
   "/README.md",
+  "/docs/contracts.md",
+  "/docs/qualification.md",
   "/zio-logo.svg",
   "/LICENSE",
 ]

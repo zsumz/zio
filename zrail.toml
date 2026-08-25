@@ -64,6 +64,8 @@ inputs = [
     "clippy.toml",
     "crates/zio-testkit/Cargo.toml",
     "crates/zio-testkit/README.md",
+    "docs/contracts.md",
+    "docs/qualification.md",
 ]
 kind = "local"
 name = "check"
@@ -82,7 +84,7 @@ reason = "Hosted qualification runs the canonical Linux graph and real macOS kqu
 requires = ["check"]
 
 [[invariant]]
-document = "README.md#registration-ownership"
+document = "docs/contracts.md#registration-ownership"
 evidence = [
     "rust-test:tests/descriptor_identity.rs::numeric_descriptor_reuse_does_not_alias_retained_registration",
     "rust-test:tests/descriptor_identity.rs::duplicated_handles_have_independent_registrations",
@@ -97,7 +99,7 @@ status = "enforced"
 title = "Each registration owns a retained descriptor and exact generation"
 
 [[invariant]]
-document = "README.md#readiness-modes"
+document = "docs/contracts.md#readiness-modes"
 evidence = [
     "rust-test:tests/readiness.rs::one_shot_requires_explicit_rearm",
     "rust-test:src/sys/kqueue_group/kqueue_disarm_test.rs::one_submission_reduces_multiple_registrations",
@@ -110,7 +112,7 @@ status = "enforced"
 title = "One-shot readiness requires explicit rearming after delivery"
 
 [[invariant]]
-document = "README.md#readiness-contract"
+document = "docs/contracts.md#readiness-contract"
 evidence = [
     "rust-test:src/sys/linux_group/backend_test.rs::epoll_readiness_truth_table_is_exhaustive",
     "rust-test:src/sys/linux_group/backend_test.rs::epoll_error_closure_inference_is_deliberately_narrow",
@@ -134,7 +136,7 @@ status = "enforced"
 title = "Portable readiness preserves directional closure and resource errors"
 
 [[invariant]]
-document = "README.md#recovery-behavior"
+document = "docs/contracts.md#recovery-behavior"
 evidence = [
     "rust-test:src/sys/kqueue_group/kqueue_disarm_test.rs::one_submission_reduces_multiple_registrations",
     "rust-test:src/sys/kqueue_group/kqueue_disarm_test.rs::all_failed_filters_preserve_armed_outcome",
@@ -165,7 +167,7 @@ status = "enforced"
 title = "Kqueue recovery preserves translated events and exact outcomes"
 
 [[invariant]]
-document = "README.md#allocation-contract"
+document = "docs/contracts.md#allocation-contract"
 evidence = [
     "rust-test:tests/allocation_contract.rs::successful_one_shot_wait_allocates_nothing",
     "rust-test:src/observe_allocation_test.rs::recovery_retains_exactly_one_bounded_allocation",
@@ -183,7 +185,7 @@ status = "enforced"
 title = "Waits reuse retained storage and recovery owns one bounded snapshot"
 
 [[invariant]]
-document = "README.md#wait-behavior"
+document = "docs/contracts.md#wait-behavior"
 evidence = [
     "rust-test:src/sys/linux_group/backend_test.rs::zero_timeouts_remain_nonblocking",
     "rust-test:src/sys/linux_group/backend_test.rs::one_nanosecond_rounds_up_to_one_millisecond",
@@ -195,7 +197,7 @@ status = "enforced"
 title = "Positive waits never collapse to nonblocking observations"
 
 [[invariant]]
-document = "README.md#wake-behavior"
+document = "docs/contracts.md#wake-behavior"
 evidence = [
     "rust-test:tests/readiness.rs::wake_before_wait_is_observable",
     "rust-test:tests/readiness.rs::wake_interrupts_a_blocked_wait",
@@ -210,7 +212,7 @@ status = "enforced"
 title = "Wake signals remain bounded, drainable, and observable"
 
 [[invariant]]
-document = "README.md#mutation-outcomes"
+document = "docs/contracts.md#mutation-outcomes"
 evidence = [
     "rust-test:src/sys/kqueue_group/kqueue_policy_test.rs::failed_modify_with_failed_restore_is_unknown",
     "rust-test:src/sys/kqueue_group/kqueue_policy_test.rs::partial_register_failure_with_cleanup_is_not_applied",

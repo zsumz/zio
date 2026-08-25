@@ -1,27 +1,23 @@
 # zio-testkit
 
-`zio-testkit` provides consumer-facing conformance scenarios for zio's
-registration mutation, wake, and native readiness contracts. Its deterministic
-mutation suite exercises every successful, not-applied, applied, and unknown
-branch of register, modify, and delete without requiring operating-system
-fault injection. Its black-box wake suite uses only zio's ordinary public
-poller API against the host's native backend. Collectively, its black-box
-readiness scenarios cover Unix streams, TCP streams, and anonymous pipes;
-readable, writable, and combined interests; and both level and one-shot modes.
+Reference conformance for zio consumers.
 
-The reusable report needs no additional native-fixture dependencies and omits
-two failure fixtures. Repository tests use safe `socket2` setup for an
-in-progress refused connect and linger-zero abortive TCP reset qualification.
+- Mutation scenarios cover every register, modify, and delete outcome without
+  operating-system fault injection.
+- Wake and readiness scenarios exercise zio's public API on the native backend.
+- Reports use stable scenario names and structured failures.
 
-The crate is test infrastructure, is not published, and depends on the exact
-workspace version of `zio` with its explicit `test-support` feature.
+The readiness matrix covers Unix streams, TCP streams, pipes, readable,
+writable, combined, level, and one-shot behavior. Repository tests add
+refused-connect and abortive-reset fixtures.
+
+This crate is workspace-private, unpublished, and absent from normal zio
+builds. Its public API exposes no raw descriptors, syscall types, or native
+backend trait.
 
 ```rust
-let report = zio_testkit::run_all();
-report.into_result()?;
-let wake_report = zio_testkit::run_wake_conformance();
-wake_report.into_result()?;
-let readiness_report = zio_testkit::run_readiness_conformance();
-readiness_report.into_result()?;
+zio_testkit::run_all().into_result()?;
+zio_testkit::run_wake_conformance().into_result()?;
+zio_testkit::run_readiness_conformance().into_result()?;
 # Ok::<(), Box<dyn std::error::Error>>(())
 ```
