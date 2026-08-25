@@ -25,13 +25,15 @@ impl PollId {
     }
 }
 
-/// Move-only capability for one registration owned by one poller.
+/// Copyable handle for one exact registration generation owned by one poller.
 ///
-/// Dropping the capability does not delete the registration. The owning poller
-/// retains the descriptor until [`Poll::delete`](crate::Poll::delete) succeeds
+/// Copying a handle does not create another registration. Once deletion is
+/// proven applied, the exact generation is retired and every remaining copy is
+/// stale. Dropping one or every handle does not delete the registration; the
+/// owning poller retains the descriptor until deletion retires the generation
 /// or the poller itself is dropped.
-#[must_use = "a registration must be passed to Poll::delete for early release"]
-#[derive(Debug)]
+#[must_use = "retain a registration handle for explicit early deletion"]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct Registration {
     owner: PollId,
     id: RegistrationId,
@@ -46,7 +48,7 @@ impl Registration {
         self.owner
     }
 
-    /// Returns this capability's exact registration identity.
+    /// Returns this handle's exact registration identity.
     pub const fn id(&self) -> RegistrationId {
         self.id
     }

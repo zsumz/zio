@@ -19,7 +19,7 @@ pub enum ConformanceCheck {
     Source,
     /// Authoritative portable or scripted backend state diverged.
     State,
-    /// A move-only registration was lost, invented, or replaced.
+    /// A registration handle was lost, invented, or replaced.
     Handle,
     /// A retained registration stopped consuming fixed capacity.
     CapacityRetention,

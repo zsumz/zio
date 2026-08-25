@@ -99,6 +99,23 @@ status = "enforced"
 title = "Each registration owns a retained descriptor and exact generation"
 
 [[invariant]]
+document = "docs/contracts.md#registration-lifetime"
+evidence = [
+    "rust-test:tests/registration_lifetime.rs::registration_handle_traits_are_stable",
+    "rust-test:tests/registration_lifetime.rs::reactor_copy_reclaims_after_task_copy_is_abandoned",
+    "rust-test:tests/registration_lifetime.rs::successful_delete_stales_every_surviving_copy",
+    "rust-test:tests/registration_lifetime.rs::stale_copy_cannot_target_reused_generation",
+    "rust-test:crates/zio-testkit/tests/lifetime_delete.rs::delete_outcome_branches_update_every_surviving_copy",
+    "rust-test:crates/zio-testkit/tests/lifetime_ownership.rs::copied_handle_rejects_wrong_poller_without_backend_calls",
+    "rust-test:crates/zio-testkit/tests/lifetime_register_error.rs::register_error_handles_can_be_copied_before_error_consumption",
+    "gate:check",
+    "gate:ci",
+]
+id = "LIFETIME-01"
+status = "enforced"
+title = "Copyable handles preserve exact-generation cleanup authority"
+
+[[invariant]]
 document = "docs/contracts.md#readiness-modes"
 evidence = [
     "rust-test:tests/readiness.rs::one_shot_requires_explicit_rearm",

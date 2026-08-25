@@ -14,13 +14,14 @@ impl Poll {
     /// generation, including repeated calls for the same source or duplicated
     /// handles for one open-file description.
     ///
-    /// A successful call returns the only move-only capability for the new
-    /// registration. If the backend reports [`CommitStatus::NotApplied`], the
-    /// reserved slot and retained descriptor are released and
-    /// [`RegisterError::registration`] returns `None`. An
-    /// [`CommitStatus::Applied`] failure returns a registered, armed capability;
-    /// an [`CommitStatus::Unknown`] failure returns a capability whose
-    /// authoritative state is [`RegistrationState::Uncertain`].
+    /// A successful call returns a copyable, exact-generation handle for the
+    /// new registration. A reactor can retain one copy before giving another
+    /// to cancellable work. If the backend reports
+    /// [`CommitStatus::NotApplied`], the reserved slot and retained descriptor
+    /// are released and [`RegisterError::registration`] returns `None`. An
+    /// [`CommitStatus::Applied`] failure returns a registered, armed handle; an
+    /// [`CommitStatus::Unknown`] failure returns a handle whose authoritative
+    /// state is [`RegistrationState::Uncertain`].
     ///
     /// [`CommitStatus::Applied`]: crate::CommitStatus::Applied
     /// [`CommitStatus::NotApplied`]: crate::CommitStatus::NotApplied
@@ -57,13 +58,14 @@ impl Poll {
 
     /// Deletes a registration and releases its retained descriptor.
     ///
-    /// Success retires the registration. Every failed deletion returns the
-    /// same move-only capability through [`DeleteError`]. A
+    /// Success retires the exact generation and makes every remaining handle
+    /// copy stale. Every failed deletion retains the exact handle through
+    /// [`DeleteError`]. A
     /// [`CommitStatus::NotApplied`] failure preserves the prior authoritative
     /// state for retry; an [`CommitStatus::Applied`] failure retires the state,
-    /// so the returned capability is stale; an [`CommitStatus::Unknown`]
-    /// failure marks the registration uncertain and permits an explicit delete
-    /// retry.
+    /// so every copy is stale; an [`CommitStatus::Unknown`] failure marks the
+    /// registration uncertain and permits an explicit delete retry from any
+    /// copy.
     ///
     /// [`CommitStatus::Applied`]: crate::CommitStatus::Applied
     /// [`CommitStatus::NotApplied`]: crate::CommitStatus::NotApplied

@@ -45,7 +45,7 @@ and wait behavior. Successful waits reuse fixed zio-owned storage.
 
 ## Contracts
 
-- Registrations own retained descriptor duplicates and exact generations.
+- Pollers retain descriptor duplicates; copyable handles name exact generations.
 - Level delivery repeats; one-shot delivery requires explicit rearming.
 - Readiness is advisory. Nonblocking I/O remains the source of truth.
 - Wake signals are bounded, coalesced, drainable, and observable.

@@ -63,8 +63,10 @@ impl std::error::Error for MutationError {
 /// Registration failure that preserves any possibly installed registration.
 ///
 /// [`Self::registration`] is `None` for preflight failures and mutations proven
-/// not applied. It contains a registered capability for an applied mutation and
-/// an uncertain capability when the backend result cannot be proven.
+/// not applied. It contains a registered handle for an applied mutation and an
+/// uncertain handle when the backend result cannot be proven. Because handles
+/// are copyable, callers can copy the handle borrowed by
+/// [`Self::registration`] before propagating or otherwise consuming the error.
 #[derive(Debug)]
 pub struct RegisterError {
     error: Error,
@@ -107,9 +109,9 @@ impl std::error::Error for RegisterError {
     }
 }
 
-/// Delete failure that returns the same move-only registration capability.
+/// Delete failure that retains the exact registration handle.
 ///
-/// The capability remains registered after a not-applied failure, is stale
+/// Every handle copy remains registered after a not-applied failure, is stale
 /// after an applied failure, and is uncertain after an unknown failure.
 #[derive(Debug)]
 pub struct DeleteError {

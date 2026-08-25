@@ -5,14 +5,27 @@ matching nonblocking operation is always authoritative.
 
 ## Registration ownership
 
-A registration is a move-only capability owned by one poller; another poller
-cannot use it. Each successful registration owns a distinct descriptor
+Each successful registration makes its poller retain a distinct descriptor
 duplicate and exact generation, even for repeated registration of one source
 or its duplicated handles. Caller close and numeric descriptor reuse cannot
-redirect later mutations.
+redirect later mutations. Handles are poller-scoped; another poller rejects
+them. Keys need not be unique.
 
-Keys need not be unique. `Poll::delete` releases a registration early. Dropping
-the capability alone leaves it retained until the poller is dropped.
+## Registration lifetime
+
+`Registration` is `Copy`, `Clone`, `Eq`, `Hash`, `Send`, and `Sync`. Every copy
+names the same poller and exact generation; copying creates no backend
+registration. Dropping any or all copies does not delete it. Retain a copy
+outside cancellable work when early cleanup matters.
+
+Successful deletion retires the generation and makes every copy stale. An
+`Applied` delete failure does the same; `NotApplied` preserves every copy's
+prior state; `Unknown` makes every copy uncertain and allows a delete retry.
+Stale and wrong-poller copies are rejected before backend work and cannot affect
+a reused slot.
+
+`Applied` and `Unknown` register failures can carry an installed or uncertain
+handle. Inspect and retain it before propagating or consuming the error.
 
 ## Readiness modes
 
@@ -97,12 +110,12 @@ silent loss.
 
 ## Mutation outcomes
 
-A failed mutation reports what happened and returns or preserves a capability
-when backend state may remain:
+A failed mutation reports what happened and returns or preserves a handle when
+backend state may remain:
 
 | Status | Register | Modify | Delete |
 | --- | --- | --- | --- |
-| `NotApplied` | Release the reservation; no capability | Preserve prior state | Return the capability in prior state |
+| `NotApplied` | Release the reservation; no handle | Preserve prior state | Return the handle in prior state |
 | `Applied` | Return registered and armed | Commit and rearm | Return stale after retirement |
 | `Unknown` | Return uncertain | Mark uncertain | Return uncertain and retryable |
 
