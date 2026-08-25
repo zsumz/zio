@@ -1,0 +1,208 @@
+//! Caller keys, readiness hints, and bounded event storage.
+
+use std::num::NonZeroUsize;
+
+use crate::Error;
+
+/// Caller-selected value delivered with an observed event.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct Key(u64);
+
+impl Key {
+    /// The zero key.
+    pub const ZERO: Self = Self(0);
+
+    /// Creates a caller key.
+    pub const fn new(value: u64) -> Self {
+        Self(value)
+    }
+
+    /// Returns the stored value.
+    pub const fn get(self) -> u64 {
+        self.0
+    }
+}
+
+/// Backend-neutral readiness hints for one resource.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
+pub struct Readiness(u8);
+
+impl Readiness {
+    /// No readiness hints.
+    pub const EMPTY: Self = Self(0);
+    /// A read, receive, or accept operation may make progress.
+    pub const READABLE: Self = Self(1 << 0);
+    /// A write, send, or connect operation may make progress.
+    pub const WRITABLE: Self = Self(1 << 1);
+    /// The readable direction reported closure.
+    pub const READ_CLOSED: Self = Self(1 << 2);
+    /// The writable direction reported closure.
+    pub const WRITE_CLOSED: Self = Self(1 << 3);
+    /// The backend reported an error hint.
+    pub const ERROR: Self = Self(1 << 4);
+
+    /// Returns whether no readiness hint is present.
+    pub const fn is_empty(self) -> bool {
+        self.0 == 0
+    }
+
+    /// Returns whether every flag in `other` is present.
+    pub const fn contains(self, other: Self) -> bool {
+        self.0 & other.0 == other.0
+    }
+
+    /// Returns the union of two readiness sets.
+    #[must_use]
+    pub const fn union(self, other: Self) -> Self {
+        Self(self.0 | other.0)
+    }
+
+    /// Returns whether readable readiness is present.
+    pub const fn is_readable(self) -> bool {
+        self.contains(Self::READABLE)
+    }
+
+    /// Returns whether writable readiness is present.
+    pub const fn is_writable(self) -> bool {
+        self.contains(Self::WRITABLE)
+    }
+
+    /// Returns whether readable closure is present.
+    pub const fn is_read_closed(self) -> bool {
+        self.contains(Self::READ_CLOSED)
+    }
+
+    /// Returns whether writable closure is present.
+    pub const fn is_write_closed(self) -> bool {
+        self.contains(Self::WRITE_CLOSED)
+    }
+
+    /// Returns whether an error hint is present.
+    pub const fn is_error(self) -> bool {
+        self.contains(Self::ERROR)
+    }
+}
+
+/// One logical observation delivered by a poller.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Event {
+    /// Readiness observed for a registered resource.
+    Resource {
+        /// Caller key supplied at registration.
+        key: Key,
+        /// Readiness hints reported for the resource.
+        readiness: Readiness,
+    },
+    /// An explicit wake observed by the poller.
+    Wake {
+        /// Caller key configured for the wake capability.
+        key: Key,
+    },
+}
+
+impl Event {
+    /// Returns the caller key carried by this event.
+    pub const fn key(self) -> Key {
+        match self {
+            Self::Resource { key, .. } | Self::Wake { key } => key,
+        }
+    }
+
+    /// Returns readiness for a resource event.
+    pub const fn readiness(self) -> Option<Readiness> {
+        match self {
+            Self::Resource { readiness, .. } => Some(readiness),
+            Self::Wake { .. } => None,
+        }
+    }
+}
+
+/// Reusable event destination with a fixed logical capacity.
+#[derive(Debug)]
+pub struct Events {
+    capacity: NonZeroUsize,
+    events: Vec<Event>,
+}
+
+impl Events {
+    /// Allocates an empty event destination with the supplied capacity.
+    pub fn with_capacity(capacity: usize) -> Result<Self, Error> {
+        let capacity = NonZeroUsize::new(capacity).ok_or(Error::EventsTooSmall {
+            required: 1,
+            actual: 0,
+        })?;
+        Self::new(capacity)
+    }
+
+    pub(crate) fn new(capacity: NonZeroUsize) -> Result<Self, Error> {
+        let mut events = Vec::new();
+        events
+            .try_reserve_exact(capacity.get())
+            .map_err(|_| Error::Capacity {
+                limit: capacity.get(),
+            })?;
+        Ok(Self { capacity, events })
+    }
+
+    /// Returns the fixed logical capacity.
+    pub const fn capacity(&self) -> usize {
+        self.capacity.get()
+    }
+
+    /// Returns the retained event count.
+    pub fn len(&self) -> usize {
+        self.events.len()
+    }
+
+    /// Returns whether no event is retained.
+    pub fn is_empty(&self) -> bool {
+        self.events.is_empty()
+    }
+
+    /// Borrows retained events in observation order.
+    pub fn as_slice(&self) -> &[Event] {
+        &self.events
+    }
+
+    /// Borrows the event at `index`, when present.
+    pub fn get(&self, index: usize) -> Option<&Event> {
+        self.events.get(index)
+    }
+
+    /// Iterates over retained events in observation order.
+    pub fn iter(&self) -> impl ExactSizeIterator<Item = &Event> + '_ {
+        self.events.iter()
+    }
+
+    /// Clears retained events while preserving allocated storage.
+    pub fn clear(&mut self) {
+        self.events.clear();
+    }
+
+    /// Drains all retained events in observation order.
+    pub fn drain(&mut self) -> impl ExactSizeIterator<Item = Event> + '_ {
+        self.events.drain(..)
+    }
+
+    pub(crate) fn try_push(&mut self, event: Event) -> Result<(), Error> {
+        if self.events.len() >= self.capacity.get() {
+            return Err(Error::EventsTooSmall {
+                required: self.events.len().saturating_add(1),
+                actual: self.capacity.get(),
+            });
+        }
+        self.events.push(event);
+        Ok(())
+    }
+}
+
+impl<'a> IntoIterator for &'a Events {
+    type Item = &'a Event;
+    type IntoIter = core::slice::Iter<'a, Event>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.events.iter()
+    }
+}

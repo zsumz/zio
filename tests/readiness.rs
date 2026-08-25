@@ -1,0 +1,190 @@
+//! Readiness, one-shot, and wake behavior on supported Unix hosts.
+
+#![cfg(any(
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "freebsd",
+    target_os = "netbsd"
+))]
+
+use std::{
+    io::{self, Write},
+    os::unix::net::UnixStream,
+    thread,
+    time::Duration,
+};
+
+use zio::{ArmState, Error, Event, Events, Interest, Key, Mode, Poll, RegistrationState, Wait};
+
+#[test]
+fn one_shot_requires_explicit_rearm() -> Result<(), Box<dyn std::error::Error>> {
+    let (source, mut peer) = UnixStream::pair()?;
+    let mut poll = Poll::new()?;
+    let registration = poll.register(&source, Key::new(41), Interest::READABLE, Mode::OneShot)?;
+    peer.write_all(b"still readable")?;
+
+    let mut events = poll.events()?;
+    poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?;
+    assert!(has_key(&events, Key::new(41)));
+    assert_eq!(
+        poll.registration_state(&registration)?,
+        RegistrationState::Registered {
+            arm: ArmState::Disarmed,
+        }
+    );
+
+    poll.wait(&mut events, Wait::NoBlock)?;
+    assert!(events.is_empty());
+
+    poll.modify(&registration, Interest::READABLE, Mode::OneShot)?;
+    assert_eq!(
+        poll.registration_state(&registration)?,
+        RegistrationState::Registered {
+            arm: ArmState::Armed,
+        }
+    );
+    poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?;
+    assert!(has_key(&events, Key::new(41)));
+
+    poll.delete(registration)?;
+    Ok(())
+}
+
+#[test]
+fn one_shot_coalesces_readable_and_writable_at_capacity_one()
+-> Result<(), Box<dyn std::error::Error>> {
+    let (source, mut peer) = UnixStream::pair()?;
+    let mut poll = Poll::with_capacity(1, 1)?;
+    let registration = poll.register(
+        &source,
+        Key::new(42),
+        Interest::READABLE | Interest::WRITABLE,
+        Mode::OneShot,
+    )?;
+    peer.write_all(b"readable and writable")?;
+
+    let mut events = poll.events()?;
+    poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?;
+    let [Event::Resource { key, readiness }] = events.as_slice() else {
+        return Err(io::Error::other("expected one coalesced resource event").into());
+    };
+    assert_eq!(*key, Key::new(42));
+    assert!(readiness.contains(zio::Readiness::READABLE.union(zio::Readiness::WRITABLE)));
+    assert_eq!(
+        poll.registration_state(&registration)?,
+        RegistrationState::Registered {
+            arm: ArmState::Disarmed,
+        }
+    );
+
+    poll.delete(registration)?;
+    Ok(())
+}
+
+#[test]
+fn one_shot_coalescing_is_complete_with_competing_registrations()
+-> Result<(), Box<dyn std::error::Error>> {
+    let (first, mut first_peer) = UnixStream::pair()?;
+    let (second, mut second_peer) = UnixStream::pair()?;
+    let mut poll = Poll::with_capacity(1, 2)?;
+    let interest = Interest::READABLE | Interest::WRITABLE;
+    let first_registration = poll.register(&first, Key::new(51), interest, Mode::OneShot)?;
+    let second_registration = poll.register(&second, Key::new(52), interest, Mode::OneShot)?;
+    second_peer.write_all(b"second readable")?;
+    first_peer.write_all(b"first readable")?;
+
+    let mut events = poll.events()?;
+    poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?;
+    let [Event::Resource { key, readiness }] = events.as_slice() else {
+        return Err(io::Error::other("expected one coalesced resource event").into());
+    };
+    assert!(readiness.contains(zio::Readiness::READABLE.union(zio::Readiness::WRITABLE)));
+    let armed = RegistrationState::Registered {
+        arm: ArmState::Armed,
+    };
+    let disarmed = RegistrationState::Registered {
+        arm: ArmState::Disarmed,
+    };
+    if *key == Key::new(51) {
+        assert_eq!(poll.registration_state(&first_registration)?, disarmed);
+        assert_eq!(poll.registration_state(&second_registration)?, armed);
+    } else {
+        assert_eq!(*key, Key::new(52));
+        assert_eq!(poll.registration_state(&first_registration)?, armed);
+        assert_eq!(poll.registration_state(&second_registration)?, disarmed);
+    }
+
+    poll.delete(first_registration)?;
+    poll.delete(second_registration)?;
+    Ok(())
+}
+
+#[test]
+fn wake_before_wait_is_observable() -> Result<(), Box<dyn std::error::Error>> {
+    let mut poll = Poll::new()?;
+    let waker = poll.waker(Key::new(99))?;
+    waker.wake()?;
+
+    let mut events = poll.events()?;
+    poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?;
+    assert!(matches!(
+        events.as_slice(),
+        [Event::Wake { key }] if *key == Key::new(99)
+    ));
+    Ok(())
+}
+
+#[test]
+fn wake_interrupts_a_blocked_wait() -> Result<(), Box<dyn std::error::Error>> {
+    let mut poll = Poll::new()?;
+    let waker = poll.waker(Key::new(100))?;
+    let thread = thread::spawn(move || {
+        thread::sleep(Duration::from_millis(20));
+        waker.wake()
+    });
+
+    let mut events = poll.events()?;
+    poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?;
+    let wake_result = thread
+        .join()
+        .map_err(|_| io::Error::other("wake thread panicked"))?;
+    wake_result?;
+    assert!(has_wake(&events, Key::new(100)));
+    Ok(())
+}
+
+#[test]
+fn wait_rejects_an_undersized_destination() -> Result<(), Box<dyn std::error::Error>> {
+    let mut poll = Poll::with_capacity(4, 4)?;
+    let mut events = Events::with_capacity(3)?;
+    let result = poll.wait(&mut events, Wait::NoBlock);
+    assert!(matches!(
+        result,
+        Err(Error::EventsTooSmall {
+            required: 4,
+            actual: 3
+        })
+    ));
+    assert!(events.is_empty());
+    Ok(())
+}
+
+#[test]
+fn oversized_event_capacity_is_reported_without_panicking() {
+    assert!(matches!(
+        Events::with_capacity(usize::MAX),
+        Err(Error::Capacity { limit }) if limit == usize::MAX
+    ));
+}
+
+fn has_key(events: &Events, expected: Key) -> bool {
+    events
+        .iter()
+        .any(|event| matches!(event, Event::Resource { key, .. } if *key == expected))
+}
+
+fn has_wake(events: &Events, expected: Key) -> bool {
+    events
+        .iter()
+        .any(|event| matches!(event, Event::Wake { key } if *key == expected))
+}

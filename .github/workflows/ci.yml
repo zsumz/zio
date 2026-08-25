@@ -1,0 +1,134 @@
+name: CI
+
+on:
+  pull_request:
+  merge_group:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: "1"
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  canonical:
+    name: canonical
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Install Rust toolchains
+        run: |
+          rustup toolchain install 1.88.0 --profile minimal
+          rustup toolchain install 1.97.1 \
+            --profile minimal \
+            --component clippy,rustfmt
+
+      - name: Install qualification tools
+        run: |
+          cargo +1.97.1 install zcheck --version 0.0.2 --locked
+          cargo +1.97.1 install zrail --version 0.0.2 --locked
+
+      - name: Fetch the locked dependency graph
+        run: cargo +1.88.0 fetch --locked
+
+      - name: Run canonical qualification
+        env:
+          ZCHECK_CACHE_DIR: ${{ runner.temp }}/zcheck-cache
+          ZCHECK_EVIDENCE_DIR: ${{ runner.temp }}/zcheck-evidence
+        run: >-
+          zcheck run check
+          --format github
+          --logs-dir "$ZCHECK_EVIDENCE_DIR/logs"
+          --receipt "$ZCHECK_EVIDENCE_DIR/receipt.json"
+
+      - name: Upload qualification evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: zcheck-canonical
+          path: ${{ runner.temp }}/zcheck-evidence
+          if-no-files-found: error
+
+  macos:
+    name: macOS kqueue tests
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Install Rust toolchains
+        run: |
+          rustup toolchain install 1.88.0 --profile minimal
+          rustup toolchain install 1.97.1 --profile minimal --component clippy
+
+      - name: Fetch the locked dependency graph
+        run: cargo +1.88.0 fetch --locked
+
+      - name: Run kqueue tests on the MSRV
+        run: cargo +1.88.0 test --all-targets --locked --offline
+
+      - name: Run kqueue tests on the pinned toolchain
+        run: cargo +1.97.1 test --all-targets --locked --offline
+
+      - name: Lint the kqueue implementation
+        run: cargo +1.97.1 clippy --all-targets --locked --offline -- -D warnings
+
+      - name: Build kqueue documentation
+        env:
+          RUSTDOCFLAGS: -D warnings
+        run: cargo +1.97.1 doc --no-deps --locked --offline
+
+  bsd:
+    name: BSD compile checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Install Rust toolchains and targets
+        run: |
+          rustup toolchain install 1.88.0 --profile minimal
+          rustup toolchain install 1.97.1 --profile minimal --component clippy
+          rustup target add --toolchain 1.88.0 \
+            x86_64-unknown-freebsd x86_64-unknown-netbsd
+          rustup target add --toolchain 1.97.1 \
+            x86_64-unknown-freebsd x86_64-unknown-netbsd
+
+      - name: Fetch the locked dependency graph
+        run: cargo +1.88.0 fetch --locked
+
+      - name: Compile BSD backends on the MSRV
+        run: |
+          cargo +1.88.0 check --target x86_64-unknown-freebsd \
+            --all-targets --locked --offline
+          cargo +1.88.0 check --target x86_64-unknown-netbsd \
+            --all-targets --locked --offline
+
+      - name: Lint BSD backends on the pinned toolchain
+        run: |
+          cargo +1.97.1 clippy --target x86_64-unknown-freebsd \
+            --all-targets --locked --offline -- -D warnings
+          cargo +1.97.1 clippy --target x86_64-unknown-netbsd \
+            --all-targets --locked --offline -- -D warnings

@@ -1,0 +1,158 @@
+schema = 1
+adapters = ["rust"]
+
+[repository]
+roots = ["."]
+exclude = []
+workspace_members = "exact"
+nested_git = "deny"
+submodules = "deny"
+symlinks = "inside"
+
+[[gate]]
+name = "check"
+kind = "local"
+path = "zcheck.toml"
+inputs = [
+  ".editorconfig",
+  ".gitattributes",
+  ".github/workflows/ci.yml",
+  ".gitignore",
+  "Cargo.toml",
+  "Cargo.lock",
+  "README.md",
+  "LICENSE",
+  "rust-toolchain.toml",
+  "rustfmt.toml",
+  "clippy.toml",
+]
+reason = "The declarative canonical qualification graph and its reviewed inputs."
+
+[[gate]]
+name = "ci"
+kind = "ci"
+path = ".github/workflows/ci.yml"
+inputs = ["rust-toolchain.toml", "zcheck.toml"]
+requires = ["check"]
+reason = "Hosted qualification runs the canonical Linux graph and real macOS kqueue tests."
+
+[[invariant]]
+id = "OWNERSHIP-01"
+title = "One retained registration owns each descriptor"
+status = "enforced"
+document = "README.md#registration-ownership"
+evidence = [
+  "rust-test:tests/registration.rs::duplicate_descriptor_is_rejected",
+  "gate:check",
+  "gate:ci",
+]
+
+[[invariant]]
+id = "MODE-01"
+title = "One-shot readiness requires explicit rearming after delivery"
+status = "enforced"
+document = "README.md#readiness-modes"
+evidence = [
+  "rust-test:tests/readiness.rs::one_shot_requires_explicit_rearm",
+  "gate:check",
+  "gate:ci",
+]
+
+[[invariant]]
+id = "MUTATION-01"
+title = "Failed kernel restoration is classified as an unknown mutation"
+status = "enforced"
+document = "README.md#mutation-outcomes"
+evidence = [
+  "rust-test:src/sys/kqueue_group/kqueue_policy_test.rs::failed_modify_with_failed_restore_is_unknown",
+  "gate:check",
+  "gate:ci",
+]
+
+[dependencies]
+mode = "locked"
+unassigned_packages = "deny"
+cycles = "deny"
+
+[[dependencies.crate_root]]
+package = "libc"
+root = "libc"
+reason = "The target-gated libc package exposes the native syscall constants, layouts, and functions."
+
+[dependencies.crate_root.source]
+kind = "registry"
+requirement = "0.2.189"
+
+[[dependencies.crate_root]]
+package = "mio"
+root = "mio"
+reason = "The dev-only Mio package is the differential readiness oracle."
+
+[dependencies.crate_root.source]
+kind = "registry"
+requirement = "1.2.2"
+
+[source.rust]
+module_docs = "required"
+facades = "declarative"
+entrypoints = "declarative"
+tests = "sibling"
+
+[source.rust.macros]
+mode = "allow"
+
+[source.rust.hygiene]
+unsafe = "allow"
+lint_suppressions = "reasoned"
+deny_methods = ["unwrap", "expect"]
+deny_macros = ["panic", "todo", "unimplemented", "unreachable", "dbg"]
+
+[source.rust.size.facade]
+target = 80
+hard = 120
+
+[source.rust.size.implementation]
+target = 240
+hard = 300
+
+[source.rust.size.test]
+target = 300
+hard = 300
+
+[source.rust.size.auxiliary]
+target = 300
+hard = 300
+
+[[layer]]
+name = "library"
+packages = ["zio"]
+may_depend_on = []
+reason = "One focused readiness library owns its portable vocabulary and native backends."
+
+[layer.dependencies]
+external = "locked"
+
+[[scope]]
+name = "caller-supplied-io-boundary"
+include = ["src/**"]
+exclude = ["src/**/*_test.rs"]
+reason = "Production code polls caller-supplied descriptors without opening sockets, files, processes, or threads."
+
+[scope.symbols]
+deny = ["std::fs", "std::net", "std::process", "std::thread"]
+
+[[owner]]
+name = "native-libc-capability"
+kind = "capability"
+within = ["src/**"]
+match = "libc"
+allow = [
+  "src/sys/kqueue_group/kqueue.rs",
+  "src/sys/kqueue_group/kqueue_policy.rs",
+  "src/sys/kqueue_group/kqueue_policy_test.rs",
+  "src/sys/kqueue_group/kqueue_timeout.rs",
+  "src/sys/linux_group/backend.rs",
+  "src/sys/linux_group/epoll.rs",
+  "src/sys/linux_group/eventfd.rs",
+]
+reason = "Only native backend modules use libc directly; unsafe calls remain confined to the three reviewed syscall leaves."
