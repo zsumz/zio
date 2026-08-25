@@ -2,7 +2,7 @@
 
 mod details;
 
-use std::{fmt, io, os::fd::RawFd};
+use std::{fmt, io};
 
 use crate::{Key, RegistrationId};
 
@@ -62,13 +62,6 @@ pub enum Error {
     Mutation(MutationError),
     /// Wait-time recovery failed for known registrations.
     Recovery(RecoveryFailure),
-    /// The descriptor is already retained by a registration.
-    Duplicate {
-        /// Rejected descriptor number.
-        descriptor: RawFd,
-        /// Existing exact registration.
-        existing: RegistrationId,
-    },
     /// The poller wake source already carries another key.
     WakerAlreadyConfigured {
         /// Previously configured key.
@@ -121,13 +114,6 @@ impl fmt::Display for Error {
             Self::Io { operation, source } => write!(formatter, "{operation:?} failed: {source}"),
             Self::Mutation(error) => error.fmt(formatter),
             Self::Recovery(error) => error.fmt(formatter),
-            Self::Duplicate {
-                descriptor,
-                existing,
-            } => write!(
-                formatter,
-                "descriptor {descriptor} is already retained by registration {existing:?}"
-            ),
             Self::WakerAlreadyConfigured {
                 existing,
                 requested,

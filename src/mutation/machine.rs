@@ -1,6 +1,6 @@
 //! Portable registration state transitions over a static mutation driver.
 
-use std::os::fd::{AsFd, AsRawFd};
+use std::os::fd::AsFd;
 
 use crate::{
     CommitStatus, DeleteError, Error, Interest, Key, Mode, MutationError, Operation, RegisterError,
@@ -39,16 +39,6 @@ impl<'state, Driver: MutationDriver> MutationSession<'state, Driver> {
         if interest.is_empty() {
             return Err(RegisterError::new(Error::InvalidInterest, None));
         }
-        let source_descriptor = source.as_fd().as_raw_fd();
-        if let Some(existing) = self.registrations.duplicate(source_descriptor) {
-            return Err(RegisterError::new(
-                Error::Duplicate {
-                    descriptor: source_descriptor,
-                    existing,
-                },
-                None,
-            ));
-        }
         let descriptor = source.as_fd().try_clone_to_owned().map_err(|source| {
             RegisterError::new(
                 Error::Io {
@@ -60,7 +50,7 @@ impl<'state, Driver: MutationDriver> MutationSession<'state, Driver> {
         })?;
         let id = self
             .registrations
-            .reserve(source_descriptor, descriptor, key, interest, mode)
+            .reserve(descriptor, key, interest, mode)
             .map_err(|error| RegisterError::new(error, None))?;
         let registration = Registration::new(self.owner, id);
         let result = {

@@ -12,28 +12,6 @@ use std::{io::Write, os::unix::net::UnixStream, time::Duration};
 use zio::{Error, Event, Interest, Key, Mode, Poll, Wait};
 
 #[test]
-fn duplicate_descriptor_is_rejected() -> Result<(), Box<dyn std::error::Error>> {
-    let (source, _peer) = UnixStream::pair()?;
-    let mut poll = Poll::new()?;
-    let registration = poll.register(&source, Key::new(1), Interest::READABLE, Mode::Level)?;
-
-    for interest in [Interest::READABLE, Interest::WRITABLE] {
-        let result = poll.register(&source, Key::new(2), interest, Mode::Level);
-        assert!(matches!(
-            result,
-            Err(error)
-                if matches!(
-                    error.error(),
-                    Error::Duplicate { existing, .. } if *existing == registration.id()
-                )
-        ));
-    }
-
-    poll.delete(registration)?;
-    Ok(())
-}
-
-#[test]
 fn registration_authority_is_poller_local() -> Result<(), Box<dyn std::error::Error>> {
     let (source, _peer) = UnixStream::pair()?;
     let mut owner = Poll::new()?;

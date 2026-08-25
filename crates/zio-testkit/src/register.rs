@@ -10,8 +10,8 @@ use crate::{
     calls::{expect_delete_call, expect_register_call},
     register_failure::{expect_failed_register, expect_handle_id},
     verify::{
-        backend_registered, expect_backend, expect_duplicate, expect_mutation, expect_state,
-        finish, mismatch, outcome, registered, source,
+        backend_registered, expect_backend, expect_mutation, expect_retained_capacity,
+        expect_state, finish, mismatch, outcome, registered, source,
     },
 };
 
@@ -162,7 +162,7 @@ fn validate_retained(
             scenario,
         )?;
     }
-    expect_duplicate(poll, source, registration.id(), scenario)
+    expect_retained_capacity(poll, source, scenario)
 }
 
 fn cleanup(

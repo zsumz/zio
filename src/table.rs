@@ -2,7 +2,7 @@
 
 use std::{
     num::NonZeroUsize,
-    os::fd::{AsFd, AsRawFd, OwnedFd, RawFd},
+    os::fd::{AsFd, AsRawFd, OwnedFd},
 };
 
 use crate::binding::{Binding, Observation};
@@ -11,7 +11,6 @@ use crate::{ArmState, Error, Interest, Key, Mode, RegistrationId, RegistrationSt
 
 #[derive(Debug)]
 struct Entry {
-    source_descriptor: RawFd,
     descriptor: OwnedFd,
     key: Key,
     interest: Interest,
@@ -68,21 +67,8 @@ impl RegistrationTable {
         })
     }
 
-    pub(crate) fn duplicate(&self, descriptor: RawFd) -> Option<RegistrationId> {
-        self.slots.iter().enumerate().find_map(|(index, slot)| {
-            let entry = slot.entry.as_ref()?;
-            (entry.source_descriptor == descriptor).then(|| {
-                encode(
-                    u32::try_from(index).ok()?,
-                    core::num::NonZeroU32::new(slot.generation)?,
-                )
-            })?
-        })
-    }
-
     pub(crate) fn reserve(
         &mut self,
-        source_descriptor: RawFd,
         descriptor: OwnedFd,
         key: Key,
         interest: Interest,
@@ -111,7 +97,6 @@ impl RegistrationTable {
         let generation = core::num::NonZeroU32::new(slot.generation).ok_or(Error::Invariant)?;
         let id = encode(index, generation).ok_or(Error::RegistrationSpaceExhausted)?;
         slot.entry = Some(Entry {
-            source_descriptor,
             descriptor,
             key,
             interest,

@@ -1,13 +1,17 @@
-//! Maximum blocking behavior for one poll.
+//! Requested blocking behavior for one poll.
 
 use core::time::Duration;
 
-/// Maximum requested blocking behavior for one readiness observation.
+/// Requested blocking behavior for one readiness observation.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Wait {
     /// Return without intentionally blocking.
     NoBlock,
-    /// Block for no longer than the supplied duration.
+    /// Wait for readiness for approximately the supplied duration.
+    ///
+    /// A backend may round a positive duration up to its native timeout
+    /// resolution. Zero remains nonblocking, and interruptions may return
+    /// before the timeout elapses.
     For(Duration),
     /// Permit indefinite blocking until the backend returns.
     Forever,

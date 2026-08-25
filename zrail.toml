@@ -1,110 +1,15 @@
-schema = 1
 adapters = ["rust"]
-
-[repository]
-roots = ["."]
-exclude = []
-workspace_members = "exact"
-nested_git = "deny"
-submodules = "deny"
-symlinks = "inside"
-
-[[gate]]
-name = "check"
-kind = "local"
-path = "zcheck.toml"
-inputs = [
-  ".editorconfig",
-  ".gitattributes",
-  ".github/workflows/ci.yml",
-  ".gitignore",
-  "Cargo.toml",
-  "Cargo.lock",
-  "README.md",
-  "zio-logo.svg",
-  "LICENSE",
-  "rust-toolchain.toml",
-  "rustfmt.toml",
-  "clippy.toml",
-  "crates/zio-testkit/Cargo.toml",
-  "crates/zio-testkit/README.md",
-]
-reason = "The declarative canonical qualification graph and its reviewed inputs."
-
-[[gate]]
-name = "ci"
-kind = "ci"
-path = ".github/workflows/ci.yml"
-inputs = ["rust-toolchain.toml", "zcheck.toml"]
-requires = ["check"]
-reason = "Hosted qualification runs the canonical Linux graph and real macOS kqueue tests."
-
-[[invariant]]
-id = "OWNERSHIP-01"
-title = "One retained registration owns each descriptor"
-status = "enforced"
-document = "README.md#registration-ownership"
-evidence = [
-  "rust-test:tests/registration.rs::duplicate_descriptor_is_rejected",
-  "rust-test:crates/zio-testkit/tests/terminal_identity.rs::delete_applied_stale_handle_survives_slot_reuse",
-  "rust-test:crates/zio-testkit/tests/terminal_ownership.rs::wrong_poller_delete_returns_exact_handle_to_owner",
-  "gate:check",
-  "gate:ci",
-]
-
-[[invariant]]
-id = "MODE-01"
-title = "One-shot readiness requires explicit rearming after delivery"
-status = "enforced"
-document = "README.md#readiness-modes"
-evidence = [
-  "rust-test:tests/readiness.rs::one_shot_requires_explicit_rearm",
-  "gate:check",
-  "gate:ci",
-]
-
-[[invariant]]
-id = "WAKE-01"
-title = "Wake signals remain bounded, drainable, and observable"
-status = "enforced"
-document = "README.md#wake-behavior"
-evidence = [
-  "rust-test:tests/readiness.rs::wake_before_wait_is_observable",
-  "rust-test:tests/readiness.rs::wake_interrupts_a_blocked_wait",
-  "rust-test:crates/zio-testkit/tests/wake_conformance.rs::wake_report_covers_every_scenario",
-  "rust-test:crates/zio-testkit/tests/wake_conformance.rs::wake_scenario_names_are_stable",
-  "rust-test:crates/zio-testkit/tests/wake_conformance.rs::wake_failures_remain_structured",
-  "gate:check",
-  "gate:ci",
-]
-
-[[invariant]]
-id = "MUTATION-01"
-title = "Mutation outcomes preserve exact state and capabilities"
-status = "enforced"
-document = "README.md#mutation-outcomes"
-evidence = [
-  "rust-test:src/sys/kqueue_group/kqueue_policy_test.rs::failed_modify_with_failed_restore_is_unknown",
-  "rust-test:src/sys/kqueue_group/kqueue_policy_test.rs::partial_register_failure_with_cleanup_is_not_applied",
-  "rust-test:src/sys/kqueue_group/kqueue_policy_test.rs::partial_register_failure_with_failed_cleanup_is_unknown",
-  "rust-test:src/sys/kqueue_group/kqueue_policy_test.rs::failed_delete_cleanup_is_unknown_and_retains_failed_filter",
-  "rust-test:crates/zio-testkit/tests/public_api.rs::full_report_covers_every_scenario",
-  "rust-test:crates/zio-testkit/tests/register_conformance.rs::register_branches_preserve_error_state_and_capabilities",
-  "rust-test:crates/zio-testkit/tests/modify_conformance.rs::modify_branches_preserve_error_state_and_retries",
-  "rust-test:crates/zio-testkit/tests/delete_conformance.rs::delete_branches_preserve_returned_handles_and_retries",
-  "gate:check",
-  "gate:ci",
-]
+schema = 2
 
 [dependencies]
+cycles = "deny"
 mode = "locked"
 unassigned_packages = "deny"
-cycles = "deny"
 
 [[dependencies.crate_root]]
 package = "libc"
-root = "libc"
 reason = "The target-gated libc package exposes the native syscall constants, layouts, and functions."
+root = "libc"
 
 [dependencies.crate_root.source]
 kind = "registry"
@@ -112,89 +17,230 @@ requirement = "0.2.189"
 
 [[dependencies.crate_root]]
 package = "mio"
-root = "mio"
 reason = "The dev-only Mio package is the differential readiness oracle."
+root = "mio"
 
 [dependencies.crate_root.source]
 kind = "registry"
 requirement = "1.2.2"
 
-[source.rust]
-module_docs = "required"
-facades = "declarative"
-entrypoints = "declarative"
-tests = "sibling"
+[[dependency]]
+deny = ["zio-testkit"]
+from = "zio"
+name = "library-remains-verification-free"
+reason = "The published readiness library must not depend on workspace-private conformance machinery."
 
-[source.rust.macros]
-mode = "allow"
+[[gate]]
+inputs = [
+    ".editorconfig",
+    ".gitattributes",
+    ".github/workflows/ci.yml",
+    ".gitignore",
+    "Cargo.toml",
+    "Cargo.lock",
+    "README.md",
+    "zio-logo.svg",
+    "LICENSE",
+    "rust-toolchain.toml",
+    "rustfmt.toml",
+    "clippy.toml",
+    "crates/zio-testkit/Cargo.toml",
+    "crates/zio-testkit/README.md",
+]
+kind = "local"
+name = "check"
+path = "zcheck.toml"
+reason = "The declarative canonical qualification graph and its reviewed inputs."
 
-[source.rust.hygiene]
-unsafe = "allow"
-lint_suppressions = "reasoned"
-deny_methods = ["unwrap", "expect"]
-deny_macros = ["panic", "todo", "unimplemented", "unreachable", "dbg"]
+[[gate]]
+inputs = [
+    "rust-toolchain.toml",
+    "zcheck.toml",
+]
+kind = "ci"
+name = "ci"
+path = ".github/workflows/ci.yml"
+reason = "Hosted qualification runs the canonical Linux graph and real macOS kqueue tests."
+requires = ["check"]
 
-[source.rust.size.facade]
-target = 80
-hard = 120
+[[invariant]]
+document = "README.md#registration-ownership"
+evidence = [
+    "rust-test:tests/descriptor_identity.rs::numeric_descriptor_reuse_does_not_alias_retained_registration",
+    "rust-test:tests/descriptor_identity.rs::duplicated_handles_have_independent_registrations",
+    "rust-test:tests/descriptor_identity.rs::one_handle_can_have_independent_registrations",
+    "rust-test:crates/zio-testkit/tests/terminal_identity.rs::delete_applied_stale_handle_survives_slot_reuse",
+    "rust-test:crates/zio-testkit/tests/terminal_ownership.rs::wrong_poller_delete_returns_exact_handle_to_owner",
+    "gate:check",
+    "gate:ci",
+]
+id = "OWNERSHIP-01"
+status = "enforced"
+title = "Each registration owns a retained descriptor and exact generation"
 
-[source.rust.size.implementation]
-target = 240
-hard = 300
+[[invariant]]
+document = "README.md#readiness-modes"
+evidence = [
+    "rust-test:tests/readiness.rs::one_shot_requires_explicit_rearm",
+    "gate:check",
+    "gate:ci",
+]
+id = "MODE-01"
+status = "enforced"
+title = "One-shot readiness requires explicit rearming after delivery"
 
-[source.rust.size.test]
-target = 300
-hard = 300
+[[invariant]]
+document = "README.md#wait-behavior"
+evidence = [
+    "rust-test:src/sys/linux_group/backend_test.rs::zero_timeouts_remain_nonblocking",
+    "rust-test:src/sys/linux_group/backend_test.rs::one_nanosecond_rounds_up_to_one_millisecond",
+    "gate:check",
+    "gate:ci",
+]
+id = "WAIT-01"
+status = "enforced"
+title = "Positive waits never collapse to nonblocking observations"
 
-[source.rust.size.auxiliary]
-target = 300
-hard = 300
+[[invariant]]
+document = "README.md#wake-behavior"
+evidence = [
+    "rust-test:tests/readiness.rs::wake_before_wait_is_observable",
+    "rust-test:tests/readiness.rs::wake_interrupts_a_blocked_wait",
+    "rust-test:crates/zio-testkit/tests/wake_conformance.rs::wake_report_covers_every_scenario",
+    "rust-test:crates/zio-testkit/tests/wake_conformance.rs::wake_scenario_names_are_stable",
+    "rust-test:crates/zio-testkit/tests/wake_conformance.rs::wake_failures_remain_structured",
+    "gate:check",
+    "gate:ci",
+]
+id = "WAKE-01"
+status = "enforced"
+title = "Wake signals remain bounded, drainable, and observable"
+
+[[invariant]]
+document = "README.md#mutation-outcomes"
+evidence = [
+    "rust-test:src/sys/kqueue_group/kqueue_policy_test.rs::failed_modify_with_failed_restore_is_unknown",
+    "rust-test:src/sys/kqueue_group/kqueue_policy_test.rs::partial_register_failure_with_cleanup_is_not_applied",
+    "rust-test:src/sys/kqueue_group/kqueue_policy_test.rs::partial_register_failure_with_failed_cleanup_is_unknown",
+    "rust-test:src/sys/kqueue_group/kqueue_policy_test.rs::failed_delete_cleanup_is_unknown_and_retains_failed_filter",
+    "rust-test:crates/zio-testkit/tests/public_api.rs::full_report_covers_every_scenario",
+    "rust-test:crates/zio-testkit/tests/register_conformance.rs::register_branches_preserve_error_state_and_capabilities",
+    "rust-test:crates/zio-testkit/tests/modify_conformance.rs::modify_branches_preserve_error_state_and_retries",
+    "rust-test:crates/zio-testkit/tests/delete_conformance.rs::delete_branches_preserve_returned_handles_and_retries",
+    "gate:check",
+    "gate:ci",
+]
+id = "MUTATION-01"
+status = "enforced"
+title = "Mutation outcomes preserve exact state and capabilities"
 
 [[layer]]
+may_depend_on = []
 name = "library"
 packages = ["zio"]
-may_depend_on = []
 reason = "One focused readiness library owns its portable vocabulary and native backends."
 
 [layer.dependencies]
 external = "locked"
 
 [[layer]]
+may_depend_on = ["library"]
 name = "verification"
 packages = ["zio-testkit"]
-may_depend_on = ["library"]
 reason = "Deterministic conformance support may exercise the public library without entering the product dependency graph."
 
 [layer.dependencies]
 external = "none"
 
-[[dependency]]
-name = "library-remains-verification-free"
-from = "zio"
-deny = ["zio-testkit"]
-reason = "The published readiness library must not depend on workspace-private conformance machinery."
+[[owner]]
+allow = [
+    "src/sys/kqueue_group/kqueue.rs",
+    "src/sys/kqueue_group/kqueue_policy.rs",
+    "src/sys/kqueue_group/kqueue_policy_test.rs",
+    "src/sys/kqueue_group/kqueue_timeout.rs",
+    "src/sys/linux_group/backend.rs",
+    "src/sys/linux_group/epoll.rs",
+    "src/sys/linux_group/eventfd.rs",
+]
+kind = "capability"
+match = "libc"
+name = "native-libc-capability"
+reason = "Only native backend modules use libc directly; unsafe calls remain confined to the three reviewed syscall leaves."
+within = ["src/**"]
+
+[[ratchet]]
+reason = "Reviewed kqueue FFI and kevent initialization remain confined to this syscall leaf."
+rule = "rust.hygiene.unsafe"
+target = "src/sys/kqueue_group/kqueue.rs"
+
+[[ratchet]]
+reason = "Reviewed epoll FFI and descriptor adoption remain confined to this syscall leaf."
+rule = "rust.hygiene.unsafe"
+target = "src/sys/linux_group/epoll.rs"
+
+[[ratchet]]
+reason = "Reviewed eventfd FFI and descriptor adoption remain confined to this syscall leaf."
+rule = "rust.hygiene.unsafe"
+target = "src/sys/linux_group/eventfd.rs"
+
+[repository]
+exclude = []
+nested_git = "deny"
+roots = ["."]
+submodules = "deny"
+symlinks = "inside"
+workspace_members = "exact"
 
 [[scope]]
-name = "caller-supplied-io-boundary"
-include = ["src/**"]
 exclude = ["src/**/*_test.rs"]
+include = ["src/**"]
+name = "caller-supplied-io-boundary"
 reason = "Production code polls caller-supplied descriptors without opening sockets, files, processes, or threads."
 
 [scope.symbols]
-deny = ["std::fs", "std::net", "std::process", "std::thread"]
-
-[[owner]]
-name = "native-libc-capability"
-kind = "capability"
-within = ["src/**"]
-match = "libc"
-allow = [
-  "src/sys/kqueue_group/kqueue.rs",
-  "src/sys/kqueue_group/kqueue_policy.rs",
-  "src/sys/kqueue_group/kqueue_policy_test.rs",
-  "src/sys/kqueue_group/kqueue_timeout.rs",
-  "src/sys/linux_group/backend.rs",
-  "src/sys/linux_group/epoll.rs",
-  "src/sys/linux_group/eventfd.rs",
+deny = [
+    "std::fs",
+    "std::net",
+    "std::process",
+    "std::thread",
 ]
-reason = "Only native backend modules use libc directly; unsafe calls remain confined to the three reviewed syscall leaves."
+
+[source.rust]
+entrypoints = "declarative"
+facades = "declarative"
+module_docs = "required"
+tests = "sibling"
+
+[source.rust.hygiene]
+deny_macros = [
+    "panic",
+    "todo",
+    "unimplemented",
+    "unreachable",
+    "dbg",
+]
+deny_methods = [
+    "unwrap",
+    "expect",
+]
+lint_suppressions = "reasoned"
+unsafe = "deny"
+
+[source.rust.macros]
+mode = "allow"
+
+[source.rust.size.auxiliary]
+hard = 300
+target = 300
+
+[source.rust.size.facade]
+hard = 120
+target = 80
+
+[source.rust.size.implementation]
+hard = 300
+target = 240
+
+[source.rust.size.test]
+hard = 300
+target = 300

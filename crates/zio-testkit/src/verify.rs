@@ -115,10 +115,9 @@ pub(crate) fn expect_backend(
     }
 }
 
-pub(crate) fn expect_duplicate(
+pub(crate) fn expect_retained_capacity(
     poll: &mut ScriptedPoll,
     source: &UnixStream,
-    existing: RegistrationId,
     scenario: MutationScenario,
 ) -> Result<(), ConformanceFailure> {
     let calls = poll.calls().len();
@@ -131,8 +130,8 @@ pub(crate) fn expect_duplicate(
     let Err(error) = result else {
         return mismatch(
             scenario,
-            ConformanceCheck::DuplicateRetention,
-            "duplicate rejection",
+            ConformanceCheck::CapacityRetention,
+            "fixed-capacity rejection",
             "registration succeeded",
         );
     };
@@ -140,8 +139,8 @@ pub(crate) fn expect_duplicate(
     if poll.calls().len() != calls {
         return mismatch(
             scenario,
-            ConformanceCheck::DuplicateRetention,
-            "duplicate rejected before backend",
+            ConformanceCheck::CapacityRetention,
+            "capacity rejected before backend",
             "backend call",
         );
     }
@@ -149,18 +148,16 @@ pub(crate) fn expect_duplicate(
         return mismatch(
             scenario,
             ConformanceCheck::IntoParts,
-            "no duplicate handle",
+            "no returned capability",
             "unexpected handle",
         );
     }
     match error {
-        Error::Duplicate {
-            existing: actual, ..
-        } if actual == existing => Ok(()),
+        Error::Capacity { limit: 1 } => Ok(()),
         actual => mismatch(
             scenario,
-            ConformanceCheck::DuplicateRetention,
-            format!("Duplicate({existing:?})"),
+            ConformanceCheck::CapacityRetention,
+            "Capacity { limit: 1 }",
             format!("{actual:?}"),
         ),
     }

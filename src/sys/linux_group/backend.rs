@@ -166,11 +166,16 @@ fn from_epoll_flags(flags: u32) -> Readiness {
     readiness
 }
 
-fn epoll_timeout(wait: Wait) -> libc::c_int {
+pub(super) fn epoll_timeout(wait: Wait) -> libc::c_int {
     match wait.timeout() {
         None => -1,
         Some(duration) => {
-            let milliseconds = duration.as_millis().min(libc::c_int::MAX as u128);
+            const NANOS_PER_MILLISECOND: u128 = 1_000_000;
+
+            let milliseconds = duration
+                .as_nanos()
+                .div_ceil(NANOS_PER_MILLISECOND)
+                .min(libc::c_int::MAX as u128);
             libc::c_int::try_from(milliseconds).unwrap_or(libc::c_int::MAX)
         }
     }

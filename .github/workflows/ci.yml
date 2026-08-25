@@ -42,7 +42,7 @@ jobs:
       - name: Install qualification tools
         run: |
           cargo +1.97.1 install zcheck --version 0.0.2 --locked
-          cargo +1.97.1 install zrail --version 0.0.2 --locked
+          cargo +1.97.1 install zrail --version 0.0.3-rc.4 --locked
 
       - name: Fetch the locked dependency graph
         run: cargo +1.88.0 fetch --locked

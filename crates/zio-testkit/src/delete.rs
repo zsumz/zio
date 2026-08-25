@@ -12,7 +12,7 @@ use crate::{
     },
     delete_failure::{expect_failed_delete, unexpected_delete},
     verify::{
-        PRIOR_INTEREST, PRIOR_MODE, backend_registered, expect_backend, expect_duplicate,
+        PRIOR_INTEREST, PRIOR_MODE, backend_registered, expect_backend, expect_retained_capacity,
         expect_stale, expect_state, finish, mismatch, outcome, registered, source,
     },
 };
@@ -93,7 +93,7 @@ pub(crate) fn run(scenario: MutationScenario) -> Result<(), ConformanceFailure> 
                 backend_registered(PRIOR_INTEREST, PRIOR_MODE, ArmState::Disarmed),
                 scenario,
             )?;
-            expect_duplicate(&mut poll, &source, id, scenario)?;
+            expect_retained_capacity(&mut poll, &source, scenario)?;
             retry_delete(
                 &mut poll,
                 registration,
@@ -116,7 +116,7 @@ pub(crate) fn run(scenario: MutationScenario) -> Result<(), ConformanceFailure> 
                 scenario,
             )?;
             expect_backend(&poll, id, ScriptedBackendState::Unknown, scenario)?;
-            expect_duplicate(&mut poll, &source, id, scenario)?;
+            expect_retained_capacity(&mut poll, &source, scenario)?;
             let calls = poll.calls().len();
             match poll.modify(&registration, Interest::WRITABLE, Mode::Level) {
                 Err(Error::Uncertain {
@@ -182,7 +182,7 @@ fn replace_and_cleanup(
         .map_err(|error| {
             ConformanceFailure::new(
                 scenario,
-                ConformanceCheck::DuplicateRetention,
+                ConformanceCheck::CapacityRetention,
                 "descriptor released after applied deletion",
                 error.to_string(),
             )

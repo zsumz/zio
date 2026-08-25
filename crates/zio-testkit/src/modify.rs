@@ -13,8 +13,8 @@ use crate::{
     modify_commit::confirm_committed_prior,
     verify::{
         DESIRED_INTEREST, DESIRED_MODE, PRIOR_INTEREST, PRIOR_MODE, backend_registered,
-        expect_backend, expect_duplicate, expect_mutation, expect_state, finish, mismatch, outcome,
-        registered, source,
+        expect_backend, expect_mutation, expect_retained_capacity, expect_state, finish, mismatch,
+        outcome, registered, source,
     },
 };
 
@@ -32,7 +32,7 @@ pub(crate) fn run(scenario: MutationScenario) -> Result<(), ConformanceFailure> 
         steps.push(MutationStep::Modify(MutationOutcome::Success));
     }
     steps.push(MutationStep::Delete(MutationOutcome::Success));
-    let mut poll = ScriptedPoll::new(steps).map_err(|error| {
+    let mut poll = ScriptedPoll::with_capacity(1, steps).map_err(|error| {
         ConformanceFailure::new(
             scenario,
             ConformanceCheck::Setup,
@@ -128,7 +128,7 @@ pub(crate) fn run(scenario: MutationScenario) -> Result<(), ConformanceFailure> 
     if scenario.branch() != Branch::Unknown {
         confirm_committed_prior(&mut poll, &registration, scenario)?;
     }
-    expect_duplicate(&mut poll, &source, id, scenario)?;
+    expect_retained_capacity(&mut poll, &source, scenario)?;
     let (interest, state) = if scenario.branch() == Branch::Unknown {
         (PRIOR_INTEREST, RegistrationState::Uncertain)
     } else {

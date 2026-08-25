@@ -3,6 +3,8 @@
 #![cfg(target_os = "linux")]
 
 mod backend;
+#[cfg(test)]
+mod backend_test;
 mod epoll;
 mod eventfd;
 

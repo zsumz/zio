@@ -21,8 +21,8 @@ pub enum ConformanceCheck {
     State,
     /// A move-only registration was lost, invented, or replaced.
     Handle,
-    /// Descriptor duplicate retention diverged.
-    DuplicateRetention,
+    /// A retained registration stopped consuming fixed capacity.
+    CapacityRetention,
     /// A returned capability could not perform the required retry.
     Retry,
     /// Splitting an error lost one of its owned parts.

@@ -10,6 +10,10 @@ use crate::{
 impl Poll {
     /// Registers one descriptor after retaining an owned duplicate.
     ///
+    /// Every successful call creates an independent registration and exact
+    /// generation, including repeated calls for the same source or duplicated
+    /// handles for one open-file description.
+    ///
     /// A successful call returns the only move-only capability for the new
     /// registration. If the backend reports [`CommitStatus::NotApplied`], the
     /// reserved slot and retained descriptor are released and

@@ -35,10 +35,11 @@ modes, event keys, and blocking behavior. Ordinary waits reuse fixed storage.
 
 ### Registration ownership
 
-A registration is a move-only capability owned by one poller. Duplicate keys
-are valid; duplicate descriptors and handles from another poller are rejected.
-The poller retains its own descriptor duplicate, so caller close and numeric
-descriptor reuse cannot redirect later mutations.
+A registration is a move-only capability owned by one poller; another poller
+cannot use it. Keys need not be unique. Every successful registration,
+including repeated calls for the same source or its duplicated handles, owns a
+distinct descriptor duplicate and exact generation. Caller close and numeric
+descriptor reuse therefore cannot redirect later mutations.
 `Poll::delete` releases it early; dropping the capability alone leaves the
 registration retained until the poller is dropped.
 
@@ -47,6 +48,16 @@ registration retained until the poller is dropped.
 Level mode reports while a source remains ready. One-shot mode disarms after
 delivery and requires an explicit modification whose backend mutation is
 applied.
+
+### Wait behavior
+
+`Wait::NoBlock` and a zero-duration wait are nonblocking. A positive duration
+never collapses to nonblocking; a backend may round it up to its supported
+timeout resolution, and scheduling may delay return. Linux currently rounds up
+to whole milliseconds; kqueue supplies nanosecond fields. Very large limits
+are clamped to the backend integer range, and interruption may return early.
+Readiness is advisory, so callers use nonblocking descriptors and perform I/O
+until it would block.
 
 ### Wake behavior
 
@@ -118,12 +129,13 @@ zrail diff --base HEAD --deny-grants
 `zcheck` is the complete local gate for source shape, zrail architecture,
 formatting, Clippy, rustdoc, MSRV and current-toolchain tests, doctests, package
 contents, and diff hygiene. The zrail diff separately reviews changes to
-architectural authority. Use zcheck 0.0.2 and zrail 0.0.2, matching CI and the
-reviewed lock.
+architectural authority. Use zcheck 0.0.2 and zrail 0.0.3-rc.4, matching CI and
+the reviewed lock.
 
 CI runs native Linux and macOS backend tests and cross-compiles FreeBSD and
-NetBSD. zio supports Rust 1.88 and newer. zio is a packageable pre-alpha and is
-not release-ready yet.
+NetBSD. The BSD backends remain compile-qualified experimental support until
+native execution is added. zio supports Rust 1.88 and newer. zio is a published
+pre-alpha and is not release-ready yet.
 
 ## License
 
