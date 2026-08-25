@@ -37,6 +37,13 @@ mod interest;
 mod mode;
 mod mutation;
 mod observe;
+#[cfg(test)]
+mod observe_allocation_test;
+mod observe_recovery;
+#[cfg(test)]
+mod observe_test;
+#[cfg(test)]
+mod observe_validation_test;
 mod pending;
 mod pending_kqueue;
 mod poll;
@@ -52,7 +59,8 @@ mod wait;
 pub mod test_support;
 
 pub use error::{
-    CommitStatus, DeleteError, Error, MutationError, Operation, RecoveryFailure, RegisterError,
+    CommitStatus, DeleteError, Error, MutationError, Operation, RecoveryFailure, RecoveryOutcome,
+    RegisterError,
 };
 pub use event::{Event, Events, Key, Readiness};
 pub use interest::Interest;

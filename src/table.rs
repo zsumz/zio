@@ -7,7 +7,9 @@ use std::{
 
 use crate::binding::{Binding, Observation};
 use crate::token::{MAX_GENERATION, MAX_REGISTRATIONS, decode, encode};
-use crate::{ArmState, Error, Interest, Key, Mode, RegistrationId, RegistrationState};
+use crate::{
+    ArmState, CommitStatus, Error, Interest, Key, Mode, RegistrationId, RegistrationState,
+};
 
 #[derive(Debug)]
 struct Entry {
@@ -156,19 +158,31 @@ impl RegistrationTable {
         Ok(())
     }
 
-    pub(crate) fn mark_disarmed(&mut self, id: RegistrationId) -> Result<(), Error> {
-        let entry = self.entry_mut(id)?;
-        if entry.mode == Mode::OneShot {
-            entry.state = RegistrationState::Registered {
-                arm: ArmState::Disarmed,
-            };
-        }
-        Ok(())
-    }
-
     pub(crate) fn mark_uncertain(&mut self, id: RegistrationId) -> Result<(), Error> {
         self.entry_mut(id)?.state = RegistrationState::Uncertain;
         Ok(())
+    }
+
+    pub(crate) fn apply_disarm(
+        &mut self,
+        id: RegistrationId,
+        commit: CommitStatus,
+    ) -> Result<RegistrationState, Error> {
+        let entry = self.entry_mut(id)?;
+        let armed = RegistrationState::Registered {
+            arm: ArmState::Armed,
+        };
+        if entry.mode != Mode::OneShot || entry.state != armed {
+            return Err(Error::Invariant);
+        }
+        entry.state = match commit {
+            CommitStatus::Applied => RegistrationState::Registered {
+                arm: ArmState::Disarmed,
+            },
+            CommitStatus::NotApplied => entry.state,
+            CommitStatus::Unknown => RegistrationState::Uncertain,
+        };
+        Ok(entry.state)
     }
 
     pub(crate) fn retire(&mut self, id: RegistrationId) -> Result<(), Error> {

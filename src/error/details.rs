@@ -1,8 +1,8 @@
-//! Capability-preserving mutation and recovery failure details.
+//! Capability-preserving mutation failure details.
 
 use std::{fmt, io};
 
-use crate::{Registration, RegistrationId};
+use crate::Registration;
 
 use super::{CommitStatus, Error, Operation};
 
@@ -55,76 +55,6 @@ impl fmt::Display for MutationError {
 }
 
 impl std::error::Error for MutationError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        Some(&self.source)
-    }
-}
-
-/// A wait-time recovery failure and every registration it affected.
-#[derive(Debug)]
-pub struct RecoveryFailure {
-    operation: Operation,
-    commit: CommitStatus,
-    affected: Box<[RegistrationId]>,
-    source: io::Error,
-}
-
-impl RecoveryFailure {
-    #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
-    pub(crate) const fn new(
-        operation: Operation,
-        commit: CommitStatus,
-        affected: Box<[RegistrationId]>,
-        source: io::Error,
-    ) -> Self {
-        Self {
-            operation,
-            commit,
-            affected,
-            source,
-        }
-    }
-
-    /// Returns the failed recovery operation.
-    pub const fn operation(&self) -> Operation {
-        self.operation
-    }
-
-    /// Returns the proven commit status.
-    pub const fn commit(&self) -> CommitStatus {
-        self.commit
-    }
-
-    /// Borrows exact registration identities affected by recovery.
-    pub fn affected(&self) -> &[RegistrationId] {
-        &self.affected
-    }
-
-    /// Returns the operating-system failure.
-    pub const fn source(&self) -> &io::Error {
-        &self.source
-    }
-
-    /// Splits this failure into its owned parts.
-    pub fn into_parts(self) -> (Operation, CommitStatus, Box<[RegistrationId]>, io::Error) {
-        (self.operation, self.commit, self.affected, self.source)
-    }
-}
-
-impl fmt::Display for RecoveryFailure {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            formatter,
-            "{:?} recovery failed with {:?} commit status for {} registrations: {}",
-            self.operation,
-            self.commit,
-            self.affected.len(),
-            self.source
-        )
-    }
-}
-
-impl std::error::Error for RecoveryFailure {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         Some(&self.source)
     }

@@ -49,6 +49,26 @@ Level mode reports while a source remains ready. One-shot mode disarms after
 delivery and requires an explicit modification whose backend mutation is
 applied.
 
+### Recovery behavior
+
+Kqueue coalesces split filters and submits every delivered one-shot disable in
+one receipt-checked batch. Each submitted registration receives an exact
+outcome: `Applied` and disarmed, `NotApplied` and armed, or `Unknown` and
+uncertain. If recovery fails, `Poll::wait` returns `Error::Recovery` without
+discarding resource or wake events already translated. The error owns every
+batch outcome, including successful peers, so its evidence remains exact after
+the poller is reused. Other wait errors leave `Events` empty.
+
+### Allocation contract
+
+Poll construction retains native-event, coalescing, change, receipt, and
+ownership scratch. Successful waits reuse it without growing zio-owned heap
+storage. `Error::Recovery` alone creates one owned `Vec` snapshot containing at
+most the smaller configured event and registration limits. Allocation
+exhaustion follows Rust's ordinary allocation-error policy; formatting,
+`std::io::Error`, allocator, and operating-system internals are outside this
+storage guarantee.
+
 ### Wait behavior
 
 `Wait::NoBlock` and a zero-duration wait are nonblocking. A positive duration
@@ -79,8 +99,6 @@ when backend state may remain:
 | `Unknown` | return an uncertain capability | mark uncertain | return an uncertain, retryable capability |
 
 An uncertain outcome is never silently presented as a successful rollback.
-Constructing a bounded kqueue recovery failure still allocates; removing that
-recovery-only allocation remains pre-release work.
 
 Unsafe code is confined to the epoll, eventfd, and kqueue syscall leaves. zio
 does not provide edge triggering, Windows support, timers, signals, process

@@ -7,7 +7,7 @@ use std::{
 };
 
 use crate::{
-    ArmState, Interest, Mode, Readiness, Wait,
+    ArmState, Interest, Mode, Readiness, RecoveryOutcome, RegistrationId, Wait,
     error::{CommitStatus, Operation},
 };
 
@@ -18,20 +18,27 @@ use super::super::{
 use super::{
     kqueue::{KeventBatch, Kqueue},
     kqueue_change::{Action, Change, ChangeList, Filter},
-    kqueue_policy::{
-        delete_descriptor, exact, modify_descriptor, push_interests, register_descriptor,
-    },
+    kqueue_codec::KeventChangeBatch,
+    kqueue_disarm::{DisarmBatch, DisarmExecutor, FilterApply, NativeApply},
+    kqueue_policy::{delete_descriptor, exact, modify_descriptor, register_descriptor},
 };
 
 /// Fixed kqueue event storage.
 #[derive(Debug)]
 pub(crate) struct RawBatch {
     raw: KeventBatch,
+    disarms: DisarmBatch,
+    native_changes: KeventChangeBatch,
 }
 
 impl RawBatch {
-    fn new(capacity: usize) -> Option<Self> {
-        KeventBatch::new(capacity).map(|raw| Self { raw })
+    fn new(event_capacity: usize, disarm_capacity: usize) -> Option<Self> {
+        let native_capacity = disarm_capacity.checked_mul(2)?;
+        Some(Self {
+            raw: KeventBatch::new(event_capacity)?,
+            disarms: DisarmBatch::new(disarm_capacity)?,
+            native_changes: KeventChangeBatch::new(native_capacity)?,
+        })
     }
 
     pub(crate) fn event(&self, index: usize, observed: usize) -> Option<RawEvent> {
@@ -55,6 +62,23 @@ impl RawBatch {
             readiness = readiness.union(Readiness::ERROR);
         }
         Some(RawEvent::resource(event.token(), event.ident(), readiness))
+    }
+
+    pub(crate) fn clear_disarms(&mut self) {
+        self.disarms.clear();
+    }
+
+    pub(crate) fn push_disarm(
+        &mut self,
+        registration: RegistrationId,
+        descriptor: RawFd,
+        interest: Interest,
+    ) -> Option<()> {
+        self.disarms.push(registration, descriptor, interest)
+    }
+
+    pub(crate) fn disarm_outcomes(&self) -> &[RecoveryOutcome] {
+        self.disarms.outcomes()
     }
 }
 
@@ -81,8 +105,8 @@ pub(crate) struct Backend {
 }
 
 impl Backend {
-    pub(crate) fn raw_batch(capacity: usize) -> Option<RawBatch> {
-        RawBatch::new(capacity)
+    pub(crate) fn raw_batch(event_capacity: usize, disarm_capacity: usize) -> Option<RawBatch> {
+        RawBatch::new(event_capacity, disarm_capacity)
     }
 
     pub(crate) fn new() -> Result<(Self, Arc<Wake>), SetupFailure> {
@@ -152,18 +176,27 @@ impl Backend {
         self.queue.wait(&mut batch.raw, wait.timeout())
     }
 
-    pub(crate) fn disarm(
-        &self,
-        descriptor: RawFd,
-        interest: Interest,
-    ) -> Result<(), MutationFailure> {
-        if interest.is_empty() {
-            return Err(invalid_mutation("cannot disarm empty interest"));
-        }
-        let mut changes = ChangeList::new();
-        push_interests(&mut changes, descriptor, 0, interest, Action::Disable);
-        exact(&*self.queue, &changes, false)
-            .map_err(|source| MutationFailure::new(CommitStatus::Unknown, source))
+    pub(crate) fn submit_disarms(&self, batch: &mut RawBatch) -> io::Result<()> {
+        let mut executor = NativeDisarmExecutor {
+            queue: &self.queue,
+            native: &mut batch.native_changes,
+        };
+        batch.disarms.submit(&mut executor)
+    }
+}
+
+struct NativeDisarmExecutor<'a> {
+    queue: &'a Kqueue,
+    native: &'a mut KeventChangeBatch,
+}
+
+impl DisarmExecutor for NativeDisarmExecutor<'_> {
+    fn apply(&mut self, changes: &[Change]) -> NativeApply {
+        self.queue.apply_batch(changes, self.native)
+    }
+
+    fn receipt(&self, index: usize, returned: usize, expected: Change) -> FilterApply {
+        self.native.receipt(index, returned, expected)
     }
 }
 

@@ -27,9 +27,9 @@ impl RawBatch {
         }
         #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
         {
-            let _ = events;
             let capacity = registrations.checked_mul(2)?.checked_add(1)?;
-            super::kqueue_group::Backend::raw_batch(capacity).map(|kqueue| Self { kqueue })
+            let disarms = events.min(registrations);
+            super::kqueue_group::Backend::raw_batch(capacity, disarms).map(|kqueue| Self { kqueue })
         }
         #[cfg(not(any(
             target_os = "linux",
@@ -61,5 +61,25 @@ impl RawBatch {
         {
             self.unsupported.event(index, observed)
         }
+    }
+
+    #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
+    pub(crate) fn clear_disarms(&mut self) {
+        self.kqueue.clear_disarms();
+    }
+
+    #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
+    pub(crate) fn push_disarm(
+        &mut self,
+        registration: crate::RegistrationId,
+        descriptor: std::os::fd::RawFd,
+        interest: crate::Interest,
+    ) -> Option<()> {
+        self.kqueue.push_disarm(registration, descriptor, interest)
+    }
+
+    #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
+    pub(crate) fn disarm_outcomes(&self) -> &[crate::RecoveryOutcome] {
+        self.kqueue.disarm_outcomes()
     }
 }

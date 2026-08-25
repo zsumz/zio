@@ -6,6 +6,8 @@ mod kqueue_group;
 mod linux_group;
 mod platform;
 mod raw_batch;
+#[cfg(test)]
+mod raw_batch_test;
 mod unsupported;
 mod wake;
 

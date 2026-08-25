@@ -5,6 +5,12 @@
 mod backend;
 mod kqueue;
 mod kqueue_change;
+mod kqueue_codec;
+mod kqueue_disarm;
+#[cfg(test)]
+mod kqueue_disarm_matrix_test;
+#[cfg(test)]
+mod kqueue_disarm_test;
 mod kqueue_policy;
 #[cfg(test)]
 mod kqueue_policy_test;

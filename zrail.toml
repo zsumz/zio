@@ -24,6 +24,15 @@ root = "mio"
 kind = "registry"
 requirement = "1.2.2"
 
+[[dependencies.crate_root]]
+package = "allocation-counter"
+reason = "The dev-only allocation counter measures wait-path heap behavior in native tests."
+root = "allocation_counter"
+
+[dependencies.crate_root.source]
+kind = "registry"
+requirement = "=0.8.1"
+
 [[dependency]]
 deny = ["zio-testkit"]
 from = "zio"
@@ -82,12 +91,63 @@ title = "Each registration owns a retained descriptor and exact generation"
 document = "README.md#readiness-modes"
 evidence = [
     "rust-test:tests/readiness.rs::one_shot_requires_explicit_rearm",
+    "rust-test:src/sys/kqueue_group/kqueue_disarm_test.rs::one_submission_reduces_multiple_registrations",
+    "rust-test:src/sys/kqueue_group/kqueue_disarm_matrix_test.rs::one_batch_preserves_change_outcome_and_source_order",
     "gate:check",
     "gate:ci",
 ]
 id = "MODE-01"
 status = "enforced"
 title = "One-shot readiness requires explicit rearming after delivery"
+
+[[invariant]]
+document = "README.md#recovery-behavior"
+evidence = [
+    "rust-test:src/sys/kqueue_group/kqueue_disarm_test.rs::one_submission_reduces_multiple_registrations",
+    "rust-test:src/sys/kqueue_group/kqueue_disarm_test.rs::all_failed_filters_preserve_armed_outcome",
+    "rust-test:src/sys/kqueue_group/kqueue_disarm_test.rs::mixed_filter_results_are_unknown",
+    "rust-test:src/sys/kqueue_group/kqueue_disarm_test.rs::short_receipt_sets_are_unknown",
+    "rust-test:src/sys/kqueue_group/kqueue_disarm_test.rs::malformed_receipts_are_unknown",
+    "rust-test:src/sys/kqueue_group/kqueue_disarm_test.rs::mismatched_receipts_are_unknown",
+    "rust-test:src/sys/kqueue_group/kqueue_disarm_test.rs::missing_native_filter_receipt_is_uncertain",
+    "rust-test:src/sys/kqueue_group/kqueue_disarm_test.rs::uncertain_receipt_preserves_native_error",
+    "rust-test:src/sys/kqueue_group/kqueue_disarm_test.rs::syscall_failure_is_unknown",
+    "rust-test:src/sys/kqueue_group/kqueue_disarm_test.rs::freebsd_and_netbsd_interruptions_are_applied",
+    "rust-test:src/sys/kqueue_group/kqueue_disarm_test.rs::macos_interruptions_are_unknown",
+    "rust-test:src/sys/kqueue_group/kqueue_disarm_matrix_test.rs::one_batch_preserves_change_outcome_and_source_order",
+    "rust-test:src/sys/kqueue_group/kqueue_disarm_matrix_test.rs::target_selected_interruption_policy_is_exact",
+    "rust-test:src/error/recovery_test.rs::recovery_outcomes_enforce_commit_state_pairs",
+    "rust-test:src/observe_test.rs::recovery_failure_preserves_translated_resource_and_wake_events",
+    "rust-test:src/observe_test.rs::retained_recovery_errors_survive_poll_state_reuse",
+    "rust-test:src/observe_test.rs::incomplete_recovery_outcomes_fail_before_observation_or_state_change",
+    "rust-test:src/observe_test.rs::recovery_source_presence_matches_degraded_outcomes",
+    "rust-test:src/observe_validation_test.rs::extra_recovery_outcomes_are_rejected_atomically",
+    "rust-test:src/observe_validation_test.rs::reordered_recovery_outcomes_are_rejected_atomically",
+    "rust-test:src/observe_validation_test.rs::non_armed_recovery_plans_are_rejected_atomically",
+    "gate:check",
+    "gate:ci",
+]
+id = "RECOVERY-01"
+status = "enforced"
+title = "Kqueue recovery preserves translated events and exact outcomes"
+
+[[invariant]]
+document = "README.md#allocation-contract"
+evidence = [
+    "rust-test:tests/allocation_contract.rs::successful_one_shot_wait_allocates_nothing",
+    "rust-test:src/observe_allocation_test.rs::recovery_retains_exactly_one_bounded_allocation",
+    "rust-test:src/sys/kqueue_group/kqueue_disarm_test.rs::one_submission_reduces_multiple_registrations",
+    "rust-test:src/sys/kqueue_group/kqueue_disarm_test.rs::successful_batches_reuse_retained_storage",
+    "rust-test:src/sys/raw_batch_test.rs::disarm_storage_uses_the_smaller_configured_limit",
+    "rust-test:src/error/recovery_test.rs::recovery_failure_preserves_one_owned_snapshot",
+    "rust-test:src/error/recovery_test.rs::retained_recovery_snapshots_are_independent",
+    "rust-test:src/observe_test.rs::retained_recovery_errors_survive_poll_state_reuse",
+    "gate:check",
+    "gate:ci",
+]
+id = "STORAGE-01"
+status = "enforced"
+title = "Waits reuse retained storage and recovery owns one bounded snapshot"
 
 [[invariant]]
 document = "README.md#wait-behavior"
@@ -155,6 +215,7 @@ external = "none"
 [[owner]]
 allow = [
     "src/sys/kqueue_group/kqueue.rs",
+    "src/sys/kqueue_group/kqueue_codec.rs",
     "src/sys/kqueue_group/kqueue_policy.rs",
     "src/sys/kqueue_group/kqueue_policy_test.rs",
     "src/sys/kqueue_group/kqueue_timeout.rs",
@@ -165,7 +226,7 @@ allow = [
 kind = "capability"
 match = "libc"
 name = "native-libc-capability"
-reason = "Only native backend modules use libc directly; unsafe calls remain confined to the three reviewed syscall leaves."
+reason = "Only native backend and ABI-codec modules use libc directly; unsafe calls remain confined to the three reviewed syscall leaves."
 within = ["src/**"]
 
 [[ratchet]]

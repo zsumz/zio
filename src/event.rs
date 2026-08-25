@@ -120,6 +120,10 @@ impl Event {
 }
 
 /// Reusable event destination with a fixed logical capacity.
+///
+/// Resource events retain their first translated native-observation order.
+/// Split hints for one kqueue registration are coalesced, and an observed wake
+/// follows resource events.
 #[derive(Debug)]
 pub struct Events {
     capacity: NonZeroUsize,
@@ -161,7 +165,7 @@ impl Events {
         self.events.is_empty()
     }
 
-    /// Borrows retained events in observation order.
+    /// Borrows retained events in normalized delivery order.
     pub fn as_slice(&self) -> &[Event] {
         &self.events
     }
@@ -171,7 +175,7 @@ impl Events {
         self.events.get(index)
     }
 
-    /// Iterates over retained events in observation order.
+    /// Iterates over retained events in normalized delivery order.
     pub fn iter(&self) -> impl ExactSizeIterator<Item = &Event> + '_ {
         self.events.iter()
     }
@@ -181,7 +185,7 @@ impl Events {
         self.events.clear();
     }
 
-    /// Drains all retained events in observation order.
+    /// Drains all retained events in normalized delivery order.
     pub fn drain(&mut self) -> impl ExactSizeIterator<Item = Event> + '_ {
         self.events.drain(..)
     }

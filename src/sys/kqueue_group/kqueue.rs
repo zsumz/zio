@@ -16,7 +16,12 @@ use std::{
 };
 
 use super::{
-    kqueue_change::{Action, Change, ChangeList, Filter, RawKevent, Receipt, Receipts},
+    kqueue_change::{Change, ChangeList, RawKevent, Receipt, Receipts},
+    kqueue_codec::{
+        KeventChangeBatch, classify_apply_error, decode_filter, decode_receipt, encode_change,
+        has_flag, target_applies_interrupted_changes,
+    },
+    kqueue_disarm::{FilterApply, NativeApply},
     kqueue_timeout::into_timespec,
 };
 
@@ -100,46 +105,52 @@ impl Kqueue {
 
     pub(super) fn apply(&self, changes: &ChangeList) -> io::Result<Receipts> {
         let changes = changes.as_slice();
-        #[cfg(target_os = "netbsd")]
-        let count = changes.len();
-        #[cfg(not(target_os = "netbsd"))]
-        let count = i32::try_from(changes.len())
-            .map_err(|_| io::Error::other("kqueue change count overflowed"))?;
         let mut input = [empty_kevent(), empty_kevent()];
         let mut output = [empty_kevent(), empty_kevent()];
         for (destination, change) in input.iter_mut().zip(changes) {
             *destination = encode_change(*change)?;
         }
-        // SAFETY: input contains `count` initialized values and output owns the
-        // same count of writable values; neither pointer escapes.
-        let returned = unsafe {
-            libc::kevent(
-                self.descriptor.as_raw_fd(),
-                input.as_ptr(),
-                count,
-                output.as_mut_ptr(),
-                count,
-                ptr::null(),
-            )
-        };
-        if returned < 0 {
-            return Err(io::Error::last_os_error());
-        }
-        if usize::try_from(returned).ok() != Some(changes.len()) {
-            return Err(io::Error::other(
-                "kqueue returned an incomplete receipt set",
-            ));
-        }
         let mut receipts = Receipts::new(changes.len());
-        for (index, (event, change)) in output.into_iter().zip(changes).enumerate() {
-            let error = if has_flag(u64::from(event.flags), u64::from(libc::EV_ERROR)) {
-                i32::try_from(event.data).ok().filter(|code| *code != 0)
-            } else {
-                Some(libc::EIO)
-            };
-            receipts.set(index, Receipt::new(change.action(), error))?;
+        match self.submit_native(&input[..changes.len()], &mut output[..changes.len()]) {
+            NativeApply::AppliedWithoutReceipts => {
+                for (index, change) in changes.iter().copied().enumerate() {
+                    receipts.set(index, Receipt::new(change.action(), None))?;
+                }
+            }
+            NativeApply::Receipts(returned) if returned == changes.len() => {
+                for (index, change) in changes.iter().copied().enumerate() {
+                    let error = match decode_receipt(output.get(index), change) {
+                        FilterApply::Applied => None,
+                        FilterApply::NotApplied(code) => Some(code),
+                        FilterApply::Unknown(_) => return Err(protocol_error()),
+                    };
+                    receipts.set(index, Receipt::new(change.action(), error))?;
+                }
+            }
+            NativeApply::Receipts(_) => return Err(protocol_error()),
+            NativeApply::Unknown(source) => return Err(source),
         }
         Ok(receipts)
+    }
+
+    pub(super) fn apply_batch(
+        &self,
+        changes: &[Change],
+        batch: &mut KeventChangeBatch,
+    ) -> NativeApply {
+        if changes.len() > batch.input.len() {
+            return NativeApply::Unknown(protocol_error());
+        }
+        for (destination, change) in batch.input.iter_mut().zip(changes) {
+            let Ok(encoded) = encode_change(*change) else {
+                return NativeApply::Unknown(io::Error::from_raw_os_error(libc::EINVAL));
+            };
+            *destination = encoded;
+        }
+        self.submit_native(
+            &batch.input[..changes.len()],
+            &mut batch.output[..changes.len()],
+        )
     }
 
     pub(super) fn wait(
@@ -173,52 +184,48 @@ impl Kqueue {
                 .map_err(|_| io::Error::other("kqueue returned an invalid event count"))
         }
     }
+
+    fn submit_native(&self, input: &[libc::kevent], output: &mut [libc::kevent]) -> NativeApply {
+        if input.is_empty() || input.len() != output.len() {
+            return NativeApply::Unknown(protocol_error());
+        }
+        #[cfg(target_os = "netbsd")]
+        let count = input.len();
+        #[cfg(not(target_os = "netbsd"))]
+        let Ok(count) = i32::try_from(input.len()) else {
+            return NativeApply::Unknown(io::Error::from_raw_os_error(libc::EOVERFLOW));
+        };
+        // SAFETY: both slices contain `count` initialized entries; output is
+        // exclusively writable for the synchronous call and no pointer escapes.
+        let returned = unsafe {
+            libc::kevent(
+                self.descriptor.as_raw_fd(),
+                input.as_ptr(),
+                count,
+                output.as_mut_ptr(),
+                count,
+                ptr::null(),
+            )
+        };
+        if returned < 0 {
+            classify_apply_error(
+                io::Error::last_os_error(),
+                target_applies_interrupted_changes(),
+            )
+        } else if let Ok(returned) = usize::try_from(returned) {
+            NativeApply::Receipts(returned)
+        } else {
+            NativeApply::Unknown(protocol_error())
+        }
+    }
 }
 
-fn empty_kevent() -> libc::kevent {
+pub(super) fn empty_kevent() -> libc::kevent {
     // SAFETY: kevent contains integer fields and an inert pointer; zero is a
     // valid initialized staging value before submitted fields are assigned.
     unsafe { mem::zeroed() }
 }
 
-fn encode_change(change: Change) -> io::Result<libc::kevent> {
-    let mut event = empty_kevent();
-    event.ident = libc::uintptr_t::try_from(change.ident())
-        .map_err(|_| io::Error::other("negative kqueue identifier"))?;
-    event.filter = match change.filter() {
-        Filter::Read => libc::EVFILT_READ,
-        Filter::Write => libc::EVFILT_WRITE,
-        Filter::User => libc::EVFILT_USER,
-        Filter::Unknown => 0,
-    };
-    let receipt = libc::EV_RECEIPT;
-    event.flags = match change.action() {
-        Action::AddEnabled => libc::EV_ADD | libc::EV_ENABLE | receipt,
-        Action::AddDisabled => libc::EV_ADD | libc::EV_DISABLE | receipt,
-        Action::AddUser => libc::EV_ADD | libc::EV_CLEAR | receipt,
-        Action::Delete => libc::EV_DELETE | receipt,
-        Action::Disable => libc::EV_DISABLE | receipt,
-        Action::Trigger => libc::EV_ADD | receipt,
-    };
-    event.fflags = u32::from(change.action() == Action::Trigger) * libc::NOTE_TRIGGER;
-    event.udata = usize::try_from(change.token())
-        .map_err(|_| io::Error::other("kqueue token exceeds pointer width"))?
-        as *mut libc::c_void;
-    Ok(event)
-}
-
-fn decode_filter(filter: i64) -> Filter {
-    if filter == i64::from(libc::EVFILT_READ) {
-        Filter::Read
-    } else if filter == i64::from(libc::EVFILT_WRITE) {
-        Filter::Write
-    } else if filter == i64::from(libc::EVFILT_USER) {
-        Filter::User
-    } else {
-        Filter::Unknown
-    }
-}
-
-fn has_flag(flags: u64, expected: u64) -> bool {
-    flags & expected != 0
+fn protocol_error() -> io::Error {
+    io::Error::from_raw_os_error(libc::EIO)
 }

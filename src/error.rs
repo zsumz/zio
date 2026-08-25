@@ -1,12 +1,17 @@
 //! Portable setup, mutation, wait, wake, and recovery failures.
 
 mod details;
+mod recovery;
+
+#[cfg(test)]
+mod recovery_test;
 
 use std::{fmt, io};
 
 use crate::{Key, RegistrationId};
 
-pub use details::{DeleteError, MutationError, RecoveryFailure, RegisterError};
+pub use details::{DeleteError, MutationError, RegisterError};
+pub use recovery::{RecoveryFailure, RecoveryOutcome};
 
 /// Poller or backend operation associated with a failure.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -60,7 +65,7 @@ pub enum Error {
     },
     /// A backend mutation failed with an exact commit status.
     Mutation(MutationError),
-    /// Wait-time recovery failed for known registrations.
+    /// Wait-time recovery failed with exact per-registration outcomes.
     Recovery(RecoveryFailure),
     /// The poller wake source already carries another key.
     WakerAlreadyConfigured {

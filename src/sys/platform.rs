@@ -190,12 +190,8 @@ impl Backend {
     }
 
     #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
-    pub(crate) fn disarm(
-        &self,
-        descriptor: std::os::fd::RawFd,
-        interest: Interest,
-    ) -> Result<(), MutationFailure> {
-        self.kqueue.disarm(descriptor, interest)
+    pub(crate) fn submit_disarms(&self, batch: &mut RawBatch) -> io::Result<()> {
+        self.kqueue.submit_disarms(&mut batch.kqueue)
     }
 }
 

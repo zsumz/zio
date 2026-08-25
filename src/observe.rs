@@ -3,17 +3,21 @@
 #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
 use std::os::fd::AsRawFd;
 
-use crate::{Error, Event, Events, Mode, Operation, Poll, Wait};
+use crate::{Error, Events, Mode, Operation, Poll, Wait};
 
 impl Poll {
     /// Replaces `events` with one bounded readiness observation.
+    ///
+    /// The destination is cleared on entry. Every error except
+    /// [`Error::Recovery`] leaves it empty. A recovery error retains every
+    /// resource and wake event translated before one-shot recovery failed.
     pub fn wait(&mut self, events: &mut Events, wait: Wait) -> Result<(), Error> {
         events.clear();
         self.pending.clear();
         let result = self.observe(events, wait);
-        if result.is_err() {
+        self.pending.clear();
+        if result.is_err() && !matches!(&result, Err(Error::Recovery(_))) {
             events.clear();
-            self.pending.clear();
         }
         result
     }
@@ -65,10 +69,11 @@ impl Poll {
                 continue;
             }
             if resource.mode == Mode::OneShot {
-                self.registrations.mark_disarmed(resource.id)?;
+                self.registrations
+                    .apply_disarm(resource.id, crate::CommitStatus::Applied)?;
             }
             events
-                .try_push(Event::Resource {
+                .try_push(crate::Event::Resource {
                     key: resource.key,
                     readiness: raw.readiness(),
                 })
@@ -108,68 +113,45 @@ impl Poll {
         }
         let resource_limit = self.event_capacity.get() - usize::from(woke);
         let delivered = self.pending.as_slice().len().min(resource_limit);
-        self.disarm_one_shot(delivered)?;
-        for pending in self.pending.as_slice().iter().take(delivered) {
-            events
-                .try_push(Event::Resource {
-                    key: pending.key,
-                    readiness: pending.readiness,
-                })
-                .map_err(|_| Error::Invariant)?;
-        }
-        self.push_wake(events, woke)
+        self.prepare_disarms(delivered)?;
+        let recovery = self.backend.submit_disarms(&mut self.raw_events).err();
+        crate::observe_recovery::finish(
+            &mut self.registrations,
+            events,
+            self.pending.as_slice(),
+            delivered,
+            woke,
+            self.wake_key,
+            self.raw_events.disarm_outcomes(),
+            recovery,
+        )
     }
 
     #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
-    fn disarm_one_shot(&mut self, delivered: usize) -> Result<(), Error> {
-        let mut failure = None;
-        for pending in self.pending.as_slice().iter().take(delivered) {
+    fn prepare_disarms(&mut self, delivered: usize) -> Result<(), Error> {
+        self.raw_events.clear_disarms();
+        for index in 0..delivered {
+            let pending = *self.pending.as_slice().get(index).ok_or(Error::Invariant)?;
             let binding = self.registrations.binding(pending.registration, false)?;
             if binding.mode != Mode::OneShot {
                 continue;
             }
-            if let Err(observed) = self
-                .backend
-                .disarm(binding.descriptor.as_raw_fd(), binding.interest)
-            {
-                failure = Some(observed);
-                break;
-            }
-        }
-        if let Some(failure) = failure {
-            let affected = self
-                .pending
-                .as_slice()
-                .iter()
-                .take(delivered)
-                .filter_map(|pending| {
-                    self.registrations
-                        .binding(pending.registration, true)
-                        .ok()
-                        .filter(|binding| binding.mode == Mode::OneShot)
-                        .map(|_| pending.registration)
-                })
-                .collect::<Box<[_]>>();
-            for registration in &affected {
-                self.registrations.mark_uncertain(*registration)?;
-            }
-            return Err(Error::Recovery(crate::RecoveryFailure::new(
-                Operation::Disarm,
-                failure.commit(),
-                affected,
-                failure.into_source(),
-            )));
-        }
-        for pending in self.pending.as_slice().iter().take(delivered) {
-            self.registrations.mark_disarmed(pending.registration)?;
+            self.raw_events
+                .push_disarm(
+                    pending.registration,
+                    binding.descriptor.as_raw_fd(),
+                    binding.interest,
+                )
+                .ok_or(Error::Invariant)?;
         }
         Ok(())
     }
 
+    #[cfg(target_os = "linux")]
     fn push_wake(&mut self, events: &mut Events, woke: bool) -> Result<(), Error> {
         if let (true, Some(key)) = (woke, self.wake_key) {
             events
-                .try_push(Event::Wake { key })
+                .try_push(crate::Event::Wake { key })
                 .map_err(|_| Error::Invariant)?;
         }
         Ok(())

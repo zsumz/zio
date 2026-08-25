@@ -6,8 +6,8 @@ use std::{
 };
 
 use crate::{
-    DeleteError, Error, Interest, Key, Mode, RegisterError, Registration, RegistrationId,
-    RegistrationState,
+    CommitStatus, DeleteError, Error, Interest, Key, Mode, RegisterError, Registration,
+    RegistrationId, RegistrationState,
     mutation::{MutationSession, registration_state},
     poll::{DEFAULT_REGISTRATION_CAPACITY, next_poll_id},
     table::RegistrationTable,
@@ -97,7 +97,9 @@ impl ScriptedPoll {
         self.driver
             .establish_disarmed(registration.id(), descriptor)
             .map_err(|_| Error::Invariant)?;
-        self.registrations.mark_disarmed(registration.id())
+        self.registrations
+            .apply_disarm(registration.id(), CommitStatus::Applied)
+            .map(|_| ())
     }
 
     /// Borrows normalized calls observed by the scripted backend.
