@@ -33,6 +33,15 @@ root = "allocation_counter"
 kind = "registry"
 requirement = "=0.8.1"
 
+[[dependencies.crate_root]]
+package = "socket2"
+reason = "The dev-only socket2 package safely configures refused-connect and abortive-close fixtures."
+root = "socket2"
+
+[dependencies.crate_root.source]
+kind = "registry"
+requirement = "=0.6.5"
+
 [[dependency]]
 deny = ["zio-testkit"]
 from = "zio"
@@ -99,6 +108,30 @@ evidence = [
 id = "MODE-01"
 status = "enforced"
 title = "One-shot readiness requires explicit rearming after delivery"
+
+[[invariant]]
+document = "README.md#readiness-contract"
+evidence = [
+    "rust-test:src/sys/linux_group/backend_test.rs::epoll_readiness_truth_table_is_exhaustive",
+    "rust-test:src/sys/linux_group/backend_test.rs::epoll_error_closure_inference_is_deliberately_narrow",
+    "rust-test:src/sys/linux_group/backend_test.rs::epoll_combined_delivery_preserves_every_hint",
+    "rust-test:src/sys/kqueue_group/backend_test.rs::kqueue_readiness_truth_table_is_exhaustive",
+    "rust-test:src/sys/kqueue_group/backend_test.rs::kqueue_fflags_require_eof_to_become_an_error_hint",
+    "rust-test:src/sys/kqueue_group/backend_test.rs::kqueue_pending_io_and_eof_hints_remain_combined",
+    "rust-test:tests/refused_connect.rs::refused_connect_level_reports_error_and_socket_cause",
+    "rust-test:tests/refused_connect.rs::refused_connect_one_shot_reports_error_and_socket_cause_and_disarms",
+    "rust-test:tests/reset_readiness.rs::abortive_peer_close_reports_error_and_read_closure",
+    "rust-test:tests/reset_readiness.rs::abortive_peer_close_one_shot_disarms_exactly_once",
+    "rust-test:crates/zio-testkit/tests/readiness_conformance.rs::readiness_report_covers_every_scenario",
+    "rust-test:crates/zio-testkit/tests/readiness_conformance.rs::readiness_scenario_names_are_stable",
+    "rust-test:crates/zio-testkit/tests/readiness_conformance.rs::readiness_scenario_parameters_cover_the_portable_matrix",
+    "rust-test:crates/zio-testkit/tests/readiness_conformance.rs::readiness_failures_remain_structured",
+    "gate:check",
+    "gate:ci",
+]
+id = "READINESS-01"
+status = "enforced"
+title = "Portable readiness preserves directional closure and resource errors"
 
 [[invariant]]
 document = "README.md#recovery-behavior"

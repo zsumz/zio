@@ -46,22 +46,11 @@ impl RawBatch {
         if event.filter() == Filter::User && event.token() == 0 {
             return Some(RawEvent::control());
         }
-        let mut readiness = match event.filter() {
-            Filter::Read => Readiness::READABLE,
-            Filter::Write => Readiness::WRITABLE,
-            Filter::User | Filter::Unknown => Readiness::ERROR,
-        };
-        if event.eof() {
-            readiness = readiness.union(match event.filter() {
-                Filter::Read => Readiness::READ_CLOSED,
-                Filter::Write => Readiness::WRITE_CLOSED,
-                Filter::User | Filter::Unknown => Readiness::ERROR,
-            });
-        }
-        if event.error() {
-            readiness = readiness.union(Readiness::ERROR);
-        }
-        Some(RawEvent::resource(event.token(), event.ident(), readiness))
+        Some(RawEvent::resource(
+            event.token(),
+            event.ident(),
+            from_kqueue_event(event),
+        ))
     }
 
     pub(crate) fn clear_disarms(&mut self) {
@@ -80,6 +69,25 @@ impl RawBatch {
     pub(crate) fn disarm_outcomes(&self) -> &[RecoveryOutcome] {
         self.disarms.outcomes()
     }
+}
+
+pub(super) fn from_kqueue_event(event: super::kqueue_change::RawKevent) -> Readiness {
+    let mut readiness = match event.filter() {
+        Filter::Read => Readiness::READABLE,
+        Filter::Write => Readiness::WRITABLE,
+        Filter::User | Filter::Unknown => Readiness::ERROR,
+    };
+    if event.eof() {
+        readiness = readiness.union(match event.filter() {
+            Filter::Read => Readiness::READ_CLOSED,
+            Filter::Write => Readiness::WRITE_CLOSED,
+            Filter::User | Filter::Unknown => Readiness::ERROR,
+        });
+    }
+    if event.native_error() || (event.eof() && event.fflags() != 0) {
+        readiness = readiness.union(Readiness::ERROR);
+    }
+    readiness
 }
 
 /// Clone-shared `EVFILT_USER` trigger for one kqueue.

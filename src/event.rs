@@ -1,4 +1,4 @@
-//! Caller keys, readiness hints, and bounded event storage.
+//! Caller keys, portable readiness hints, and bounded event storage.
 
 use std::num::NonZeroUsize;
 
@@ -24,7 +24,16 @@ impl Key {
     }
 }
 
-/// Backend-neutral readiness hints for one resource.
+/// Backend-neutral advisory readiness hints for one resource.
+///
+/// Hints are a snapshot of what the backend reported, not a promise that a
+/// later operation will succeed or avoid blocking. Multiple hints may be
+/// present. In particular, closure or error hints may accompany an event even
+/// when the matching direction was not requested. Test flag membership and use
+/// the corresponding nonblocking operation as the source of truth. A closure
+/// hint identifies the operation direction to inspect, not the peer action that
+/// caused it; native backends may conservatively report an additional hint, and
+/// an absent closure hint does not prove that the direction remains open.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct Readiness(u8);
@@ -33,14 +42,28 @@ impl Readiness {
     /// No readiness hints.
     pub const EMPTY: Self = Self(0);
     /// A read, receive, or accept operation may make progress.
+    ///
+    /// The operation can still race, return an error, or return stream EOF.
     pub const READABLE: Self = Self(1 << 0);
-    /// A write, send, or connect operation may make progress.
+    /// A write, send, or pending connect operation may make progress.
+    ///
+    /// Inspect the operation result, including a socket's pending error when
+    /// completing a nonblocking connect.
     pub const WRITABLE: Self = Self(1 << 1);
-    /// The readable direction reported closure.
+    /// The readable direction reported EOF or another terminal condition.
+    ///
+    /// Buffered data may remain, so this hint can accompany [`Self::READABLE`]
+    /// before a zero-length stream read confirms EOF.
     pub const READ_CLOSED: Self = Self(1 << 2);
-    /// The writable direction reported closure.
+    /// The writable direction reported closure or terminal unavailability.
+    ///
+    /// The exact condition and peer cause remain resource- and
+    /// platform-specific.
     pub const WRITE_CLOSED: Self = Self(1 << 3);
-    /// The backend reported an error hint.
+    /// The backend reported a resource-specific error hint.
+    ///
+    /// This flag contains no error code. Inspect the nonblocking operation and,
+    /// for sockets where appropriate, the pending socket error.
     pub const ERROR: Self = Self(1 << 4);
 
     /// Returns whether no readiness hint is present.
@@ -86,13 +109,16 @@ impl Readiness {
 }
 
 /// One logical observation delivered by a poller.
+///
+/// A wait coalesces split native hints for one registration into one resource
+/// event. Distinct registrations remain distinct even when their keys match.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Event {
     /// Readiness observed for a registered resource.
     Resource {
         /// Caller key supplied at registration.
         key: Key,
-        /// Readiness hints reported for the resource.
+        /// The union of advisory readiness hints reported for the resource.
         readiness: Readiness,
     },
     /// An explicit wake observed by the poller.
@@ -121,9 +147,11 @@ impl Event {
 
 /// Reusable event destination with a fixed logical capacity.
 ///
-/// Resource events retain their first translated native-observation order.
-/// Split hints for one kqueue registration are coalesced, and an observed wake
-/// follows resource events.
+/// One wait emits at most one resource event per registration. Resource events
+/// retain first-native-observation order, split native hints for one
+/// registration are unioned, and an observed wake follows resource events.
+/// Separate registrations can therefore produce separate events with the same
+/// caller key.
 #[derive(Debug)]
 pub struct Events {
     capacity: NonZeroUsize,

@@ -142,7 +142,8 @@ pub(super) struct RawKevent {
     filter: Filter,
     token: u64,
     eof: bool,
-    error: bool,
+    native_error: bool,
+    fflags: u32,
 }
 
 impl RawKevent {
@@ -151,14 +152,16 @@ impl RawKevent {
         filter: Filter,
         token: u64,
         eof: bool,
-        error: bool,
+        native_error: bool,
+        fflags: u32,
     ) -> Self {
         Self {
             ident,
             filter,
             token,
             eof,
-            error,
+            native_error,
+            fflags,
         }
     }
 
@@ -178,7 +181,11 @@ impl RawKevent {
         self.eof
     }
 
-    pub(super) const fn error(self) -> bool {
-        self.error
+    pub(super) const fn native_error(self) -> bool {
+        self.native_error
+    }
+
+    pub(super) const fn fflags(self) -> u32 {
+        self.fflags
     }
 }

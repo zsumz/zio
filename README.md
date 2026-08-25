@@ -49,6 +49,43 @@ Level mode reports while a source remains ready. One-shot mode disarms after
 delivery and requires an explicit modification whose backend mutation is
 applied.
 
+### Readiness contract
+
+Readiness is an advisory snapshot, not a promise that a later operation will
+succeed or avoid blocking. `READABLE` means a read, receive, or accept may make
+progress. `WRITABLE` means a write, send, or pending connect may make progress.
+The operation itself remains the source of truth.
+
+Closure is directional. `READ_CLOSED` means EOF or another terminal condition
+is pending or observable on the readable direction. Buffered data may still be
+returned first, so it can be combined with `READABLE`: consume positive-length
+reads before a zero-length stream read confirms EOF. `WRITE_CLOSED` means the
+backend reported the writable direction closed or terminally unavailable. The
+closure hints identify which operation direction to inspect, not the peer
+action that caused the condition. Native reporting can conservatively include
+an additional closure hint or omit one; `ERROR` or the operation result may be
+the only terminal evidence. The two hints may appear together or independently.
+
+`ERROR` reports a resource-specific exceptional condition but contains no error
+code. Inspect a socket with its nonblocking operation and, where appropriate,
+`SO_ERROR`; inspect other resources with their corresponding nonblocking I/O.
+Close and error reporting differs by resource and platform, so treat these
+hints as best-effort evidence and use the operation result as final state.
+
+Hints may combine, and close or error hints may appear even when the matching
+direction was not requested. Test membership rather than comparing a readiness
+set for equality. For streams, repeatedly consume positive-length nonblocking
+reads, stop on `WouldBlock`, and treat zero as confirmed EOF. A readiness race
+is normal: retry only according to the operation's result.
+
+One wait emits at most one resource event per registration, unioning hints from
+split native observations. Resource events retain first-native-observation
+order; a wake follows them. Separate registrations remain separate even when
+their caller keys match. On a successful one-shot wait, any delivered resource
+event disarms that exact registration. A recovery error can preserve an event
+while its exact outcome leaves the registration disarmed, armed, or uncertain,
+as described below.
+
 ### Recovery behavior
 
 Kqueue coalesces split filters and submits every delivered one-shot disable in
@@ -109,12 +146,13 @@ watching, socket construction, an executor, or an async runtime.
 | Crate | Purpose |
 | --- | --- |
 | `zio` | Synchronous readiness polling, ownership, and native backends |
-| `zio-testkit` | Workspace-private mutation and wake conformance |
+| `zio-testkit` | Workspace-private mutation, wake, and readiness conformance |
 
 The testkit drives the portable mutation reducer through an opt-in support
-feature and exercises wake behavior through zio's ordinary public API. Normal
-builds contain no testkit dependency, and its public vocabulary exposes no raw
-descriptors, syscall structures, or native backend trait.
+feature and exercises wake and readiness behavior through zio's ordinary public
+API. Its native reports use stable scenario names and structured failures.
+Normal builds contain no testkit dependency, and its public vocabulary exposes
+no raw descriptors, syscall structures, or native backend trait.
 
 ## Start
 

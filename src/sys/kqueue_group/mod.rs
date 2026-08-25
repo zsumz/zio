@@ -3,6 +3,8 @@
 #![cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
 
 mod backend;
+#[cfg(test)]
+mod backend_test;
 mod kqueue;
 mod kqueue_change;
 mod kqueue_codec;

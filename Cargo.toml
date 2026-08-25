@@ -57,6 +57,7 @@ libc = "0.2.189"
 [target.'cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd", target_os = "netbsd"))'.dev-dependencies]
 allocation-counter = "=0.8.1"
 mio = { version = "1.2.2", default-features = false, features = ["os-ext", "os-poll"] }
+socket2 = "=0.6.5"
 
 [lints]
 workspace = true

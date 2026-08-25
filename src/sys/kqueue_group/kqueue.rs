@@ -57,7 +57,8 @@ impl KeventBatch {
             decode_filter(i64::from(event.filter)),
             event.udata as usize as u64,
             has_flag(u64::from(event.flags), u64::from(libc::EV_EOF)),
-            has_flag(u64::from(event.flags), u64::from(libc::EV_ERROR)) || event.fflags != 0,
+            has_flag(u64::from(event.flags), u64::from(libc::EV_ERROR)),
+            event.fflags,
         ))
     }
 }

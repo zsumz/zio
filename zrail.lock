@@ -2,18 +2,18 @@
 schema = 2
 semantics = 3
 producer = "0.0.3-rc.4"
-contract_sha256 = "3badd3d205961e371e9de734e39d88409c9b851001d53ee7f0d6745cb5c6c0e1"
+contract_sha256 = "77172b909e6bc52a1a8a1872817ee96b61a43a27cf020b967a9b9381136744e5"
 
 [analysis]
-inventory_sha256 = "72e1081f0bf4429d6b14a717af4cdf91001d635792c7b09b09a1c9997b0d5915"
+inventory_sha256 = "089a30828a2d2589ebdc5594b783dca0dfbce5a79358f85caac9d8f2ae8c1cc5"
 exclusions_sha256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-cargo_lock_sha256 = "3e5b054ae8ec70c73918339fbf1fd6c0ec9a2f8911b798aa761baa9470d7ac3d"
+cargo_lock_sha256 = "2d81793d1942bfa0dd24f8e6ad0e2e1d26b9aef2a5513efde45e9da6ec27d3cb"
 packages = 2
-targets = 15
-physical_rust_files = 91
-base_source_contexts = 159
+targets = 18
+physical_rust_files = 105
+base_source_contexts = 183
 derived_source_contexts = 0
-source_facts = 22630
+source_facts = 26443
 projection_queries = 0
 projected_facts = 0
 unresolved_bindings = 0
@@ -21,7 +21,7 @@ analyzer_semantics = 3
 
 [[analysis.contract_source]]
 path = "zrail.toml"
-sha256 = "1daddf042c80a8f8842181dc6ed8f29cb8872c3c231b6dd42f832493630484a6"
+sha256 = "6beb8a8d972ee79c156f366b6a0ebe133b6667182fe1690ff780c78edca2acbf"
 
 [[package]]
 name = "zio"
@@ -72,6 +72,20 @@ features = [
 kind = "registry"
 requirement = "1.2.2"
 
+[[package.dependency]]
+alias = "socket2"
+name = "socket2"
+crate_root = "socket2"
+kind = "development"
+scope = "external"
+target = 'cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd", target_os = "netbsd"))'
+optional = false
+default_features = true
+
+[package.dependency.source]
+kind = "registry"
+requirement = "=0.6.5"
+
 [[package]]
 name = "zio-testkit"
 
@@ -113,11 +127,11 @@ sha256 = "dfd7abfe8fa7859a53b32cbb5da32f1fbe0f969d0df6c818878573b73d4e690d"
 
 [[gate.input]]
 path = "Cargo.lock"
-sha256 = "3e5b054ae8ec70c73918339fbf1fd6c0ec9a2f8911b798aa761baa9470d7ac3d"
+sha256 = "2d81793d1942bfa0dd24f8e6ad0e2e1d26b9aef2a5513efde45e9da6ec27d3cb"
 
 [[gate.input]]
 path = "Cargo.toml"
-sha256 = "d86d8d44692d57d72abf4e4d296efa05c759c7c7d970ab1327ad030661c489ef"
+sha256 = "2164e27cd439022d35f764754ec66e4180e9ebcb0b42cb6c360afdcb1bf9e835"
 
 [[gate.input]]
 path = "LICENSE"
@@ -125,7 +139,7 @@ sha256 = "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
 
 [[gate.input]]
 path = "README.md"
-sha256 = "b71a04a8ccf2c022d60d290c34e2de7fd08a205c4585043d91b814636326a6a7"
+sha256 = "269de50749fca302b90e53797e13aae5847cfafc1b1777bea8bc67cee121c000"
 
 [[gate.input]]
 path = "clippy.toml"
@@ -133,11 +147,11 @@ sha256 = "d14d2103913f0a4e9381942c85baf1bd6fc8d484fea01b5ea037e2846db754ce"
 
 [[gate.input]]
 path = "crates/zio-testkit/Cargo.toml"
-sha256 = "604884a921ea5fd45afd338bfec8f0e37b84a3b995f82231eba6a81f85090f54"
+sha256 = "5229cf64ee5757245471bee57d65eaf1816c10fdfdcedca63fec550ca534452a"
 
 [[gate.input]]
 path = "crates/zio-testkit/README.md"
-sha256 = "c33e70bc11ba30d00855a59fe78f03b79b571ea613a1760eafc9734a005889ab"
+sha256 = "938c8a9f7f331474f463814b40922359b6d558a76f785cbb9c17bf94675004fc"
 
 [[gate.input]]
 path = "rust-toolchain.toml"

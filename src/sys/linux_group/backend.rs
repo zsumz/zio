@@ -145,7 +145,7 @@ fn epoll_flags(token: u64, interest: Interest, mode: Mode) -> Result<u32, Mutati
     Ok(flags)
 }
 
-fn from_epoll_flags(flags: u32) -> Readiness {
+pub(super) fn from_epoll_flags(flags: u32) -> Readiness {
     let contains = |flag: libc::c_int| flags & flag.cast_unsigned() != 0;
     let mut readiness = Readiness::EMPTY;
     if contains(libc::EPOLLIN) || contains(libc::EPOLLPRI) {
@@ -154,16 +154,31 @@ fn from_epoll_flags(flags: u32) -> Readiness {
     if contains(libc::EPOLLOUT) {
         readiness = readiness.union(Readiness::WRITABLE);
     }
-    if contains(libc::EPOLLRDHUP) || contains(libc::EPOLLHUP) {
+    let hung_up = contains(libc::EPOLLHUP);
+    let errored = contains(libc::EPOLLERR);
+    if contains(libc::EPOLLRDHUP) || hung_up {
         readiness = readiness.union(Readiness::READ_CLOSED);
     }
-    if contains(libc::EPOLLHUP) {
+    if hung_up {
         readiness = readiness.union(Readiness::WRITE_CLOSED);
     }
-    if contains(libc::EPOLLERR) {
+    if errored {
         readiness = readiness.union(Readiness::ERROR);
     }
     readiness
+}
+
+#[cfg(test)]
+pub(super) const fn epoll_test_flags() -> [u32; 7] {
+    [
+        libc::EPOLLIN.cast_unsigned(),
+        libc::EPOLLPRI.cast_unsigned(),
+        libc::EPOLLOUT.cast_unsigned(),
+        libc::EPOLLRDHUP.cast_unsigned(),
+        libc::EPOLLHUP.cast_unsigned(),
+        libc::EPOLLERR.cast_unsigned(),
+        libc::EPOLLONESHOT.cast_unsigned(),
+    ]
 }
 
 pub(super) fn epoll_timeout(wait: Wait) -> libc::c_int {

@@ -1,14 +1,15 @@
-//! Reference mutation and public-API wake conformance for [`zio`].
+//! Reference mutation, wake, and readiness conformance for [`zio`].
 //!
 //! The mutation runner uses zio's feature-gated scripted poller and checks the
 //! same errors, registration capabilities, and authoritative state that a
-//! downstream library observes. The wake runner treats the host's native
+//! downstream library observes. The native wake and readiness runners treat
 //! [`zio::Poll`] as a black box through only its ordinary public API.
 //!
 //! ```
 //! let report = zio_testkit::run_all();
 //! report.into_result()?;
-//! # Ok::<(), zio_testkit::MutationReport>(())
+//! zio_testkit::run_readiness_conformance().into_result()?;
+//! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 
 #![deny(unsafe_code)]
@@ -19,6 +20,16 @@ mod delete_failure;
 mod failure;
 mod modify;
 mod modify_commit;
+mod readiness_expectation;
+mod readiness_failure;
+mod readiness_pending;
+mod readiness_pipe;
+mod readiness_report;
+mod readiness_runner;
+mod readiness_scenario;
+mod readiness_split;
+mod readiness_stream;
+mod readiness_verify;
 mod register;
 mod register_failure;
 mod report;
@@ -37,6 +48,10 @@ mod wake_scenario;
 mod wake_verify;
 
 pub use failure::{ConformanceCheck, ConformanceFailure};
+pub use readiness_failure::{ReadinessCheck, ReadinessFailure};
+pub use readiness_report::{ReadinessCaseResult, ReadinessReport};
+pub use readiness_runner::{run_readiness_conformance, run_readiness_scenario};
+pub use readiness_scenario::{ReadinessFixture, ReadinessScenario};
 pub use report::{CaseResult, MutationReport};
 pub use runner::{run_all, run_scenario};
 pub use scenario::{
