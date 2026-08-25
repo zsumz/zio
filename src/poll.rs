@@ -25,6 +25,9 @@ pub struct Waker {
 
 impl Waker {
     /// Makes the poller's configured wake key observable.
+    ///
+    /// Multiple triggers may coalesce into one wake event. Wake observations
+    /// are notifications rather than a count of calls to this method.
     pub fn wake(&self) -> Result<(), Error> {
         self.wake.wake().map_err(|source| Error::Io {
             operation: Operation::TriggerWake,
@@ -94,6 +97,10 @@ impl Poll {
     }
 
     /// Returns a cloneable wake capability associated with `key`.
+    ///
+    /// The first successful call fixes the poller's wake key. Later calls with
+    /// the same key return another capability; a different key is rejected
+    /// without replacing the existing configuration.
     pub fn waker(&mut self, key: Key) -> Result<Waker, Error> {
         match self.wake_key {
             None => self.wake_key = Some(key),

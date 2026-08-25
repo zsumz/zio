@@ -1,8 +1,9 @@
-//! Reference mutation conformance for [`zio`].
+//! Reference mutation and public-API wake conformance for [`zio`].
 //!
-//! The runner uses zio's feature-gated scripted poller and checks the same
-//! public errors, registration capabilities, and authoritative state that a
-//! downstream library observes.
+//! The mutation runner uses zio's feature-gated scripted poller and checks the
+//! same errors, registration capabilities, and authoritative state that a
+//! downstream library observes. The wake runner treats the host's native
+//! [`zio::Poll`] as a black box through only its ordinary public API.
 //!
 //! ```
 //! let report = zio_testkit::run_all();
@@ -26,6 +27,14 @@ mod scenario;
 mod setup;
 pub mod support;
 mod verify;
+mod wake_config;
+mod wake_delivery;
+mod wake_failure;
+mod wake_report;
+mod wake_runner;
+mod wake_saturation;
+mod wake_scenario;
+mod wake_verify;
 
 pub use failure::{ConformanceCheck, ConformanceFailure};
 pub use report::{CaseResult, MutationReport};
@@ -34,4 +43,11 @@ pub use scenario::{
     Branch, DELETE_APPLIED, DELETE_NOT_APPLIED, DELETE_SUCCESS, DELETE_UNKNOWN, MODIFY_APPLIED,
     MODIFY_NOT_APPLIED, MODIFY_SUCCESS, MODIFY_UNKNOWN, MutationOperation, MutationScenario,
     REGISTER_APPLIED, REGISTER_NOT_APPLIED, REGISTER_SUCCESS, REGISTER_UNKNOWN,
+};
+pub use wake_failure::{WakeCheck, WakeFailure};
+pub use wake_report::{WakeCaseResult, WakeReport};
+pub use wake_runner::{run_wake_conformance, run_wake_scenario};
+pub use wake_scenario::{
+    WAKE_CAPACITY_ONE_SATURATION, WAKE_CLONE_ACROSS_WAIT, WAKE_CONFLICTING_KEY,
+    WAKE_PRE_WAIT_STORM, WAKE_SAME_KEY_CLONES, WakeScenario,
 };

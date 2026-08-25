@@ -4,7 +4,7 @@ default-members = ["."]
 resolver = "3"
 
 [workspace.package]
-version = "0.0.1-dev.0"
+version = "0.0.1-dev.1"
 edition = "2024"
 rust-version = "1.88"
 authors = ["zsumz <shawn@zsumz.com>"]
@@ -13,7 +13,7 @@ repository = "https://github.com/zsumz/zio"
 homepage = "https://github.com/zsumz/zio"
 
 [workspace.dependencies]
-zio = { path = ".", version = "=0.0.1-dev.0", default-features = false, features = ["test-support"] }
+zio = { path = ".", version = "=0.0.1-dev.1", default-features = false, features = ["test-support"] }
 
 [package]
 name = "zio"

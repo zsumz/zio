@@ -46,6 +46,8 @@ status = "enforced"
 document = "README.md#registration-ownership"
 evidence = [
   "rust-test:tests/registration.rs::duplicate_descriptor_is_rejected",
+  "rust-test:crates/zio-testkit/tests/terminal_identity.rs::delete_applied_stale_handle_survives_slot_reuse",
+  "rust-test:crates/zio-testkit/tests/terminal_ownership.rs::wrong_poller_delete_returns_exact_handle_to_owner",
   "gate:check",
   "gate:ci",
 ]
@@ -57,6 +59,21 @@ status = "enforced"
 document = "README.md#readiness-modes"
 evidence = [
   "rust-test:tests/readiness.rs::one_shot_requires_explicit_rearm",
+  "gate:check",
+  "gate:ci",
+]
+
+[[invariant]]
+id = "WAKE-01"
+title = "Wake signals remain bounded, drainable, and observable"
+status = "enforced"
+document = "README.md#wake-behavior"
+evidence = [
+  "rust-test:tests/readiness.rs::wake_before_wait_is_observable",
+  "rust-test:tests/readiness.rs::wake_interrupts_a_blocked_wait",
+  "rust-test:crates/zio-testkit/tests/wake_conformance.rs::wake_report_covers_every_scenario",
+  "rust-test:crates/zio-testkit/tests/wake_conformance.rs::wake_scenario_names_are_stable",
+  "rust-test:crates/zio-testkit/tests/wake_conformance.rs::wake_failures_remain_structured",
   "gate:check",
   "gate:ci",
 ]

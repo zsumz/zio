@@ -48,6 +48,14 @@ Level mode reports while a source remains ready. One-shot mode disarms after
 delivery and requires an explicit modification whose backend mutation is
 applied.
 
+### Wake behavior
+
+A poller binds its wake source to one caller key. Same-key requests and clones
+share it; a conflicting key is rejected without replacing the original.
+Repeated triggers may coalesce, but one observation fully drains them and a
+later trigger remains observable. Wake and resource events share the fixed
+event capacity without being silently lost.
+
 ### Mutation outcomes
 
 A failed mutation exposes what happened and returns or preserves a capability
@@ -72,11 +80,12 @@ watching, socket construction, an executor, or an async runtime.
 | Crate | Purpose |
 | --- | --- |
 | `zio` | Synchronous readiness polling, ownership, and native backends |
-| `zio-testkit` | Workspace-private deterministic mutation conformance |
+| `zio-testkit` | Workspace-private mutation and wake conformance |
 
-The testkit drives the same portable mutation reducer through an opt-in support
-feature. Normal builds contain no testkit dependency, and its public vocabulary
-exposes no raw descriptors, syscall structures, or native backend trait.
+The testkit drives the portable mutation reducer through an opt-in support
+feature and exercises wake behavior through zio's ordinary public API. Normal
+builds contain no testkit dependency, and its public vocabulary exposes no raw
+descriptors, syscall structures, or native backend trait.
 
 ## Start
 
@@ -113,8 +122,8 @@ architectural authority. Use zcheck 0.0.2 and zrail 0.0.2, matching CI and the
 reviewed lock.
 
 CI runs native Linux and macOS backend tests and cross-compiles FreeBSD and
-NetBSD. zio supports Rust 1.88 and newer. `0.0.1-dev.0` is a packageable
-pre-alpha and is not release-ready yet.
+NetBSD. zio supports Rust 1.88 and newer. zio is a packageable pre-alpha and is
+not release-ready yet.
 
 ## License
 

@@ -2,7 +2,7 @@
 schema = 1
 semantics = 2
 producer = "0.0.2"
-contract_sha256 = "3334505b017b057ef18fbba7589a79d3a441943b8fd60eb5f436093eb717225e"
+contract_sha256 = "38a4bef1821da69af43bcb268edf72acd7e71b03c4db215a719d9af847322648"
 ratchet = []
 
 [[package]]
@@ -56,7 +56,7 @@ features = ["test-support"]
 [package.dependency.source]
 kind = "workspace-member"
 directory = "."
-requirement = "=0.0.1-dev.0"
+requirement = "=0.0.1-dev.1"
 
 [[gate]]
 name = "check"
@@ -81,11 +81,11 @@ sha256 = "dfd7abfe8fa7859a53b32cbb5da32f1fbe0f969d0df6c818878573b73d4e690d"
 
 [[gate.input]]
 path = "Cargo.lock"
-sha256 = "41c06435b7ef5c7e5a7c9c439f0801add1ad420af80c998fd3f2d5f163ab96d8"
+sha256 = "5c8aa39ff50f580e93b6791ad48cf497fbbec6cfd6e9494173d4bba7545a42ea"
 
 [[gate.input]]
 path = "Cargo.toml"
-sha256 = "2afa9a6b34543d7c9852dd20141c01479c7f341d1420942ae2da6edae984399b"
+sha256 = "0bb3954fdcada37226e7a15ba0cc797f2f60fd0c84634cb880181c05f212e399"
 
 [[gate.input]]
 path = "LICENSE"
@@ -93,7 +93,7 @@ sha256 = "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
 
 [[gate.input]]
 path = "README.md"
-sha256 = "739640b9cbf8a0296f4e871b6b65c4fc7a070433d953ed985e607095b543d1d9"
+sha256 = "9c0d6d0a66c2062af1282b27945689d6168e165e57c587c6232a3fd9549b9b7d"
 
 [[gate.input]]
 path = "clippy.toml"
@@ -101,11 +101,11 @@ sha256 = "d14d2103913f0a4e9381942c85baf1bd6fc8d484fea01b5ea037e2846db754ce"
 
 [[gate.input]]
 path = "crates/zio-testkit/Cargo.toml"
-sha256 = "d3a7cc987162c751fcbb230284c8d8a01ef18ba648e52a646d6814be187822ad"
+sha256 = "604884a921ea5fd45afd338bfec8f0e37b84a3b995f82231eba6a81f85090f54"
 
 [[gate.input]]
 path = "crates/zio-testkit/README.md"
-sha256 = "badf686f2672a1fc4e2acf0b919040386a7f4a07402f53260319b943ca2d4f7d"
+sha256 = "c33e70bc11ba30d00855a59fe78f03b79b571ea613a1760eafc9734a005889ab"
 
 [[gate.input]]
 path = "rust-toolchain.toml"
