@@ -123,7 +123,9 @@ impl Kqueue {
                     let error = match decode_receipt(output.get(index), change) {
                         FilterApply::Applied => None,
                         FilterApply::NotApplied(code) => Some(code),
-                        FilterApply::Unknown(_) => return Err(protocol_error()),
+                        FilterApply::AlreadyAbsent | FilterApply::Unknown(_) => {
+                            return Err(protocol_error());
+                        }
                     };
                     receipts.set(index, Receipt::new(change.action(), error))?;
                 }

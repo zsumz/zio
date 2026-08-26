@@ -19,6 +19,11 @@ pub(super) const fn target_applies_interrupted_changes() -> bool {
     }
 }
 
+#[cfg(test)]
+pub(super) const fn missing_entry_error_code() -> i32 {
+    libc::ENOENT
+}
+
 pub(super) fn classify_apply_error(
     error: io::Error,
     interrupted_changes_apply: bool,
@@ -51,8 +56,10 @@ impl KeventChangeBatch {
             self.output.get(index).filter(|_| index < returned),
             expected,
         ) {
-            FilterApply::NotApplied(code) if code == libc::ENOENT => {
-                FilterApply::Unknown(Some(code))
+            FilterApply::NotApplied(code)
+                if code == libc::ENOENT && expected.action() == Action::Disable =>
+            {
+                FilterApply::AlreadyAbsent
             }
             outcome => outcome,
         }

@@ -7,7 +7,7 @@ use crate::{CommitStatus, Interest, RecoveryOutcome, RegistrationId};
 use super::{
     kqueue::Kqueue,
     kqueue_change::{Action, Change, Filter},
-    kqueue_codec::{KeventChangeBatch, classify_apply_error},
+    kqueue_codec::{KeventChangeBatch, classify_apply_error, missing_entry_error_code},
     kqueue_disarm::{DisarmBatch, DisarmExecutor, FilterApply, NativeApply},
 };
 
@@ -67,7 +67,7 @@ fn one_submission_reduces_multiple_registrations() {
     };
     let mut script = Script::receipts([
         FilterApply::Applied,
-        FilterApply::Applied,
+        FilterApply::AlreadyAbsent,
         FilterApply::Applied,
     ]);
 
@@ -99,7 +99,7 @@ fn mixed_filter_results_are_unknown() {
     let Some(mut batch) = two_filter_batch() else {
         return;
     };
-    let mut script = Script::receipts([FilterApply::Applied, FilterApply::NotApplied(5)]);
+    let mut script = Script::receipts([FilterApply::AlreadyAbsent, FilterApply::NotApplied(5)]);
 
     assert!(batch.submit(&mut script).is_err());
 
@@ -161,7 +161,7 @@ fn mismatched_receipts_are_unknown() {
 }
 
 #[test]
-fn missing_native_filter_receipt_is_uncertain() -> io::Result<()> {
+fn missing_native_disable_is_classified_as_already_absent() -> io::Result<()> {
     let (source, _peer) = UnixStream::pair()?;
     let queue = Kqueue::new()?;
     let expected = read_change(source.as_raw_fd());
@@ -172,10 +172,18 @@ fn missing_native_filter_receipt_is_uncertain() -> io::Result<()> {
         queue.apply_batch(&[expected], &mut native),
         NativeApply::Receipts(1)
     ));
-    assert!(matches!(
-        native.receipt(0, 1, expected),
-        FilterApply::Unknown(Some(_))
-    ));
+    assert_eq!(native.receipt(0, 1, expected), FilterApply::AlreadyAbsent);
+    let addition = Change::new(source.as_raw_fd(), Filter::Read, Action::AddEnabled, 0);
+    let missing_entry = missing_entry_error_code();
+    assert!(
+        native
+            .stage_receipt(0, addition, missing_entry, true)
+            .is_some()
+    );
+    assert_eq!(
+        native.receipt(0, 1, addition),
+        FilterApply::NotApplied(missing_entry)
+    );
     Ok(())
 }
 
@@ -226,13 +234,13 @@ fn successful_batches_reuse_retained_storage() {
         return;
     };
     let retained = batch.storage_identity();
-    for _ in 0..2 {
+    for receipt in [FilterApply::Applied, FilterApply::AlreadyAbsent] {
         assert!(
             batch
                 .push(RegistrationId::new(1), 5, Interest::READABLE)
                 .is_some()
         );
-        let mut script = Script::receipts([FilterApply::Applied]);
+        let mut script = Script::receipts([receipt]);
         assert!(batch.submit(&mut script).is_ok());
         batch.clear();
         assert_eq!(batch.storage_identity(), retained);

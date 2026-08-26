@@ -47,7 +47,7 @@ pub enum Operation {
 pub enum CommitStatus {
     /// The requested mutation was not applied.
     NotApplied,
-    /// The requested mutation was applied before a later failure.
+    /// The requested mutation's postcondition is proven.
     Applied,
     /// The resulting backend state cannot be proven.
     Unknown,

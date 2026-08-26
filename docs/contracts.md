@@ -65,7 +65,8 @@ Separate registrations remain separate even when their keys match.
 ## Recovery behavior
 
 Kqueue coalesces split filters and submits all delivered one-shot disables in
-one receipt-checked batch. Each submitted registration gets an exact outcome:
+one receipt-checked batch. A filter proven already absent satisfies the disarm
+postcondition. Each submitted registration gets an exact outcome:
 
 | Outcome | State |
 | --- | --- |

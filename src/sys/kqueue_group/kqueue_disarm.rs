@@ -17,6 +17,7 @@ pub(super) enum NativeApply {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum FilterApply {
     Applied,
+    AlreadyAbsent,
     NotApplied(i32),
     Unknown(Option<i32>),
 }
@@ -142,12 +143,12 @@ impl DisarmBatch {
         }
         let mut first_error = None;
         for plan in &self.plans {
-            let mut applied = 0;
+            let mut satisfied = 0;
             let mut not_applied = 0;
             let mut unknown = false;
             for index in plan.first..plan.first + plan.len {
                 match executor.receipt(index, returned, self.changes[index]) {
-                    FilterApply::Applied => applied += 1,
+                    FilterApply::Applied | FilterApply::AlreadyAbsent => satisfied += 1,
                     FilterApply::NotApplied(code) => {
                         not_applied += 1;
                         first_error.get_or_insert_with(|| io::Error::from_raw_os_error(code));
@@ -160,7 +161,7 @@ impl DisarmBatch {
                     }
                 }
             }
-            let commit = if !unknown && applied == plan.len {
+            let commit = if !unknown && satisfied == plan.len {
                 CommitStatus::Applied
             } else if !unknown && not_applied == plan.len {
                 CommitStatus::NotApplied

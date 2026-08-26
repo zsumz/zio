@@ -238,7 +238,7 @@ evidence = [
     "rust-test:src/sys/kqueue_group/kqueue_disarm_test.rs::short_receipt_sets_are_unknown",
     "rust-test:src/sys/kqueue_group/kqueue_disarm_test.rs::malformed_receipts_are_unknown",
     "rust-test:src/sys/kqueue_group/kqueue_disarm_test.rs::mismatched_receipts_are_unknown",
-    "rust-test:src/sys/kqueue_group/kqueue_disarm_test.rs::missing_native_filter_receipt_is_uncertain",
+    "rust-test:src/sys/kqueue_group/kqueue_disarm_test.rs::missing_native_disable_is_classified_as_already_absent",
     "rust-test:src/sys/kqueue_group/kqueue_disarm_test.rs::uncertain_receipt_preserves_native_error",
     "rust-test:src/sys/kqueue_group/kqueue_disarm_test.rs::syscall_failure_is_unknown",
     "rust-test:src/sys/kqueue_group/kqueue_disarm_test.rs::freebsd_and_netbsd_interruptions_are_applied",
