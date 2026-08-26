@@ -2,6 +2,8 @@
 
 #![cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
 
+use core::borrow::Borrow;
+
 use crate::{
     ArmState, CommitStatus, Error, Event, Events, Mode, Operation, RecoveryFailure,
     RecoveryOutcome, RegistrationState, pending_kqueue::PendingResource, table::RegistrationTable,
@@ -11,21 +13,27 @@ use crate::{
     clippy::too_many_arguments,
     reason = "the post-observation boundary keeps each retained contract explicit"
 )]
-pub(crate) fn finish(
+pub(crate) fn finish<I>(
     registrations: &mut RegistrationTable,
     events: &mut Events,
     pending: &[PendingResource],
     delivered: usize,
     woke: bool,
     wake_key: Option<crate::Key>,
-    outcomes: &[RecoveryOutcome],
+    outcomes: I,
     source: Option<std::io::Error>,
-) -> Result<(), Error> {
+) -> Result<(), Error>
+where
+    I: IntoIterator,
+    I::IntoIter: Clone + ExactSizeIterator,
+    I::Item: Borrow<RecoveryOutcome>,
+{
+    let outcomes = outcomes.into_iter();
     validate(
         registrations,
         pending,
         delivered,
-        outcomes,
+        outcomes.clone(),
         source.is_some(),
     )?;
 
@@ -45,6 +53,7 @@ pub(crate) fn finish(
 
     let mut snapshot = source.as_ref().map(|_| Vec::with_capacity(outcomes.len()));
     for outcome in outcomes {
+        let outcome = *outcome.borrow();
         let registration = outcome.registration();
         let commit = outcome.commit();
         let state = registrations.apply_disarm(registration, commit)?;
@@ -52,7 +61,7 @@ pub(crate) fn finish(
             return Err(Error::Invariant);
         }
         if let Some(snapshot) = &mut snapshot {
-            snapshot.push(*outcome);
+            snapshot.push(outcome);
         }
     }
     if let Some(source) = source {
@@ -65,15 +74,19 @@ pub(crate) fn finish(
     Ok(())
 }
 
-fn validate(
+fn validate<I>(
     registrations: &RegistrationTable,
     pending: &[PendingResource],
     delivered: usize,
-    outcomes: &[RecoveryOutcome],
+    mut outcomes: I,
     has_source: bool,
-) -> Result<(), Error> {
+) -> Result<(), Error>
+where
+    I: Clone + ExactSizeIterator,
+    I::Item: Borrow<RecoveryOutcome>,
+{
     let delivered = pending.get(..delivered).ok_or(Error::Invariant)?;
-    let mut outcome_index = 0;
+    let mut observed_outcomes = outcomes.clone();
     for pending in delivered {
         let binding = registrations
             .binding(pending.registration, false)
@@ -88,18 +101,17 @@ fn validate(
         {
             return Err(Error::Invariant);
         }
-        let outcome = outcomes.get(outcome_index).ok_or(Error::Invariant)?;
+        let outcome = observed_outcomes.next().ok_or(Error::Invariant)?;
+        let outcome = outcome.borrow();
         if outcome.registration() != pending.registration {
             return Err(Error::Invariant);
         }
-        outcome_index += 1;
     }
-    if outcome_index != outcomes.len() {
+    if observed_outcomes.next().is_some() {
         return Err(Error::Invariant);
     }
-    let recovery_required = outcomes
-        .iter()
-        .any(|outcome| outcome.commit() != CommitStatus::Applied);
+    let recovery_required =
+        outcomes.any(|outcome| outcome.borrow().commit() != CommitStatus::Applied);
     if has_source != recovery_required {
         return Err(Error::Invariant);
     }

@@ -24,7 +24,7 @@ pub(super) enum FilterApply {
 
 /// Executor seam shared by the native backend and deterministic policy tests.
 pub(super) trait DisarmExecutor {
-    fn apply(&mut self, changes: &[Change]) -> NativeApply;
+    fn apply(&mut self, changes: DisarmChanges<'_>) -> NativeApply;
 
     fn receipt(&self, index: usize, returned: usize, expected: Change) -> FilterApply;
 }
@@ -32,18 +32,76 @@ pub(super) trait DisarmExecutor {
 #[derive(Clone, Copy, Debug)]
 struct Plan {
     registration: RegistrationId,
-    first: usize,
-    len: usize,
+    descriptor: RawFd,
+    interest: Interest,
+    commit: CommitStatus,
 }
 
-/// Construction-time storage for one logical disarm batch.
+impl Plan {
+    fn change_count(self) -> usize {
+        usize::from(self.interest.is_readable()) + usize::from(self.interest.is_writable())
+    }
+
+    fn change(self, index: usize) -> Option<Change> {
+        let filter = match (
+            self.interest.is_readable(),
+            self.interest.is_writable(),
+            index,
+        ) {
+            (true, _, 0) => Filter::Read,
+            (false, true, 0) | (true, true, 1) => Filter::Write,
+            _ => return None,
+        };
+        Some(Change::new(self.descriptor, filter, Action::Disable, 0))
+    }
+
+    fn outcome(self) -> RecoveryOutcome {
+        RecoveryOutcome::new(self.registration, self.commit)
+    }
+}
+
+/// Allocation-free native-change traversal over retained logical plans.
+#[derive(Clone)]
+pub(super) struct DisarmChanges<'a> {
+    plans: &'a [Plan],
+    plan: usize,
+    change: usize,
+    remaining: usize,
+}
+
+impl Iterator for DisarmChanges<'_> {
+    type Item = Change;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        while let Some(plan) = self.plans.get(self.plan).copied() {
+            if let Some(change) = plan.change(self.change) {
+                self.change += 1;
+                self.remaining -= 1;
+                return Some(change);
+            }
+            self.plan += 1;
+            self.change = 0;
+        }
+        None
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.remaining, Some(self.remaining))
+    }
+}
+
+impl ExactSizeIterator for DisarmChanges<'_> {
+    fn len(&self) -> usize {
+        self.remaining
+    }
+}
+
 #[derive(Debug)]
 pub(super) struct DisarmBatch {
     plan_capacity: usize,
     change_capacity: usize,
+    change_len: usize,
     plans: Vec<Plan>,
-    changes: Vec<Change>,
-    outcomes: Vec<RecoveryOutcome>,
 }
 
 impl DisarmBatch {
@@ -52,16 +110,14 @@ impl DisarmBatch {
         Some(Self {
             plan_capacity: registrations,
             change_capacity: changes,
+            change_len: 0,
             plans: reserved(registrations)?,
-            changes: reserved(changes)?,
-            outcomes: reserved(registrations)?,
         })
     }
 
     pub(super) fn clear(&mut self) {
         self.plans.clear();
-        self.changes.clear();
-        self.outcomes.clear();
+        self.change_len = 0;
     }
 
     pub(super) fn push(
@@ -73,33 +129,25 @@ impl DisarmBatch {
         let required = usize::from(interest.is_readable()) + usize::from(interest.is_writable());
         if required == 0
             || self.plans.len() >= self.plan_capacity
-            || self.changes.len().checked_add(required)? > self.change_capacity
+            || self.change_len.checked_add(required)? > self.change_capacity
         {
             return None;
         }
-        let first = self.changes.len();
-        if interest.is_readable() {
-            self.changes
-                .push(Change::new(descriptor, Filter::Read, Action::Disable, 0));
-        }
-        if interest.is_writable() {
-            self.changes
-                .push(Change::new(descriptor, Filter::Write, Action::Disable, 0));
-        }
         self.plans.push(Plan {
             registration,
-            first,
-            len: required,
+            descriptor,
+            interest,
+            commit: CommitStatus::Unknown,
         });
+        self.change_len += required;
         Some(())
     }
 
     pub(super) fn submit<E: DisarmExecutor>(&mut self, executor: &mut E) -> io::Result<()> {
-        self.outcomes.clear();
-        if self.changes.is_empty() {
+        if self.plans.is_empty() {
             return Ok(());
         }
-        match executor.apply(&self.changes) {
+        match executor.apply(self.changes()) {
             NativeApply::AppliedWithoutReceipts => {
                 self.fill_outcomes(CommitStatus::Applied);
                 Ok(())
@@ -112,23 +160,27 @@ impl DisarmBatch {
         }
     }
 
-    pub(super) fn outcomes(&self) -> &[RecoveryOutcome] {
-        &self.outcomes
+    pub(super) fn outcomes(&self) -> impl Clone + ExactSizeIterator<Item = RecoveryOutcome> + '_ {
+        self.plans.iter().copied().map(Plan::outcome)
     }
 
     #[cfg(test)]
-    pub(super) fn storage_identity(&self) -> [(usize, usize); 3] {
-        [
-            (self.plans.as_ptr() as usize, self.plans.capacity()),
-            (self.changes.as_ptr() as usize, self.changes.capacity()),
-            (self.outcomes.as_ptr() as usize, self.outcomes.capacity()),
-        ]
+    pub(super) fn storage_identity(&self) -> (usize, usize) {
+        (self.plans.as_ptr() as usize, self.plans.capacity())
     }
 
     fn fill_outcomes(&mut self, commit: CommitStatus) {
-        for plan in &self.plans {
-            self.outcomes
-                .push(RecoveryOutcome::new(plan.registration, commit));
+        for plan in &mut self.plans {
+            plan.commit = commit;
+        }
+    }
+
+    fn changes(&self) -> DisarmChanges<'_> {
+        DisarmChanges {
+            plans: &self.plans,
+            plan: 0,
+            change: 0,
+            remaining: self.change_len,
         }
     }
 
@@ -137,17 +189,20 @@ impl DisarmBatch {
         executor: &E,
         returned: usize,
     ) -> io::Result<()> {
-        if returned > self.changes.len() {
+        if returned > self.change_len {
             self.fill_outcomes(CommitStatus::Unknown);
             return Err(protocol_error());
         }
         let mut first_error = None;
-        for plan in &self.plans {
+        let mut change_index = 0;
+        for plan in &mut self.plans {
             let mut satisfied = 0;
             let mut not_applied = 0;
             let mut unknown = false;
-            for index in plan.first..plan.first + plan.len {
-                match executor.receipt(index, returned, self.changes[index]) {
+            let change_count = plan.change_count();
+            for plan_index in 0..change_count {
+                let expected = plan.change(plan_index).ok_or_else(protocol_error)?;
+                match executor.receipt(change_index, returned, expected) {
                     FilterApply::Applied | FilterApply::AlreadyAbsent => satisfied += 1,
                     FilterApply::NotApplied(code) => {
                         not_applied += 1;
@@ -160,16 +215,15 @@ impl DisarmBatch {
                         });
                     }
                 }
+                change_index += 1;
             }
-            let commit = if !unknown && satisfied == plan.len {
+            plan.commit = if !unknown && satisfied == change_count {
                 CommitStatus::Applied
-            } else if !unknown && not_applied == plan.len {
+            } else if !unknown && not_applied == change_count {
                 CommitStatus::NotApplied
             } else {
                 CommitStatus::Unknown
             };
-            self.outcomes
-                .push(RecoveryOutcome::new(plan.registration, commit));
         }
         first_error.map_or(Ok(()), Err)
     }

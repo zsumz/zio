@@ -5,10 +5,34 @@ use std::io;
 use crate::{CommitStatus, Interest, RecoveryOutcome, RegistrationId};
 
 use super::{
+    kqueue::{KeventBatch, Kqueue},
     kqueue_change::{Action, Change, Filter},
     kqueue_codec::{classify_apply_error, target_applies_interrupted_changes},
-    kqueue_disarm::{DisarmBatch, DisarmExecutor, FilterApply, NativeApply},
+    kqueue_disarm::{DisarmBatch, DisarmChanges, DisarmExecutor, FilterApply, NativeApply},
 };
+
+struct MisreportedChanges {
+    items: std::vec::IntoIter<Change>,
+    advertised: usize,
+}
+
+impl Iterator for MisreportedChanges {
+    type Item = Change;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.items.next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.advertised, Some(self.advertised))
+    }
+}
+
+impl ExactSizeIterator for MisreportedChanges {
+    fn len(&self) -> usize {
+        self.advertised
+    }
+}
 
 #[cfg(target_os = "macos")]
 const _: [(); 0] = [(); target_applies_interrupted_changes() as usize];
@@ -23,9 +47,9 @@ struct RecordingExecutor {
 }
 
 impl DisarmExecutor for RecordingExecutor {
-    fn apply(&mut self, changes: &[Change]) -> NativeApply {
+    fn apply(&mut self, changes: DisarmChanges<'_>) -> NativeApply {
         self.submissions += 1;
-        self.submitted.extend_from_slice(changes);
+        self.submitted.extend(changes);
         NativeApply::Receipts(self.receipts.len())
     }
 
@@ -75,7 +99,7 @@ fn one_batch_preserves_change_outcome_and_source_order() -> io::Result<()> {
     );
     assert_eq!(error.raw_os_error(), Some(71));
     assert_eq!(
-        batch.outcomes(),
+        batch.outcomes().collect::<Vec<_>>(),
         [
             outcome(1, CommitStatus::Applied),
             outcome(2, CommitStatus::NotApplied),
@@ -95,6 +119,39 @@ fn target_selected_interruption_policy_is_exact() {
     assert!(matches!(result, NativeApply::Unknown(_)));
     #[cfg(any(target_os = "freebsd", target_os = "netbsd"))]
     assert!(matches!(result, NativeApply::AppliedWithoutReceipts));
+}
+
+#[test]
+fn native_staging_rejects_misreported_exact_size_iterators() -> io::Result<()> {
+    let queue = Kqueue::new()?;
+    let expected = change(5, Filter::Read);
+    for (items, advertised) in [(vec![expected], 2), (vec![expected, expected], 1)] {
+        let mut native = KeventBatch::new(2, 2)
+            .ok_or_else(|| io::Error::other("native receipt storage unavailable"))?;
+        let changes = MisreportedChanges {
+            items: items.into_iter(),
+            advertised,
+        };
+
+        assert!(matches!(
+            queue.apply_batch(changes, &mut native),
+            NativeApply::Unknown(_)
+        ));
+    }
+    Ok(())
+}
+
+#[test]
+fn test_receipt_staging_rejects_uninitialized_holes() -> io::Result<()> {
+    let mut native = KeventBatch::new(2, 2)
+        .ok_or_else(|| io::Error::other("native receipt storage unavailable"))?;
+    let expected = change(5, Filter::Read);
+
+    assert!(native.stage_receipt(1, expected, 0, true).is_none());
+    assert!(native.stage_receipt(0, expected, 0, true).is_some());
+    assert!(native.stage_receipt(1, expected, 0, true).is_some());
+    assert_eq!(native.receipt(0, 2, expected), FilterApply::Applied);
+    Ok(())
 }
 
 fn push(

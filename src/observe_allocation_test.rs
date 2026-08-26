@@ -44,7 +44,7 @@ fn recovery_retains_exactly_one_bounded_allocation() -> Result<(), Box<dyn StdEr
             pending.len(),
             false,
             None,
-            &outcomes,
+            outcomes,
             Some(native_error),
         ));
     });

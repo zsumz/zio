@@ -47,7 +47,7 @@ fn recovery_failure_preserves_translated_resource_and_wake_events() -> Result<()
         pending.len(),
         true,
         Some(Key::new(99)),
-        &outcomes,
+        outcomes,
         Some(io::Error::from_raw_os_error(5)),
     );
     let failure = recovery(result)?;
@@ -155,7 +155,7 @@ fn incomplete_recovery_outcomes_fail_before_observation_or_state_change()
         pending.len(),
         false,
         None,
-        &[outcome(first_id, CommitStatus::Applied)],
+        [outcome(first_id, CommitStatus::Applied)],
         None,
     );
 
@@ -184,7 +184,7 @@ fn recovery_source_presence_matches_degraded_outcomes() -> Result<(), Box<dyn St
             1,
             false,
             None,
-            &[outcome(registration, commit)],
+            [outcome(registration, commit)],
             error.map(io::Error::from_raw_os_error),
         );
         assert!(matches!(result, Err(Error::Invariant)));
@@ -209,7 +209,7 @@ fn finish_round(
         1,
         false,
         None,
-        &[outcome(registration, commit)],
+        [outcome(registration, commit)],
         error.map(io::Error::from_raw_os_error),
     );
     assert_eq!(

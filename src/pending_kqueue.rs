@@ -1,10 +1,12 @@
-//! Touched-slot coalescing for split kqueue filter observations.
+//! Sparse-slot coalescing in first-observation order for kqueue filters.
 
 #![cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
 
 use core::num::NonZeroUsize;
 
 use crate::{Error, Key, Readiness, RegistrationId};
+
+const EMPTY: u32 = u32::MAX;
 
 /// One logical resource observation in first-native-observation order.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -18,8 +20,7 @@ pub(crate) struct PendingResource {
 pub(crate) struct KqueuePending {
     capacity: NonZeroUsize,
     entries: Vec<PendingResource>,
-    by_slot: Box<[Option<(RegistrationId, usize)>]>,
-    touched: Vec<usize>,
+    by_slot: Box<[u32]>,
 }
 
 impl KqueuePending {
@@ -36,29 +37,35 @@ impl KqueuePending {
             .map_err(|_| Error::Capacity {
                 limit: registrations.get(),
             })?;
-        by_slot.resize(registrations.get(), None);
-        let touched_capacity = capacity.get().min(registrations.get());
-        let mut touched = Vec::new();
-        touched
-            .try_reserve_exact(touched_capacity)
-            .map_err(|_| Error::Capacity {
-                limit: touched_capacity,
-            })?;
+        by_slot.resize(registrations.get(), EMPTY);
         Ok(Self {
             capacity,
             entries,
             by_slot: by_slot.into_boxed_slice(),
-            touched,
         })
     }
 
     pub(crate) fn clear(&mut self) {
-        self.entries.clear();
-        for slot in self.touched.drain(..) {
-            if let Some(entry) = self.by_slot.get_mut(slot) {
-                *entry = None;
+        let mut valid = true;
+        for (entry_index, pending) in self.entries.iter().enumerate() {
+            let Ok((slot, _generation)) = crate::token::decode(pending.registration) else {
+                valid = false;
+                break;
+            };
+            let Some(index) = self.by_slot.get_mut(slot) else {
+                valid = false;
+                break;
+            };
+            if usize::try_from(*index).ok() != Some(entry_index) {
+                valid = false;
+                break;
             }
+            *index = EMPTY;
         }
+        if !valid {
+            self.by_slot.fill(EMPTY);
+        }
+        self.entries.clear();
     }
 
     pub(crate) fn add(
@@ -69,11 +76,12 @@ impl KqueuePending {
     ) -> Result<(), Error> {
         let slot = crate::token::decode(registration)?.0;
         let index = self.by_slot.get_mut(slot).ok_or(Error::Invariant)?;
-        if let Some((observed, entry_index)) = *index {
-            if observed != registration {
+        if *index != EMPTY {
+            let entry_index = usize::try_from(*index).map_err(|_| Error::Invariant)?;
+            let entry = self.entries.get_mut(entry_index).ok_or(Error::Invariant)?;
+            if entry.registration != registration {
                 return Err(Error::Invariant);
             }
-            let entry = self.entries.get_mut(entry_index).ok_or(Error::Invariant)?;
             entry.readiness = entry.readiness.union(readiness);
             return Ok(());
         }
@@ -81,13 +89,13 @@ impl KqueuePending {
             return Ok(());
         }
         let entry_index = self.entries.len();
+        let retained_index = u32::try_from(entry_index).map_err(|_| Error::Invariant)?;
         self.entries.push(PendingResource {
             registration,
             key,
             readiness,
         });
-        *index = Some((registration, entry_index));
-        self.touched.push(slot);
+        *index = retained_index;
         Ok(())
     }
 

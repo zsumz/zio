@@ -3,10 +3,110 @@
 use std::{io, os::fd::RawFd};
 
 use super::{
-    kqueue::empty_kevent,
-    kqueue_change::{Action, Change, Filter},
+    kqueue::{KeventBatch, Kqueue, empty_kevent},
+    kqueue_arena::{StageError, StagedChanges},
+    kqueue_change::{Action, Change, ChangeList, Filter, Receipt, Receipts},
     kqueue_disarm::{FilterApply, NativeApply},
 };
+
+impl KeventBatch {
+    pub(super) fn stage_changes<I>(
+        &mut self,
+        changes: I,
+    ) -> Result<StagedChanges<'_, libc::kevent>, NativeApply>
+    where
+        I: ExactSizeIterator<Item = Change>,
+    {
+        self.arena
+            .stage(
+                changes,
+                encode_change,
+                &mut self.observed,
+                &mut self.receipts,
+            )
+            .map_err(|error| match error {
+                StageError::Encode(source) => NativeApply::Unknown(source),
+                StageError::Bounds | StageError::Misreported => {
+                    NativeApply::Unknown(protocol_error())
+                }
+            })
+    }
+
+    #[cfg(test)]
+    fn stage_test_receipt(&mut self, index: usize, event: libc::kevent) -> Option<()> {
+        if index > self.receipts {
+            return None;
+        }
+        self.arena.receipt_slot_mut(index)?.write(event);
+        self.receipts = self.receipts.max(index.checked_add(1)?);
+        Some(())
+    }
+}
+
+impl Kqueue {
+    pub(super) fn apply(&self, changes: &ChangeList) -> io::Result<Receipts> {
+        let changes = changes.as_slice();
+        let mut input = [empty_kevent(), empty_kevent()];
+        let mut output = [empty_kevent(), empty_kevent()];
+        for (destination, change) in input.iter_mut().zip(changes) {
+            *destination = encode_change(*change)?;
+        }
+        let mut receipts = Receipts::new(changes.len());
+        match self.submit_native(&input[..changes.len()], &mut output[..changes.len()]) {
+            NativeApply::AppliedWithoutReceipts => {
+                for (index, change) in changes.iter().copied().enumerate() {
+                    receipts.set(index, Receipt::new(change.action(), None))?;
+                }
+            }
+            NativeApply::Receipts(returned) if returned == changes.len() => {
+                for (index, change) in changes.iter().copied().enumerate() {
+                    let error = match decode_receipt(output.get(index), change) {
+                        FilterApply::Applied => None,
+                        FilterApply::NotApplied(code) => Some(code),
+                        FilterApply::AlreadyAbsent | FilterApply::Unknown(_) => {
+                            return Err(protocol_error());
+                        }
+                    };
+                    receipts.set(index, Receipt::new(change.action(), error))?;
+                }
+            }
+            NativeApply::Receipts(_) => return Err(protocol_error()),
+            NativeApply::Unknown(source) => return Err(source),
+        }
+        Ok(receipts)
+    }
+
+    pub(super) fn apply_batch<I>(&self, changes: I, batch: &mut KeventBatch) -> NativeApply
+    where
+        I: ExactSizeIterator<Item = Change>,
+    {
+        let staged = match batch.stage_changes(changes) {
+            Ok(staged) => staged,
+            Err(failure) => return failure,
+        };
+        self.submit_staged_native(staged)
+    }
+}
+
+#[cfg(test)]
+impl KeventBatch {
+    #[allow(
+        clippy::unnecessary_fallible_conversions,
+        reason = "macOS kevent data is isize while BSD targets use i64"
+    )]
+    pub(super) fn stage_receipt(
+        &mut self,
+        index: usize,
+        observed: Change,
+        error: i32,
+        marked: bool,
+    ) -> Option<()> {
+        let mut event = encode_change(observed).ok()?;
+        event.flags = if marked { libc::EV_ERROR } else { 0 };
+        event.data = error.try_into().ok()?;
+        self.stage_test_receipt(index, event)
+    }
+}
 
 pub(super) const fn target_applies_interrupted_changes() -> bool {
     #[cfg(any(target_os = "freebsd", target_os = "netbsd"))]
@@ -32,65 +132,6 @@ pub(super) fn classify_apply_error(
         NativeApply::AppliedWithoutReceipts
     } else {
         NativeApply::Unknown(error)
-    }
-}
-
-/// Retained native input and receipt storage for bulk changes.
-pub(super) struct KeventChangeBatch {
-    pub(super) input: Box<[libc::kevent]>,
-    pub(super) output: Box<[libc::kevent]>,
-}
-
-impl KeventChangeBatch {
-    pub(super) fn new(capacity: usize) -> Option<Self> {
-        #[cfg(not(target_os = "netbsd"))]
-        i32::try_from(capacity).ok()?;
-        Some(Self {
-            input: native_storage(capacity)?,
-            output: native_storage(capacity)?,
-        })
-    }
-
-    pub(super) fn receipt(&self, index: usize, returned: usize, expected: Change) -> FilterApply {
-        match decode_receipt(
-            self.output.get(index).filter(|_| index < returned),
-            expected,
-        ) {
-            FilterApply::NotApplied(code)
-                if code == libc::ENOENT && expected.action() == Action::Disable =>
-            {
-                FilterApply::AlreadyAbsent
-            }
-            outcome => outcome,
-        }
-    }
-
-    #[cfg(test)]
-    #[allow(
-        clippy::unnecessary_fallible_conversions,
-        reason = "macOS kevent data is isize while BSD targets use i64"
-    )]
-    pub(super) fn stage_receipt(
-        &mut self,
-        index: usize,
-        observed: Change,
-        error: i32,
-        marked: bool,
-    ) -> Option<()> {
-        let event = self.output.get_mut(index)?;
-        *event = encode_change(observed).ok()?;
-        event.flags = if marked { libc::EV_ERROR } else { 0 };
-        event.data = error.try_into().ok()?;
-        Some(())
-    }
-}
-
-impl std::fmt::Debug for KeventChangeBatch {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        formatter
-            .debug_struct("KeventChangeBatch")
-            .field("capacity", &self.input.len())
-            .finish_non_exhaustive()
     }
 }
 
@@ -157,9 +198,6 @@ pub(super) fn decode_receipt(event: Option<&libc::kevent>, expected: Change) -> 
     }
 }
 
-fn native_storage(capacity: usize) -> Option<Box<[libc::kevent]>> {
-    let mut events = Vec::new();
-    events.try_reserve_exact(capacity).ok()?;
-    events.resize_with(capacity, empty_kevent);
-    Some(events.into_boxed_slice())
+fn protocol_error() -> io::Error {
+    io::Error::from_raw_os_error(libc::EIO)
 }

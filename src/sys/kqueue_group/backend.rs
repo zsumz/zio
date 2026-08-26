@@ -18,8 +18,7 @@ use super::super::{
 use super::{
     kqueue::{KeventBatch, Kqueue},
     kqueue_change::{Action, Change, ChangeList, Filter},
-    kqueue_codec::KeventChangeBatch,
-    kqueue_disarm::{DisarmBatch, DisarmExecutor, FilterApply, NativeApply},
+    kqueue_disarm::{DisarmBatch, DisarmChanges, DisarmExecutor, FilterApply, NativeApply},
     kqueue_policy::{delete_descriptor, exact, modify_descriptor, register_descriptor},
 };
 
@@ -28,16 +27,14 @@ use super::{
 pub(crate) struct RawBatch {
     raw: KeventBatch,
     disarms: DisarmBatch,
-    native_changes: KeventChangeBatch,
 }
 
 impl RawBatch {
     fn new(event_capacity: usize, disarm_capacity: usize) -> Option<Self> {
         let native_capacity = disarm_capacity.checked_mul(2)?;
         Some(Self {
-            raw: KeventBatch::new(event_capacity)?,
+            raw: KeventBatch::new(event_capacity, native_capacity)?,
             disarms: DisarmBatch::new(disarm_capacity)?,
-            native_changes: KeventChangeBatch::new(native_capacity)?,
         })
     }
 
@@ -66,7 +63,9 @@ impl RawBatch {
         self.disarms.push(registration, descriptor, interest)
     }
 
-    pub(crate) fn disarm_outcomes(&self) -> &[RecoveryOutcome] {
+    pub(crate) fn disarm_outcomes(
+        &self,
+    ) -> impl Clone + ExactSizeIterator<Item = RecoveryOutcome> + '_ {
         self.disarms.outcomes()
     }
 }
@@ -91,7 +90,7 @@ pub(super) fn from_kqueue_event(event: super::kqueue_change::RawKevent) -> Readi
 }
 
 /// Clone-shared `EVFILT_USER` trigger for one kqueue.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub(crate) struct Wake {
     queue: Arc<Kqueue>,
 }
@@ -117,7 +116,7 @@ impl Backend {
         RawBatch::new(event_capacity, disarm_capacity)
     }
 
-    pub(crate) fn new() -> Result<(Self, Arc<Wake>), SetupFailure> {
+    pub(crate) fn new() -> Result<(Self, Wake), SetupFailure> {
         let queue = Arc::new(
             Kqueue::new().map_err(|source| SetupFailure::new(Operation::CreatePoller, source))?,
         );
@@ -128,9 +127,9 @@ impl Backend {
             .map_err(|source| SetupFailure::new(Operation::RegisterWaker, source))?;
         exact(&*queue, &changes, false)
             .map_err(|source| SetupFailure::new(Operation::RegisterWaker, source))?;
-        let wake = Arc::new(Wake {
+        let wake = Wake {
             queue: Arc::clone(&queue),
-        });
+        };
         Ok((Self { queue }, wake))
     }
 
@@ -187,7 +186,7 @@ impl Backend {
     pub(crate) fn submit_disarms(&self, batch: &mut RawBatch) -> io::Result<()> {
         let mut executor = NativeDisarmExecutor {
             queue: &self.queue,
-            native: &mut batch.native_changes,
+            raw: &mut batch.raw,
         };
         batch.disarms.submit(&mut executor)
     }
@@ -195,16 +194,16 @@ impl Backend {
 
 struct NativeDisarmExecutor<'a> {
     queue: &'a Kqueue,
-    native: &'a mut KeventChangeBatch,
+    raw: &'a mut KeventBatch,
 }
 
 impl DisarmExecutor for NativeDisarmExecutor<'_> {
-    fn apply(&mut self, changes: &[Change]) -> NativeApply {
-        self.queue.apply_batch(changes, self.native)
+    fn apply(&mut self, changes: DisarmChanges<'_>) -> NativeApply {
+        self.queue.apply_batch(changes, self.raw)
     }
 
     fn receipt(&self, index: usize, returned: usize, expected: Change) -> FilterApply {
-        self.native.receipt(index, returned, expected)
+        self.raw.receipt(index, returned, expected)
     }
 }
 

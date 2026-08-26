@@ -31,6 +31,8 @@
 #![deny(unsafe_code)]
 
 mod binding;
+#[cfg(test)]
+mod construction_allocation_test;
 mod error;
 mod event;
 mod interest;
@@ -46,6 +48,8 @@ mod observe_test;
 mod observe_validation_test;
 mod pending;
 mod pending_kqueue;
+#[cfg(test)]
+mod pending_kqueue_test;
 mod poll;
 mod registration;
 mod registration_ops;

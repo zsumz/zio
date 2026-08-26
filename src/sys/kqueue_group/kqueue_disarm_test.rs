@@ -2,13 +2,13 @@
 
 use std::{io, os::fd::AsRawFd, os::unix::net::UnixStream};
 
-use crate::{CommitStatus, Interest, RecoveryOutcome, RegistrationId};
+use crate::{CommitStatus, Interest, RegistrationId};
 
 use super::{
-    kqueue::Kqueue,
+    kqueue::{KeventBatch, Kqueue},
     kqueue_change::{Action, Change, Filter},
-    kqueue_codec::{KeventChangeBatch, classify_apply_error, missing_entry_error_code},
-    kqueue_disarm::{DisarmBatch, DisarmExecutor, FilterApply, NativeApply},
+    kqueue_codec::{classify_apply_error, missing_entry_error_code},
+    kqueue_disarm::{DisarmBatch, DisarmChanges, DisarmExecutor, FilterApply, NativeApply},
 };
 
 #[derive(Clone, Copy, Debug)]
@@ -37,7 +37,7 @@ impl Script {
 }
 
 impl DisarmExecutor for Script {
-    fn apply(&mut self, _changes: &[Change]) -> NativeApply {
+    fn apply(&mut self, _changes: DisarmChanges<'_>) -> NativeApply {
         self.submissions += 1;
         match self.apply {
             ScriptApply::Receipts(returned) => NativeApply::Receipts(returned),
@@ -139,7 +139,7 @@ fn short_receipt_sets_are_unknown() {
 #[test]
 fn malformed_receipts_are_unknown() {
     let expected = read_change(5);
-    let native = KeventChangeBatch::new(1);
+    let native = KeventBatch::new(1, 1);
     assert!(native.is_some());
     let Some(mut native) = native else {
         return;
@@ -151,7 +151,7 @@ fn malformed_receipts_are_unknown() {
 #[test]
 fn mismatched_receipts_are_unknown() {
     let expected = read_change(5);
-    let native = KeventChangeBatch::new(1);
+    let native = KeventBatch::new(1, 1);
     assert!(native.is_some());
     let Some(mut native) = native else {
         return;
@@ -165,11 +165,11 @@ fn missing_native_disable_is_classified_as_already_absent() -> io::Result<()> {
     let (source, _peer) = UnixStream::pair()?;
     let queue = Kqueue::new()?;
     let expected = read_change(source.as_raw_fd());
-    let mut native = KeventChangeBatch::new(1)
+    let mut native = KeventBatch::new(1, 1)
         .ok_or_else(|| io::Error::other("native receipt storage unavailable"))?;
 
     assert!(matches!(
-        queue.apply_batch(&[expected], &mut native),
+        queue.apply_batch([expected].into_iter(), &mut native),
         NativeApply::Receipts(1)
     ));
     assert_eq!(native.receipt(0, 1, expected), FilterApply::AlreadyAbsent);
@@ -291,8 +291,7 @@ fn read_change(descriptor: i32) -> Change {
 fn assert_statuses(batch: &DisarmBatch, expected: &[CommitStatus]) {
     let actual = batch
         .outcomes()
-        .iter()
-        .map(RecoveryOutcome::commit)
+        .map(|outcome| outcome.commit())
         .collect::<Vec<_>>();
     assert_eq!(actual, expected);
 }

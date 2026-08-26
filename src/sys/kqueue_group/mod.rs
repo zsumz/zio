@@ -6,6 +6,7 @@ mod backend;
 #[cfg(test)]
 mod backend_test;
 mod kqueue;
+mod kqueue_arena;
 mod kqueue_change;
 mod kqueue_codec;
 mod kqueue_disarm;
