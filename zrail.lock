@@ -243,7 +243,7 @@ sha256 = "45e07033c8cd89ed400ee4e96ec608e338e89822233abd6e56c85040ece66520"
 
 [[gate.input]]
 path = "scripts/rehearse-release"
-sha256 = "4a4bdc21ee0d2745b95ce7eda9e518ef2b1082b476115670defd9c7c3f2c62a7"
+sha256 = "eed110b06c02217b340912f1c9c913d380c18fa5e9868bd6984a2a04e08cfec2"
 
 [[gate.input]]
 path = "zio-logo.svg"
@@ -434,7 +434,7 @@ sha256 = "279d77167cec5426fa80f457cd066dc74a360fbe4e2816f4f3fa01487a918fdc"
 
 [[gate.input]]
 path = "scripts/rehearse-release"
-sha256 = "4a4bdc21ee0d2745b95ce7eda9e518ef2b1082b476115670defd9c7c3f2c62a7"
+sha256 = "eed110b06c02217b340912f1c9c913d380c18fa5e9868bd6984a2a04e08cfec2"
 
 [[gate.input]]
 path = "zcheck.toml"

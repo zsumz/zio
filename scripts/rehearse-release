@@ -54,7 +54,7 @@ tar -xzf "$archive" -C "$rehearsal_dir"
 package_dir="$rehearsal_dir/$package_name"
 jq -e \
   --arg head "$head_sha" \
-  '.git.sha1 == $head and .git.dirty == false' \
+  '.git.sha1 == $head and ((.git | has("dirty") | not) or .git.dirty == false)' \
   "$package_dir/.cargo_vcs_info.json" > /dev/null
 
 cargo +1.88.0 test \
