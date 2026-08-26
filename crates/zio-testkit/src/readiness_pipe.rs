@@ -4,7 +4,7 @@ use std::io::Write;
 
 use crate::readiness_expectation::expected_for;
 use crate::readiness_pending::observe_pending_eof;
-use crate::readiness_verify::{mismatch, observe, observed};
+use crate::readiness_verify::{mismatch, observe_after_register, observed};
 use crate::{ReadinessCheck, ReadinessFailure, ReadinessScenario};
 
 const PAYLOAD: &[u8] = b"zio-pipe";
@@ -28,12 +28,14 @@ pub(crate) fn pending_eof(scenario: ReadinessScenario) -> Result<(), ReadinessFa
 pub(crate) fn reader_closed(scenario: ReadinessScenario) -> Result<(), ReadinessFailure> {
     let (peer, mut source) = std::io::pipe()
         .map_err(|error| observed(scenario, ReadinessCheck::Setup, "anonymous pipe", &error))?;
-    drop(peer);
-
-    observe(
+    observe_after_register(
         &mut source,
         scenario,
         expected_for(scenario),
+        || {
+            drop(peer);
+            Ok(())
+        },
         |source| match source.write(b"closed") {
             Err(error) if error.kind() == std::io::ErrorKind::BrokenPipe => Ok(()),
             actual => mismatch(

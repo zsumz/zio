@@ -16,19 +16,29 @@ const KEY: Key = Key::new(6_001);
 const DEADLINE: Duration = Duration::from_secs(1);
 
 #[test]
-fn refused_connect_level_reports_error_and_socket_cause() -> Result<(), Box<dyn std::error::Error>>
+fn refused_connect_level_reports_native_terminal_evidence() -> Result<(), Box<dyn std::error::Error>>
 {
     verify_refused_connect(Mode::Level)
 }
 
 #[test]
-fn refused_connect_one_shot_reports_error_and_socket_cause_and_disarms()
+fn refused_connect_one_shot_reports_native_terminal_evidence()
 -> Result<(), Box<dyn std::error::Error>> {
     verify_refused_connect(Mode::OneShot)
 }
 
 fn verify_refused_connect(mode: Mode) -> Result<(), Box<dyn std::error::Error>> {
-    let stream = refused_stream()?;
+    let stream = match refused_stream()? {
+        RefusedConnect::Pending(stream) => stream,
+        RefusedConnect::Immediate(error) => {
+            if error.kind() == io::ErrorKind::ConnectionRefused
+                && error.raw_os_error() == Some(libc::ECONNREFUSED)
+            {
+                return Ok(());
+            }
+            return Err(failure("immediate ECONNREFUSED", error).into());
+        }
+    };
     let mut poll = zio::Poll::with_capacity(1, 1)?;
     let registration = poll.register(&stream, KEY, Interest::WRITABLE, mode)?;
     let mut events = poll.events()?;
@@ -75,14 +85,22 @@ fn verify_refused_connect(mode: Mode) -> Result<(), Box<dyn std::error::Error>> 
     Ok(())
 }
 
-fn refused_stream() -> io::Result<Socket> {
+enum RefusedConnect {
+    Pending(Socket),
+    Immediate(io::Error),
+}
+
+fn refused_stream() -> io::Result<RefusedConnect> {
     let listener = TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, 0))?;
     let address = listener.local_addr()?;
     drop(listener);
     let socket = Socket::new(Domain::IPV4, Type::STREAM, Some(Protocol::TCP))?;
     socket.set_nonblocking(true)?;
     match socket.connect(&address.into()) {
-        Err(error) if connect_is_in_progress(&error) => Ok(socket),
+        Err(error) if connect_is_in_progress(&error) => Ok(RefusedConnect::Pending(socket)),
+        Err(error) if error.kind() == io::ErrorKind::ConnectionRefused => {
+            Ok(RefusedConnect::Immediate(error))
+        }
         Ok(()) => Err(io::Error::other(
             "refused-connect fixture unexpectedly connected",
         )),

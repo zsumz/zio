@@ -28,6 +28,21 @@ where
     F: AsFd + ?Sized,
     V: FnOnce(&mut F) -> Result<(), ReadinessFailure>,
 {
+    observe_after_register(source, scenario, expected, || Ok(()), verify_operation)
+}
+
+pub(crate) fn observe_after_register<F, A, V>(
+    source: &mut F,
+    scenario: ReadinessScenario,
+    expected: ExpectedReadiness,
+    activate: A,
+    verify_operation: V,
+) -> Result<(), ReadinessFailure>
+where
+    F: AsFd + ?Sized,
+    A: FnOnce() -> Result<(), ReadinessFailure>,
+    V: FnOnce(&mut F) -> Result<(), ReadinessFailure>,
+{
     let mut poll = zio::Poll::with_capacity(4, 1).map_err(|error| {
         observed(
             scenario,
@@ -50,17 +65,19 @@ where
         .events()
         .map_err(|error| observed(scenario, ReadinessCheck::Setup, "event destination", &error))?;
 
-    let result = observe_registered(
-        Observation {
-            poll: &mut poll,
-            events: &mut events,
-            registration: &registration,
-            scenario,
-            expected,
-        },
-        source,
-        verify_operation,
-    );
+    let result = activate().and_then(|()| {
+        observe_registered(
+            Observation {
+                poll: &mut poll,
+                events: &mut events,
+                registration: &registration,
+                scenario,
+                expected,
+            },
+            source,
+            verify_operation,
+        )
+    });
     let cleanup = poll.delete(registration).map_err(|error| {
         observed(
             scenario,
