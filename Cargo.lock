@@ -145,6 +145,7 @@ dependencies = [
  "allocation-counter",
  "libc",
  "mio",
+ "rustix",
  "socket2",
 ]
 

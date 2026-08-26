@@ -9,6 +9,17 @@ use super::{
     kqueue_disarm::{FilterApply, NativeApply},
 };
 
+/// Initialized native registration input that never requests a receipt.
+#[repr(transparent)]
+pub(super) struct NativeChange(libc::kevent);
+
+#[cfg(test)]
+impl NativeChange {
+    pub(super) fn requests_receipt(&self) -> bool {
+        has_flag(u64::from(self.0.flags), u64::from(libc::EV_RECEIPT))
+    }
+}
+
 impl KeventBatch {
     pub(super) fn stage_changes<I>(
         &mut self,
@@ -136,6 +147,14 @@ pub(super) fn classify_apply_error(
 }
 
 pub(super) fn encode_change(change: Change) -> io::Result<libc::kevent> {
+    encode_change_with_receipt(change, true)
+}
+
+pub(super) fn encode_registration_change(change: Change) -> io::Result<NativeChange> {
+    encode_change_with_receipt(change, false).map(NativeChange)
+}
+
+fn encode_change_with_receipt(change: Change, include_receipt: bool) -> io::Result<libc::kevent> {
     let mut event = empty_kevent();
     event.ident = libc::uintptr_t::try_from(change.ident())
         .map_err(|_| io::Error::from_raw_os_error(libc::EINVAL))?;
@@ -145,7 +164,7 @@ pub(super) fn encode_change(change: Change) -> io::Result<libc::kevent> {
         Filter::User => libc::EVFILT_USER,
         Filter::Unknown => 0,
     };
-    let receipt = libc::EV_RECEIPT;
+    let receipt = if include_receipt { libc::EV_RECEIPT } else { 0 };
     event.flags = match change.action() {
         Action::AddEnabled => libc::EV_ADD | libc::EV_ENABLE | receipt,
         Action::AddDisabled => libc::EV_ADD | libc::EV_DISABLE | receipt,
@@ -179,6 +198,18 @@ pub(super) fn ident(event: &libc::kevent) -> Option<RawFd> {
 
 pub(super) fn has_flag(flags: u64, expected: u64) -> bool {
     flags & expected != 0
+}
+
+pub(super) fn has_eof(flags: u64) -> bool {
+    has_flag(flags, u64::from(libc::EV_EOF))
+}
+
+pub(super) fn has_native_error(flags: u64) -> bool {
+    has_flag(flags, u64::from(libc::EV_ERROR))
+}
+
+pub(super) fn is_missing_disable(code: i32, expected: Change) -> bool {
+    code == libc::ENOENT && expected.action() == Action::Disable
 }
 
 pub(super) fn decode_receipt(event: Option<&libc::kevent>, expected: Change) -> FilterApply {

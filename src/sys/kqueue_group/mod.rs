@@ -7,6 +7,7 @@ mod backend;
 mod backend_test;
 mod kqueue;
 mod kqueue_arena;
+mod kqueue_batch;
 mod kqueue_change;
 mod kqueue_codec;
 #[cfg(test)]
@@ -25,6 +26,11 @@ mod kqueue_disarm_test;
 mod kqueue_policy;
 #[cfg(test)]
 mod kqueue_policy_test;
+mod kqueue_register;
+#[cfg(test)]
+mod kqueue_register_native_test;
+#[cfg(test)]
+mod kqueue_register_policy_test;
 mod kqueue_timeout;
 
 pub(crate) use backend::{Backend, RawBatch, Wake};

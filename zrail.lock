@@ -2,18 +2,18 @@
 schema = 2
 semantics = 3
 producer = "0.0.3-rc.4"
-contract_sha256 = "52c130488630a37aa708489a3f45ffcaf8ab432fb28ea0da4d66ad13eefc4e0d"
+contract_sha256 = "08db5fe19a0353b6eb150b05b72f0d330d0e5beb2a9e9411d98349dc054bfb41"
 
 [analysis]
-inventory_sha256 = "02a45b3afebebc2161f92b199fa16b4affecc90a9f87f3ac0a1bee7e179704d9"
+inventory_sha256 = "4f5afd30f6cea7eef25d80bd628250fbd2d205a47d6bc539c90ce6b318273e5d"
 exclusions_sha256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-cargo_lock_sha256 = "7a3d7c32284a9a0f8b16489476c27fb9e41b8d3ded6c77cebac146bcde4d97da"
+cargo_lock_sha256 = "c57d02582afe8069129844f4f07aa867b3a1a9391d77b4be4e5ca0013a6d1687"
 packages = 3
 targets = 31
-physical_rust_files = 211
-base_source_contexts = 359
+physical_rust_files = 218
+base_source_contexts = 371
 derived_source_contexts = 0
-source_facts = 60336
+source_facts = 62135
 projection_queries = 0
 projected_facts = 0
 unresolved_bindings = 0
@@ -21,7 +21,7 @@ analyzer_semantics = 3
 
 [[analysis.contract_source]]
 path = "zrail.toml"
-sha256 = "54cb6b45dda740131983d0dea88ba3ab22e81048d88c8174aca4ad03ec9389db"
+sha256 = "900c33361dc9593b2447fd0f9a519b213997a63b03b371106923a9bd884e8e71"
 
 [[package]]
 name = "zio"
@@ -71,6 +71,23 @@ features = [
 [package.dependency.source]
 kind = "registry"
 requirement = "=1.2.2"
+
+[[package.dependency]]
+alias = "rustix"
+name = "rustix"
+kind = "normal"
+scope = "external"
+target = 'cfg(target_os = "linux")'
+optional = false
+default_features = false
+features = [
+    "event",
+    "std",
+]
+
+[package.dependency.source]
+kind = "registry"
+requirement = "1.1.4"
 
 [[package.dependency]]
 alias = "socket2"
@@ -187,11 +204,11 @@ sha256 = "dfd7abfe8fa7859a53b32cbb5da32f1fbe0f969d0df6c818878573b73d4e690d"
 
 [[gate.input]]
 path = "Cargo.lock"
-sha256 = "7a3d7c32284a9a0f8b16489476c27fb9e41b8d3ded6c77cebac146bcde4d97da"
+sha256 = "c57d02582afe8069129844f4f07aa867b3a1a9391d77b4be4e5ca0013a6d1687"
 
 [[gate.input]]
 path = "Cargo.toml"
-sha256 = "d19f2320ca54f6077140e3f2a8f01d70bc0c21a1b9b89d8419b9a563242e38f2"
+sha256 = "3747199745ee72e0ab9e047de6de4a2ea1605555d30cad47946b076475417371"
 
 [[gate.input]]
 path = "LICENSE"
@@ -231,7 +248,7 @@ sha256 = "cc7cf806384969f8d290c1fa828184d080b7dc49cc7f4da548f1ba41802e506c"
 
 [[gate.input]]
 path = "docs/qualification.md"
-sha256 = "4d0bcea68b80d7b7bd8bb5ddc5020658af6eacfc03ec7f10f633a247b3471f58"
+sha256 = "4437ac6e4822042cb2080634c94d74973db8be0e24d19aa525e231e646b9ed3e"
 
 [[gate.input]]
 path = "rust-toolchain.toml"
@@ -243,7 +260,7 @@ sha256 = "45e07033c8cd89ed400ee4e96ec608e338e89822233abd6e56c85040ece66520"
 
 [[gate.input]]
 path = "scripts/rehearse-release"
-sha256 = "eed110b06c02217b340912f1c9c913d380c18fa5e9868bd6984a2a04e08cfec2"
+sha256 = "e96b636b579b86f24680452189a9d01dd0b31e1e9a2114751dffad4de00f1f06"
 
 [[gate.input]]
 path = "zio-logo.svg"
@@ -269,11 +286,11 @@ sha256 = "9083659646fbb35ccaeef48df25d9c1a3ad7fe58b1b828a46782dc51d44752e7"
 
 [[gate.input]]
 path = "Cargo.lock"
-sha256 = "7a3d7c32284a9a0f8b16489476c27fb9e41b8d3ded6c77cebac146bcde4d97da"
+sha256 = "c57d02582afe8069129844f4f07aa867b3a1a9391d77b4be4e5ca0013a6d1687"
 
 [[gate.input]]
 path = "Cargo.toml"
-sha256 = "d19f2320ca54f6077140e3f2a8f01d70bc0c21a1b9b89d8419b9a563242e38f2"
+sha256 = "3747199745ee72e0ab9e047de6de4a2ea1605555d30cad47946b076475417371"
 
 [[gate.input]]
 path = "crates/zio-qualify/Cargo.toml"
@@ -502,11 +519,11 @@ sha256 = "48a6da6d840d8c6e32e4426fe07eef85823bd0c26676a41e3ba287e5afdc9ac6"
 
 [[gate.input]]
 path = "Cargo.lock"
-sha256 = "7a3d7c32284a9a0f8b16489476c27fb9e41b8d3ded6c77cebac146bcde4d97da"
+sha256 = "c57d02582afe8069129844f4f07aa867b3a1a9391d77b4be4e5ca0013a6d1687"
 
 [[gate.input]]
 path = "Cargo.toml"
-sha256 = "d19f2320ca54f6077140e3f2a8f01d70bc0c21a1b9b89d8419b9a563242e38f2"
+sha256 = "3747199745ee72e0ab9e047de6de4a2ea1605555d30cad47946b076475417371"
 
 [[gate.input]]
 path = "LICENSE"
@@ -526,7 +543,7 @@ sha256 = "cc7cf806384969f8d290c1fa828184d080b7dc49cc7f4da548f1ba41802e506c"
 
 [[gate.input]]
 path = "docs/qualification.md"
-sha256 = "4d0bcea68b80d7b7bd8bb5ddc5020658af6eacfc03ec7f10f633a247b3471f58"
+sha256 = "4437ac6e4822042cb2080634c94d74973db8be0e24d19aa525e231e646b9ed3e"
 
 [[gate.input]]
 path = "rust-toolchain.toml"
@@ -534,7 +551,7 @@ sha256 = "279d77167cec5426fa80f457cd066dc74a360fbe4e2816f4f3fa01487a918fdc"
 
 [[gate.input]]
 path = "scripts/rehearse-release"
-sha256 = "eed110b06c02217b340912f1c9c913d380c18fa5e9868bd6984a2a04e08cfec2"
+sha256 = "e96b636b579b86f24680452189a9d01dd0b31e1e9a2114751dffad4de00f1f06"
 
 [[gate.input]]
 path = "zcheck.toml"
@@ -547,7 +564,7 @@ sha256 = "e63c2cd05f6e85cfa28391cc966a29530ec95f038e85f10707ea4df1fb94e390"
 [[ratchet]]
 rule = "rust.file-size"
 target = "src/sys/linux_group/epoll.rs"
-value = 276
+value = 266
 
 [[ratchet]]
 rule = "rust.hygiene.unsafe"
@@ -587,7 +604,7 @@ value = 7
 [[ratchet]]
 rule = "rust.hygiene.unsafe"
 target = "src/sys/linux_group/epoll.rs"
-value = 10
+value = 6
 
 [[ratchet]]
 rule = "rust.hygiene.unsafe"

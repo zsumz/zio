@@ -12,7 +12,7 @@ use std::{
     fs::File,
     mem::size_of,
     num::NonZeroUsize,
-    os::fd::{AsFd, OwnedFd},
+    os::fd::{AsFd, AsRawFd, OwnedFd},
 };
 
 use crate::{
@@ -24,6 +24,19 @@ use crate::{
 use super::{RegistrationTable, slot::Slot};
 
 impl RegistrationTable {
+    pub(crate) fn reserve_descriptor(
+        &mut self,
+        descriptor: Descriptor,
+        key: Key,
+        interest: Interest,
+        mode: Mode,
+    ) -> Result<RegistrationId, Error> {
+        let permit = self.check_reservable()?;
+        let reservation = permit.reserve(descriptor, key, interest, mode)?;
+        let id = reservation.id();
+        Ok(reservation.keep(id))
+    }
+
     pub(crate) fn reserve(
         &mut self,
         descriptor: OwnedFd,
@@ -32,6 +45,10 @@ impl RegistrationTable {
         mode: Mode,
     ) -> Result<RegistrationId, Error> {
         self.reserve_descriptor(Descriptor::owned(descriptor), key, interest, mode)
+    }
+
+    pub(crate) fn retire(&mut self, id: RegistrationId) -> Result<(), Error> {
+        self.prepare_retire(id, true)?.retire()
     }
 }
 
@@ -99,6 +116,30 @@ fn reserve_and_retire_remain_allocation_free() -> Result<(), Box<dyn StdError>> 
     let (reused_index, reused_generation) = decode(reused)?;
     assert_eq!(reused_index, retired_index);
     assert_eq!(reused_generation.get(), retired_generation.get() + 1);
+    Ok(())
+}
+
+#[test]
+fn reservation_carries_the_inserted_descriptor_and_retire_proof() -> Result<(), Box<dyn StdError>> {
+    let mut table = table(1)?;
+    let source = File::open("/dev/null")?;
+    let descriptor = source.as_fd().try_clone_to_owned()?;
+    let raw_descriptor = descriptor.as_raw_fd();
+    let permit = table.check_reservable()?;
+    let reservation = permit.reserve(
+        Descriptor::owned(descriptor),
+        Key::new(1),
+        Interest::READABLE,
+        Mode::Level,
+    )?;
+    let id = reservation.id();
+
+    assert_eq!(reservation.descriptor()?.as_raw_fd(), raw_descriptor);
+    reservation.retire()?;
+    assert!(matches!(
+        table.state(id),
+        Err(Error::Stale { registration }) if registration == id
+    ));
     Ok(())
 }
 

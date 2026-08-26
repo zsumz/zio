@@ -82,7 +82,7 @@ impl Backend {
         interest: Interest,
         mode: Mode,
     ) -> Result<(), MutationFailure> {
-        let flags = epoll_flags(token, interest, mode)?;
+        let flags = epoll_flags(token, interest, mode);
         self.epoll.add(source, token, flags).map_err(not_applied)
     }
 
@@ -100,7 +100,7 @@ impl Backend {
         desired_interest: Interest,
         desired_mode: Mode,
     ) -> Result<(), MutationFailure> {
-        let flags = epoll_flags(token, desired_interest, desired_mode)?;
+        let flags = epoll_flags(token, desired_interest, desired_mode);
         self.epoll.modify(source, token, flags).map_err(not_applied)
     }
 
@@ -122,12 +122,10 @@ impl Backend {
     }
 }
 
-fn epoll_flags(token: u64, interest: Interest, mode: Mode) -> Result<u32, MutationFailure> {
-    if token == 0 || interest.is_empty() {
-        return Err(invalid_mutation(
-            "registration token and interest must be nonzero",
-        ));
-    }
+#[inline]
+fn epoll_flags(token: u64, interest: Interest, mode: Mode) -> u32 {
+    debug_assert_ne!(token, 0);
+    debug_assert!(!interest.is_empty());
     let mut flags = libc::EPOLLRDHUP.cast_unsigned();
     if interest.is_readable() {
         flags |= libc::EPOLLIN.cast_unsigned();
@@ -138,7 +136,7 @@ fn epoll_flags(token: u64, interest: Interest, mode: Mode) -> Result<u32, Mutati
     if mode == Mode::OneShot {
         flags |= libc::EPOLLONESHOT.cast_unsigned();
     }
-    Ok(flags)
+    flags
 }
 
 #[inline]
@@ -195,8 +193,4 @@ pub(super) fn epoll_timeout(wait: Wait) -> libc::c_int {
 
 fn not_applied(source: io::Error) -> MutationFailure {
     MutationFailure::new(CommitStatus::NotApplied, source)
-}
-
-fn invalid_mutation(message: &'static str) -> MutationFailure {
-    not_applied(io::Error::new(io::ErrorKind::InvalidInput, message))
 }

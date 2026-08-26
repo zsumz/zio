@@ -8,7 +8,7 @@ use std::{
 
 use crate::{
     ArmState, Interest, Mode, Readiness, RecoveryOutcome, RegistrationId, RegistrationState, Wait,
-    error::{CommitStatus, Operation},
+    error::Operation,
 };
 
 use super::super::{
@@ -140,7 +140,8 @@ impl Backend {
         interest: Interest,
         _mode: Mode,
     ) -> Result<(), MutationFailure> {
-        validate(token, interest)?;
+        debug_assert_ne!(token, 0);
+        debug_assert!(!interest.is_empty());
         register_descriptor(&*self.queue, source.as_raw_fd(), token, interest)
     }
 
@@ -158,7 +159,8 @@ impl Backend {
         desired_interest: Interest,
         desired_mode: Mode,
     ) -> Result<(), MutationFailure> {
-        validate(token, desired_interest)?;
+        debug_assert_ne!(token, 0);
+        debug_assert!(!desired_interest.is_empty());
         modify_descriptor(
             &*self.queue,
             source.as_raw_fd(),
@@ -206,21 +208,4 @@ impl DisarmExecutor for NativeDisarmExecutor<'_> {
     fn receipt(&self, index: usize, returned: usize, expected: Change) -> FilterApply {
         self.raw.receipt(index, returned, expected)
     }
-}
-
-fn validate(token: u64, interest: Interest) -> Result<(), MutationFailure> {
-    if token == 0 || interest.is_empty() {
-        Err(invalid_mutation(
-            "registration token and interest must be nonzero",
-        ))
-    } else {
-        Ok(())
-    }
-}
-
-fn invalid_mutation(message: &'static str) -> MutationFailure {
-    MutationFailure::new(
-        CommitStatus::NotApplied,
-        io::Error::new(io::ErrorKind::InvalidInput, message),
-    )
 }

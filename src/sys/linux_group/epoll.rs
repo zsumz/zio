@@ -8,10 +8,32 @@
 use std::{
     io,
     mem::{align_of, needs_drop, size_of},
-    os::fd::{AsRawFd, BorrowedFd, FromRawFd, OwnedFd},
+    os::fd::{AsRawFd, BorrowedFd, OwnedFd},
 };
 
+use rustix::event::epoll;
+
 use crate::{Error, Event, Events, Key};
+
+#[cfg(test)]
+pub(super) const fn epoll_test_registration_flags(one_shot: bool) -> u32 {
+    let flags = libc::EPOLLIN.cast_unsigned() | libc::EPOLLRDHUP.cast_unsigned();
+    if one_shot {
+        flags | libc::EPOLLONESHOT.cast_unsigned()
+    } else {
+        flags
+    }
+}
+
+#[cfg(test)]
+pub(super) const fn epoll_test_permission_error() -> i32 {
+    libc::EPERM
+}
+
+#[cfg(test)]
+pub(super) const fn epoll_test_missing_error() -> i32 {
+    libc::ENOENT
+}
 
 /// Fixed-capacity state for raw observations staged in caller event storage.
 pub(super) struct EpollBatch {
@@ -173,36 +195,36 @@ pub(super) struct Epoll {
 
 impl Epoll {
     pub(super) fn new() -> io::Result<Self> {
-        // SAFETY: the valid flag either returns a fresh descriptor or failure.
-        let descriptor = unsafe { libc::epoll_create1(libc::EPOLL_CLOEXEC) };
-        if descriptor < 0 {
-            return Err(io::Error::last_os_error());
-        }
-        // SAFETY: the successful call transferred one fresh descriptor.
-        let descriptor = unsafe { OwnedFd::from_raw_fd(descriptor) };
+        let descriptor = epoll::create(epoll::CreateFlags::CLOEXEC)?;
         Ok(Self { descriptor })
     }
 
+    #[inline]
     pub(super) fn add(&self, source: BorrowedFd<'_>, token: u64, flags: u32) -> io::Result<()> {
-        self.control(libc::EPOLL_CTL_ADD, source, token, flags)
+        epoll::add(
+            &self.descriptor,
+            source,
+            epoll::EventData::new_u64(token),
+            epoll::EventFlags::from_bits_retain(flags),
+        )?;
+        Ok(())
     }
 
+    #[inline]
     pub(super) fn modify(&self, source: BorrowedFd<'_>, token: u64, flags: u32) -> io::Result<()> {
-        self.control(libc::EPOLL_CTL_MOD, source, token, flags)
+        epoll::modify(
+            &self.descriptor,
+            source,
+            epoll::EventData::new_u64(token),
+            epoll::EventFlags::from_bits_retain(flags),
+        )?;
+        Ok(())
     }
 
+    #[inline]
     pub(super) fn delete(&self, source: BorrowedFd<'_>) -> io::Result<()> {
-        // SAFETY: both descriptors are live; Linux ignores the event pointer
-        // for EPOLL_CTL_DEL.
-        let result = unsafe {
-            libc::epoll_ctl(
-                self.descriptor.as_raw_fd(),
-                libc::EPOLL_CTL_DEL,
-                source.as_raw_fd(),
-                core::ptr::null_mut(),
-            )
-        };
-        syscall_result(result)
+        epoll::delete(&self.descriptor, source)?;
+        Ok(())
     }
 
     pub(super) fn wait(
@@ -240,37 +262,5 @@ impl Epoll {
             batch.storage_address = storage.as_ptr().addr();
             Ok(observed)
         }
-    }
-
-    fn control(
-        &self,
-        operation: libc::c_int,
-        source: BorrowedFd<'_>,
-        token: u64,
-        flags: u32,
-    ) -> io::Result<()> {
-        let mut event = libc::epoll_event {
-            events: flags,
-            u64: token,
-        };
-        // SAFETY: both descriptors and the initialized event remain live for
-        // the synchronous syscall.
-        let result = unsafe {
-            libc::epoll_ctl(
-                self.descriptor.as_raw_fd(),
-                operation,
-                source.as_raw_fd(),
-                &raw mut event,
-            )
-        };
-        syscall_result(result)
-    }
-}
-
-fn syscall_result(result: libc::c_int) -> io::Result<()> {
-    if result == 0 {
-        Ok(())
-    } else {
-        Err(io::Error::last_os_error())
     }
 }

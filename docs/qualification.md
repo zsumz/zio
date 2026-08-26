@@ -61,7 +61,8 @@ rustdoc, and an independent consumer. It does not publish or tag.
 
 ## Dependency roles
 
-Normal zio builds depend only on target-gated `libc`.
+Normal zio builds use target-gated `libc` and Rustix's Linux epoll syscall
+layer.
 
 Development uses:
 
@@ -71,4 +72,4 @@ Development uses:
 - `zio-testkit` for mutation, model, wake, and readiness conformance;
 - `zio-qualify` for the private peer matrix and benchmark runner.
 
-None enters zio's production dependency graph.
+None of these development dependencies enters zio's production graph.

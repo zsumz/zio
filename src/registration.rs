@@ -48,14 +48,22 @@ impl PollOwner {
         }
     }
 
+    #[inline]
     pub(crate) fn get_or_assign(&mut self) -> Result<PollId, Error> {
         self.get_or_assign_from(&NEXT_POLL_ID)
     }
 
+    #[inline]
     fn get_or_assign_from(&mut self, next: &AtomicU64) -> Result<PollId, Error> {
         if let Some(owner) = self.current() {
             return Ok(owner);
         }
+        self.assign_from(next)
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn assign_from(&mut self, next: &AtomicU64) -> Result<PollId, Error> {
         let raw = next
             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |value| {
                 value.checked_add(1)

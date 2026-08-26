@@ -12,11 +12,30 @@ use super::{
 
 pub(super) trait ChangeExecutor {
     fn apply(&self, changes: &ChangeList) -> io::Result<Receipts>;
+
+    fn apply_registration(
+        &self,
+        descriptor: RawFd,
+        token: u64,
+        interest: Interest,
+    ) -> io::Result<()> {
+        let changes = additions(descriptor, token, interest, Action::AddEnabled);
+        exact(self, &changes, false)
+    }
 }
 
 impl ChangeExecutor for Kqueue {
     fn apply(&self, changes: &ChangeList) -> io::Result<Receipts> {
         Self::apply(self, changes)
+    }
+
+    fn apply_registration(
+        &self,
+        descriptor: RawFd,
+        token: u64,
+        interest: Interest,
+    ) -> io::Result<()> {
+        self.apply_registration_native(descriptor, token, interest)
     }
 }
 
@@ -26,8 +45,7 @@ pub(super) fn register_descriptor<E: ChangeExecutor + ?Sized>(
     token: u64,
     interest: Interest,
 ) -> Result<(), MutationFailure> {
-    let changes = additions(descriptor, token, interest, Action::AddEnabled);
-    match exact(queue, &changes, false) {
+    match queue.apply_registration(descriptor, token, interest) {
         Ok(()) => Ok(()),
         Err(source_error) => {
             let commit = if cleanup(queue, descriptor).is_ok() {

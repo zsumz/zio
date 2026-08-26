@@ -114,6 +114,14 @@ fi
 grep -Fq 'zio-release-smoke v0.0.0' "$tree_file"
 grep -Fq 'zio v' "$tree_file"
 grep -Eq 'libc v0\.2\.' "$tree_file"
+if [[ "$(uname -s)" == "Linux" ]]; then
+  grep -Eq 'rustix v1\.1\.' "$tree_file"
+  grep -Eq 'bitflags v2\.' "$tree_file"
+  grep -Eq 'linux-raw-sys v0\.12\.' "$tree_file"
+elif grep -Eq 'rustix|linux-raw-sys' "$tree_file"; then
+  echo "Linux syscall dependencies escaped onto a non-Linux target" >&2
+  exit 1
+fi
 
 mkdir -p "$evidence_dir"
 archive_sha256="$(shasum -a 256 "$archive" | awk '{print $1}')"

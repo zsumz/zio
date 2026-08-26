@@ -11,19 +11,15 @@ const _: [(); 8] = [(); core::mem::size_of::<usize>()];
 use std::{
     io, mem,
     mem::MaybeUninit,
-    os::fd::{AsRawFd, FromRawFd, OwnedFd, RawFd},
+    os::fd::{AsRawFd, FromRawFd, OwnedFd},
     ptr,
     time::Duration,
 };
 
 use super::{
     kqueue_arena::{KqueueArena, StagedChanges},
-    kqueue_change::{Change, RawKevent},
-    kqueue_codec::{
-        classify_apply_error, decode_filter, decode_receipt, has_flag,
-        target_applies_interrupted_changes,
-    },
-    kqueue_disarm::{FilterApply, NativeApply},
+    kqueue_codec::{NativeChange, classify_apply_error, target_applies_interrupted_changes},
+    kqueue_disarm::NativeApply,
     kqueue_timeout::into_timespec,
 };
 
@@ -32,49 +28,6 @@ pub(super) struct KeventBatch {
     pub(super) arena: KqueueArena<libc::kevent>,
     pub(super) observed: usize,
     pub(super) receipts: usize,
-}
-
-impl KeventBatch {
-    pub(super) fn new(event_capacity: usize, change_capacity: usize) -> Option<Self> {
-        KqueueArena::new(event_capacity, change_capacity).map(|arena| Self {
-            arena,
-            observed: 0,
-            receipts: 0,
-        })
-    }
-
-    pub(super) fn event(&self, index: usize, observed: usize) -> Option<RawKevent> {
-        if observed != self.observed || index >= observed {
-            return None;
-        }
-        let event = self.arena.event_slot(index)?;
-        // SAFETY: `wait` records the exact kernel-written prefix.
-        let event = initialized_event(event);
-        Some(RawKevent::new(
-            RawFd::try_from(event.ident).ok()?,
-            decode_filter(i64::from(event.filter)),
-            event.udata as usize as u64,
-            has_flag(u64::from(event.flags), u64::from(libc::EV_EOF)),
-            has_flag(u64::from(event.flags), u64::from(libc::EV_ERROR)),
-            event.fflags,
-        ))
-    }
-
-    pub(super) fn receipt(&self, index: usize, returned: usize, expected: Change) -> FilterApply {
-        let event = (returned == self.receipts && index < returned)
-            .then(|| self.arena.receipt_slot(index))
-            .flatten()
-            .map(initialized_event);
-        match decode_receipt(event, expected) {
-            FilterApply::NotApplied(code)
-                if code == libc::ENOENT
-                    && expected.action() == super::kqueue_change::Action::Disable =>
-            {
-                FilterApply::AlreadyAbsent
-            }
-            outcome => outcome,
-        }
-    }
 }
 
 /// One owned kqueue instance.
@@ -181,27 +134,49 @@ impl Kqueue {
         self.submit_native_pointers(input.as_ptr(), output.as_mut_ptr(), input.len())
     }
 
+    pub(super) fn submit_changes_native(&self, input: &[NativeChange]) -> NativeApply {
+        if input.is_empty() {
+            return NativeApply::Unknown(protocol_error());
+        }
+        // With no event-list slots, changelist errors are returned through
+        // errno and pending readiness cannot be consumed.
+        self.submit_native_counts(input.as_ptr().cast(), input.len(), ptr::null_mut(), 0)
+    }
+
     fn submit_native_pointers(
         &self,
         input: *const libc::kevent,
         output: *mut libc::kevent,
         count: usize,
     ) -> NativeApply {
+        self.submit_native_counts(input, count, output, count)
+    }
+
+    fn submit_native_counts(
+        &self,
+        input: *const libc::kevent,
+        input_count: usize,
+        output: *mut libc::kevent,
+        output_count: usize,
+    ) -> NativeApply {
         #[cfg(target_os = "netbsd")]
-        let native_count = count;
+        let (native_input_count, native_output_count) = (input_count, output_count);
         #[cfg(not(target_os = "netbsd"))]
-        let Ok(native_count) = i32::try_from(count) else {
+        let (Ok(native_input_count), Ok(native_output_count)) =
+            (i32::try_from(input_count), i32::try_from(output_count))
+        else {
             return NativeApply::Unknown(io::Error::from_raw_os_error(libc::EOVERFLOW));
         };
-        // SAFETY: callers provide `count` initialized input entries and
-        // exclusively writable output entries; no pointer escapes this call.
+        // SAFETY: callers provide `input_count` initialized input entries and
+        // `output_count` exclusively writable entries; null is valid for zero
+        // output entries, and no pointer escapes.
         let returned = unsafe {
             libc::kevent(
                 self.descriptor.as_raw_fd(),
                 input,
-                native_count,
+                native_input_count,
                 output,
-                native_count,
+                native_output_count,
                 ptr::null(),
             )
         };
@@ -218,7 +193,7 @@ impl Kqueue {
     }
 }
 
-fn initialized_event(event: &MaybeUninit<libc::kevent>) -> &libc::kevent {
+pub(super) fn initialized_event(event: &MaybeUninit<libc::kevent>) -> &libc::kevent {
     // SAFETY: callers receive slots only from arena methods that prove the
     // slot lies inside the current kernel-written prefix.
     unsafe { event.assume_init_ref() }

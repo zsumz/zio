@@ -3,12 +3,13 @@
 use std::num::NonZeroUsize;
 
 use crate::binding::{Binding, Observation};
-use crate::descriptor::Descriptor;
-use crate::token::{MAX_GENERATION, MAX_REGISTRATIONS, decode, encode};
-use crate::{
-    ArmState, CommitStatus, Error, Interest, Key, Mode, RegistrationId, RegistrationState,
-};
+use crate::token::{MAX_REGISTRATIONS, decode};
+use crate::{ArmState, CommitStatus, Error, Interest, Mode, RegistrationId, RegistrationState};
 
+#[path = "table_reserve.rs"]
+mod reserve;
+#[path = "table_retire.rs"]
+mod retire;
 #[path = "table_slot.rs"]
 mod slot;
 
@@ -38,66 +39,6 @@ impl RegistrationTable {
             free_head: FREE_END,
             exhausted: 0,
         })
-    }
-
-    pub(crate) fn reserve_descriptor(
-        &mut self,
-        descriptor: Descriptor,
-        key: Key,
-        interest: Interest,
-        mode: Mode,
-    ) -> Result<RegistrationId, Error> {
-        self.check_reservable()?;
-        if self.free_head != FREE_END {
-            return self.reserve_reused(descriptor, key, interest, mode);
-        }
-        let index = u32::try_from(self.slots.len()).map_err(|_| Error::BackendOverflow)?;
-        let generation = core::num::NonZeroU32::new(1).ok_or(Error::Invariant)?;
-        let id = encode(index, generation).ok_or(Error::RegistrationSpaceExhausted)?;
-        let entry = Entry::registered(descriptor, key, interest, mode);
-        self.slots.push(Slot::occupied(generation.get(), entry));
-        Ok(id)
-    }
-
-    pub(crate) fn check_reservable(&self) -> Result<(), Error> {
-        if self.free_head != FREE_END || self.slots.len() < self.limit.get() {
-            return Ok(());
-        }
-        if self.exhausted == self.limit.get() {
-            Err(Error::RegistrationSpaceExhausted)
-        } else {
-            Err(Error::Capacity {
-                limit: self.limit.get(),
-            })
-        }
-    }
-
-    fn reserve_reused(
-        &mut self,
-        descriptor: Descriptor,
-        key: Key,
-        interest: Interest,
-        mode: Mode,
-    ) -> Result<RegistrationId, Error> {
-        let index = self.free_head;
-        let slot = self
-            .slots
-            .get_mut(usize::try_from(index).map_err(|_| Error::Invariant)?)
-            .ok_or(Error::Invariant)?;
-        if slot.entry.is_some() || slot.generation == MAX_GENERATION {
-            return Err(Error::Invariant);
-        }
-        let next_generation = slot
-            .generation
-            .checked_add(1)
-            .ok_or(Error::RegistrationSpaceExhausted)?;
-        let generation = core::num::NonZeroU32::new(next_generation).ok_or(Error::Invariant)?;
-        let id = encode(index, generation).ok_or(Error::RegistrationSpaceExhausted)?;
-        self.free_head = slot.next_free;
-        slot.next_free = FREE_END;
-        slot.generation = next_generation;
-        slot.entry = Some(Entry::registered(descriptor, key, interest, mode));
-        Ok(id)
     }
 
     pub(crate) fn binding(
@@ -175,30 +116,11 @@ impl RegistrationTable {
         Ok(entry.state)
     }
 
-    pub(crate) fn retire(&mut self, id: RegistrationId) -> Result<(), Error> {
-        let (index, generation) = decode(id)?;
-        let free_index = u32::try_from(index).map_err(|_| Error::Invariant)?;
-        let slot = self
-            .slots
-            .get_mut(index)
-            .ok_or(Error::Stale { registration: id })?;
-        if slot.generation != generation.get() || slot.entry.is_none() {
-            return Err(Error::Stale { registration: id });
-        }
-        if slot.generation == MAX_GENERATION {
-            let exhausted = self.exhausted.checked_add(1).ok_or(Error::Invariant)?;
-            slot.entry = None;
-            slot.next_free = FREE_END;
-            self.exhausted = exhausted;
-        } else {
-            slot.entry = None;
-            slot.next_free = self.free_head;
-            self.free_head = free_index;
-        }
-        Ok(())
+    fn entry(&self, id: RegistrationId) -> Result<&Entry, Error> {
+        self.entry_with_index(id).map(|(_, entry)| entry)
     }
 
-    fn entry(&self, id: RegistrationId) -> Result<&Entry, Error> {
+    fn entry_with_index(&self, id: RegistrationId) -> Result<(usize, &Entry), Error> {
         let (index, generation) = decode(id)?;
         let slot = self
             .slots
@@ -207,7 +129,11 @@ impl RegistrationTable {
         if slot.generation != generation.get() {
             return Err(Error::Stale { registration: id });
         }
-        slot.entry.as_ref().ok_or(Error::Stale { registration: id })
+        let entry = slot
+            .entry
+            .as_ref()
+            .ok_or(Error::Stale { registration: id })?;
+        Ok((index, entry))
     }
 
     fn entry_mut(&mut self, id: RegistrationId) -> Result<&mut Entry, Error> {

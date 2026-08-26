@@ -4,13 +4,13 @@ use std::os::fd::AsFd;
 
 use crate::{
     CommitStatus, DeleteError, Error, Interest, Key, Mode, MutationError, Operation, RegisterError,
-    Registration, RegistrationState,
-    descriptor::Descriptor,
-    registration::{PollId, PollOwner},
+    Registration, RegistrationState, descriptor::Descriptor, registration::PollOwner,
     table::RegistrationTable,
 };
 
-use super::{DeleteRequest, ModifyRequest, MutationDriver, RegisterRequest};
+use super::{
+    DeleteRequest, ModifyRequest, MutationDriver, RegisterRequest, authority::require_owner,
+};
 
 /// Borrowed mutation state with a statically selected driver.
 pub(crate) struct MutationSession<'state, Driver> {
@@ -83,46 +83,53 @@ impl<'state, Driver: MutationDriver> MutationSession<'state, Driver> {
         interest: Interest,
         mode: Mode,
     ) -> Result<Registration, RegisterError> {
-        self.registrations
+        let permit = self
+            .registrations
             .check_reservable()
             .map_err(|error| RegisterError::new(error, None))?;
         let owner = self
             .owner
             .get_or_assign()
             .map_err(|error| RegisterError::new(error, None))?;
-        let id = self
-            .registrations
-            .reserve_descriptor(descriptor, key, interest, mode)
+        let reservation = permit
+            .reserve(descriptor, key, interest, mode)
             .map_err(|error| RegisterError::new(error, None))?;
+        let id = reservation.id();
         let registration = Registration::new(owner, id);
-        let result = {
-            let binding = self
-                .registrations
-                .binding(id, false)
-                .map_err(|error| RegisterError::new(error, None))?;
-            self.driver.register(RegisterRequest {
-                descriptor: binding.descriptor,
-                registration: id,
-                key,
-                interest,
-                mode,
-            })
+        let reserved_descriptor = match reservation.descriptor() {
+            Ok(descriptor) => descriptor,
+            Err(error) => {
+                if let Err(retire) = reservation.retire() {
+                    return Err(RegisterError::new(retire, None));
+                }
+                return Err(RegisterError::new(error, None));
+            }
         };
+        let result = self.driver.register(RegisterRequest {
+            descriptor: reserved_descriptor,
+            registration: id,
+            key,
+            interest,
+            mode,
+        });
         let Err(failure) = result else {
-            return Ok(registration);
+            return Ok(reservation.keep(registration));
         };
         let commit = failure.commit();
         let error = mutation_error(Operation::Register, failure);
         match commit {
             CommitStatus::NotApplied => {
-                self.registrations
-                    .retire(id)
+                reservation
+                    .retire()
                     .map_err(|retire| RegisterError::new(retire, None))?;
                 Err(RegisterError::new(error, None))
             }
-            CommitStatus::Applied => Err(RegisterError::new(error, Some(registration))),
+            CommitStatus::Applied => Err(RegisterError::new(
+                error,
+                Some(reservation.keep(registration)),
+            )),
             CommitStatus::Unknown => {
-                if let Err(state) = self.registrations.mark_uncertain(id) {
+                if let Err(state) = reservation.mark_uncertain() {
                     return Err(RegisterError::new(state, Some(registration)));
                 }
                 Err(RegisterError::new(error, Some(registration)))
@@ -179,20 +186,27 @@ impl<'state, Driver: MutationDriver> MutationSession<'state, Driver> {
             return Err(DeleteError::new(error, registration));
         }
         let id = registration.id();
-        let result = match self.registrations.binding(id, true) {
-            Ok(binding) => self.driver.delete(DeleteRequest {
-                descriptor: binding.descriptor,
-                registration: id,
-                interest: binding.interest,
-                state: binding.state,
-            }),
-            Err(error) => return Err(DeleteError::new(error, registration)),
-        };
+        let prepared = self
+            .registrations
+            .prepare_retire(id, true)
+            .map_err(|error| DeleteError::new(error, registration))?;
+        let binding = prepared
+            .binding()
+            .map_err(|error| DeleteError::new(error, registration))?;
+        let result = self.driver.delete(DeleteRequest {
+            descriptor: binding.descriptor,
+            registration: id,
+            interest: binding.interest,
+            state: binding.state,
+        });
         if let Err(failure) = result {
             let state_result = match failure.commit() {
-                CommitStatus::NotApplied => Ok(()),
-                CommitStatus::Applied => self.registrations.retire(id),
-                CommitStatus::Unknown => self.registrations.mark_uncertain(id),
+                CommitStatus::NotApplied => {
+                    prepared.keep();
+                    Ok(())
+                }
+                CommitStatus::Applied => prepared.retire(),
+                CommitStatus::Unknown => prepared.mark_uncertain(),
             };
             if let Err(error) = state_result {
                 return Err(DeleteError::new(error, registration));
@@ -202,8 +216,8 @@ impl<'state, Driver: MutationDriver> MutationSession<'state, Driver> {
                 registration,
             ));
         }
-        self.registrations
-            .retire(id)
+        prepared
+            .retire()
             .map_err(|error| DeleteError::new(error, registration))
     }
 }
@@ -212,25 +226,6 @@ fn validate_registration_interest(interest: Interest) -> Result<(), RegisterErro
     (!interest.is_empty())
         .then_some(())
         .ok_or(RegisterError::new(Error::InvalidInterest, None))
-}
-
-pub(crate) fn registration_state(
-    owner: Option<PollId>,
-    registrations: &RegistrationTable,
-    registration: &Registration,
-) -> Result<RegistrationState, Error> {
-    require_owner(owner, registration)?;
-    registrations.state(registration.id())
-}
-
-fn require_owner(owner: Option<PollId>, registration: &Registration) -> Result<(), Error> {
-    if owner == Some(registration.owner()) {
-        Ok(())
-    } else {
-        Err(Error::WrongPoller {
-            registration: registration.id(),
-        })
-    }
 }
 
 fn mutation_error(operation: Operation, failure: crate::sys::MutationFailure) -> Error {
