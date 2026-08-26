@@ -5,6 +5,7 @@ use std::io::Write;
 use crate::Implementation;
 
 use super::{
+    calibration::Calibration,
     config::Config,
     measure::{CapturedMetric, FdProbe, Metric, distribution},
     metadata::Metadata,
@@ -18,7 +19,13 @@ pub(crate) fn selected_scenarios(config: &Config) -> Vec<Scenario> {
         || {
             Scenario::ALL
                 .into_iter()
-                .filter(|scenario| !config.smoke || *scenario != Scenario::ReadyBatch1024)
+                .filter(|scenario| {
+                    !config.smoke
+                        || !matches!(
+                            scenario,
+                            Scenario::ReadyBatch1024 | Scenario::PersistentBatch1024
+                        )
+                })
                 .collect()
         },
         |scenario| vec![scenario],
@@ -90,7 +97,7 @@ pub(crate) fn write_passed_summary(
             let values: Result<Vec<_>, _> = samples.iter().map(timing_per_operation).collect();
             let value = distribution(&values?)?;
             format!(
-                "median={} ns/op p95={} ns/op mad={} ns/op",
+                "median_sample_mean={} ns/op p95_sample_mean={} ns/op mad_sample_mean={} ns/op",
                 value.median, value.p95, value.mad
             )
         }
@@ -132,14 +139,25 @@ pub(crate) struct CandidateSamples {
     pub(crate) implementation: Implementation,
     pub(crate) samples: Vec<Sample>,
     pub(crate) failed: bool,
+    pub(crate) calibration: Option<Calibration>,
+    pub(crate) iterations: usize,
+    pub(crate) warmup_iterations: usize,
 }
 
 impl CandidateSamples {
-    pub(crate) fn new(implementation: Implementation, samples: usize) -> Self {
+    pub(crate) fn new(
+        implementation: Implementation,
+        samples: usize,
+        calibration: Option<Calibration>,
+        iterations: usize,
+    ) -> Self {
         Self {
             implementation,
             samples: Vec::with_capacity(samples),
             failed: false,
+            calibration,
+            iterations,
+            warmup_iterations: 0,
         }
     }
 }

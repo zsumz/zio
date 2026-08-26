@@ -4,16 +4,28 @@ use std::{ffi::OsString, path::PathBuf};
 
 use crate::Implementation;
 
-use super::{measure::Metric, scenario::Scenario};
+use super::{
+    config_parse::{
+        implementation as parse_implementation, number, number_u64, set_flag, set_value, text,
+    },
+    measure::Metric,
+    scenario::Scenario,
+};
+
+pub(crate) use super::config_help::help;
 
 const MAX_SAMPLES: usize = 1_000;
 const MAX_ITERATIONS: usize = 1_000_000;
 const MAX_WARMUP: usize = 100_000;
+const MAX_SAMPLE_TIME_MS: u64 = 10_000;
+pub(crate) const DEFAULT_SAMPLE_TIME_MS: u64 = 100;
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct Config {
     pub(crate) samples: usize,
     pub(crate) iterations: Option<usize>,
     pub(crate) warmup_iterations: usize,
+    pub(crate) warmup_explicit: bool,
+    pub(crate) target_sample_time_ms: u64,
     pub(crate) implementation: Option<Implementation>,
     pub(crate) scenario: Option<Scenario>,
     pub(crate) output: Option<PathBuf>,
@@ -22,7 +34,10 @@ pub(crate) struct Config {
 }
 
 impl Config {
-    pub(crate) fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Self, String> {
+    pub(crate) fn parse(
+        args: impl IntoIterator<Item = OsString>,
+        metric: Metric,
+    ) -> Result<Self, String> {
         let mut builder = Builder::default();
         let mut args = args.into_iter();
         while let Some(raw) = args.next() {
@@ -46,6 +61,11 @@ impl Config {
                     &mut builder.warmup,
                     number(&mut args, "--warmup", MAX_WARMUP)?,
                     "--warmup",
+                )?,
+                "--sample-time-ms" => set_value(
+                    &mut builder.sample_time_ms,
+                    number_u64(&mut args, "--sample-time-ms", MAX_SAMPLE_TIME_MS)?,
+                    "--sample-time-ms",
                 )?,
                 "--implementation" => {
                     let value = text(&mut args, "--implementation")?;
@@ -77,7 +97,7 @@ impl Config {
                 _ => return Err(format!("unknown argument `{argument}`; use --help")),
             }
         }
-        builder.finish()
+        builder.finish(metric)
     }
 
     pub(crate) const fn iterations_for(&self, scenario: Scenario) -> usize {
@@ -90,11 +110,42 @@ impl Config {
         }
     }
 
-    pub(crate) const fn iterations_source(&self) -> &'static str {
+    pub(crate) fn iterations_source(&self, metric: Metric, _scenario: Scenario) -> &'static str {
         if self.smoke {
             "smoke"
         } else if self.iterations.is_some() {
             "explicit"
+        } else if metric == Metric::Timing {
+            "calibrated_shared"
+        } else {
+            "scenario_default"
+        }
+    }
+
+    pub(crate) fn calibrates(&self, metric: Metric, _scenario: Scenario) -> bool {
+        metric == Metric::Timing && !self.smoke && self.iterations.is_none()
+    }
+
+    pub(crate) fn warmup_for(
+        &self,
+        metric: Metric,
+        scenario: Scenario,
+        shared_iterations: usize,
+    ) -> usize {
+        if self.smoke || self.warmup_explicit || !self.calibrates(metric, scenario) {
+            self.warmup_iterations
+        } else {
+            shared_iterations.saturating_mul(3)
+        }
+    }
+
+    pub(crate) fn warmup_source(&self, metric: Metric, scenario: Scenario) -> &'static str {
+        if self.smoke {
+            "smoke"
+        } else if self.warmup_explicit {
+            "explicit"
+        } else if self.calibrates(metric, scenario) {
+            "three_shared_iteration_batches"
         } else {
             "scenario_default"
         }
@@ -106,6 +157,7 @@ struct Builder {
     samples: Option<usize>,
     iterations: Option<usize>,
     warmup: Option<usize>,
+    sample_time_ms: Option<u64>,
     implementation: Option<Implementation>,
     scenario: Option<Scenario>,
     output: Option<PathBuf>,
@@ -114,19 +166,27 @@ struct Builder {
 }
 
 impl Builder {
-    fn finish(self) -> Result<Config, String> {
-        if self.smoke
-            && (self.samples.is_some() || self.iterations.is_some() || self.warmup.is_some())
-        {
-            return Err(
-                "--smoke cannot be combined with --samples, --iterations, or --warmup".to_owned(),
-            );
+    fn finish(self, metric: Metric) -> Result<Config, String> {
+        if metric == Metric::Allocation && self.sample_time_ms.is_some() {
+            return Err("--sample-time-ms is available only for timing receipts".to_owned());
         }
+        if self.smoke
+            && (self.samples.is_some()
+                || self.iterations.is_some()
+                || self.warmup.is_some()
+                || self.sample_time_ms.is_some())
+        {
+            return Err("--smoke cannot be combined with sampling or warmup tuning".to_owned());
+        }
+        let warmup_explicit = self.warmup.is_some();
         let (samples, iterations, warmup_iterations) = if self.smoke {
             (2, None, 1)
         } else {
             (
-                self.samples.unwrap_or(12),
+                self.samples.unwrap_or(match metric {
+                    Metric::Timing => 90,
+                    Metric::Allocation => 12,
+                }),
                 self.iterations,
                 self.warmup.unwrap_or(10),
             )
@@ -144,6 +204,8 @@ impl Builder {
             samples,
             iterations,
             warmup_iterations,
+            warmup_explicit,
+            target_sample_time_ms: self.sample_time_ms.unwrap_or(DEFAULT_SAMPLE_TIME_MS),
             implementation: self.implementation,
             scenario: self.scenario,
             output: self.output,
@@ -151,90 +213,4 @@ impl Builder {
             smoke: self.smoke,
         })
     }
-}
-
-fn number(
-    args: &mut impl Iterator<Item = OsString>,
-    flag: &'static str,
-    maximum: usize,
-) -> Result<usize, String> {
-    let value = text(args, flag)?;
-    let parsed = value
-        .parse::<usize>()
-        .map_err(|_| format!("{flag} requires an integer from 1 through {maximum}"))?;
-    if parsed == 0 || parsed > maximum {
-        return Err(format!(
-            "{flag} must be between 1 and {maximum}; received {parsed}"
-        ));
-    }
-    Ok(parsed)
-}
-
-fn text(args: &mut impl Iterator<Item = OsString>, flag: &'static str) -> Result<String, String> {
-    args.next()
-        .ok_or_else(|| format!("{flag} requires a value"))?
-        .into_string()
-        .map_err(|_| format!("{flag} requires a valid UTF-8 value"))
-}
-
-fn parse_implementation(value: &str) -> Result<Implementation, String> {
-    match value {
-        "zio" => Ok(Implementation::Zio),
-        "mio" => Ok(Implementation::Mio),
-        "polling" => Ok(Implementation::Polling),
-        _ => Err(format!(
-            "unknown implementation `{value}`; expected zio, mio, or polling"
-        )),
-    }
-}
-
-fn set_flag(slot: &mut bool, flag: &'static str) -> Result<(), String> {
-    if *slot {
-        Err(format!("duplicate {flag}"))
-    } else {
-        *slot = true;
-        Ok(())
-    }
-}
-
-fn set_value<T>(slot: &mut Option<T>, value: T, flag: &'static str) -> Result<(), String> {
-    if slot.is_some() {
-        Err(format!("duplicate {flag}"))
-    } else {
-        *slot = Some(value);
-        Ok(())
-    }
-}
-
-pub(crate) fn help(metric: Metric) -> String {
-    format!(
-        "{command}: reproducible Zio, Mio, and polling {metric} qualification\n\
-\n\
-USAGE: {command} [OPTIONS]\n\
-  --samples N                 measured rounds (1..=1000; default 12)\n\
-  --iterations N              exact iterations per sample (1..=1000000)\n\
-  --warmup N                  unmeasured iterations (1..=100000; default 10)\n\
-  --implementation NAME       zio | mio | polling\n\
-  --scenario NAME             one stable scenario name\n\
-  --output PATH               NDJSON path; '-' or omitted writes stdout\n\
-  --smoke                     2 samples, 1 iteration, 1 warmup\n\
-  --help                      show this help\n\
-\n\
-STABLE SCENARIOS:\n\
-  poller.construct_drop\n\
-  registration.register_delete\n\
-  wait.empty.no_block\n\
-  wait.ready.readable.single.initial\n\
-  wait.ready.readable.batch_64.initial\n\
-  wait.ready.readable.batch_1024.initial\n\
-  wake.notify.roundtrip\n\
-  wait.ready.readable.level.repeat\n\
-  wait.ready.readable.one_shot.disarm\n\
-  wait.ready.readable.one_shot.rearm\n",
-        command = match metric {
-            Metric::Timing => "zio-perf",
-            Metric::Allocation => "zio-perf-alloc",
-        },
-        metric = metric.name(),
-    )
 }

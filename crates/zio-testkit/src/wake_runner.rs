@@ -9,11 +9,15 @@ pub fn run_wake_scenario(scenario: WakeScenario) -> Result<(), WakeFailure> {
         WakeScenario::ConflictingKey => crate::wake_config::conflicting_key(scenario),
         WakeScenario::PreWaitStorm => crate::wake_delivery::pre_wait_storm(scenario),
         WakeScenario::CloneAcrossWait => crate::wake_delivery::clone_across_wait(scenario),
+        WakeScenario::MultiProducerStorm => crate::wake_concurrent::multi_producer_storm(scenario),
+        WakeScenario::RepeatedCrossThread => {
+            crate::wake_concurrent::repeated_cross_thread(scenario)
+        }
         WakeScenario::CapacityOneSaturation => crate::wake_saturation::capacity_one(scenario),
     }
 }
 
-/// Runs every V1 wake scenario against the host's native zio backend.
+/// Runs every wake scenario against the host's native zio backend.
 ///
 /// A downstream qualification test can retain the structured report instead of
 /// relying on assertion panics:

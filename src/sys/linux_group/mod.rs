@@ -7,5 +7,7 @@ mod backend;
 mod backend_test;
 mod epoll;
 mod eventfd;
+#[cfg(test)]
+mod eventfd_test;
 
 pub(crate) use backend::{Backend, RawBatch, Wake};

@@ -6,7 +6,7 @@ use polling::{Event, Events, PollMode, Poller};
 
 use crate::polling_registration::PollingRegistration;
 
-use super::backend::{Backend, Profile, display};
+use super::backend::{Backend, Profile, WakeHandle, display};
 
 pub(crate) struct PollingBackend {
     poller: Arc<Poller>,
@@ -23,6 +23,7 @@ impl PollingBackend {
 
 impl Backend for PollingBackend {
     type Registration<'source> = PollingRegistration<'static, 'source>;
+    type Wake = Arc<Poller>;
 
     fn new(event_capacity: usize, _registration_capacity: usize) -> Result<Self, String> {
         let capacity = NonZeroUsize::new(event_capacity)
@@ -95,8 +96,11 @@ impl Backend for PollingBackend {
         Ok(())
     }
 
-    fn wake_roundtrip(&mut self, timeout: Duration) -> Result<u64, String> {
-        self.poller.notify().map_err(display)?;
+    fn wake_handle(&self) -> Result<Self::Wake, String> {
+        Ok(Arc::clone(&self.poller))
+    }
+
+    fn wait_for_wake(&mut self, timeout: Duration) -> Result<u64, String> {
         self.events.clear();
         self.poller
             .wait(&mut self.events, Some(timeout))
@@ -112,9 +116,15 @@ impl Backend for PollingBackend {
     }
 }
 
+impl WakeHandle for Arc<Poller> {
+    fn wake(&self) -> Result<(), String> {
+        self.notify().map_err(display)
+    }
+}
+
 const fn mode(profile: Profile) -> PollMode {
     match profile {
         Profile::InitialObservation | Profile::OneShot => PollMode::Oneshot,
-        Profile::Level => PollMode::Level,
+        Profile::Persistent | Profile::Level => PollMode::Level,
     }
 }

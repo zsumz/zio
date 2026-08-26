@@ -170,7 +170,7 @@ run = [
   "jq",
   "-e",
   "-s",
-  "length == 48 and ([.[] | select(.metric == \"timing\")] | length) == 24 and ([.[] | select(.metric == \"allocation\")] | length) == 24 and ([.[] | [.metric, .candidate.name, .scenario.name]] | unique | length) == 48 and all(.[]; .schema == \"zio.perf.v1\" and (.status == \"passed\" or .status == \"unsupported\"))",
+  "length == 104 and ([.[] | select(.metric == \"timing\")] | length) == 52 and ([.[] | select(.metric == \"allocation\")] | length) == 52 and ([.[] | [.metric, .candidate.name, .scenario.name]] | unique | length) == 104 and all(.[]; .schema == \"zio.perf.v2\" and (.status == \"passed\" or .status == \"unsupported\"))",
   "target/zio-perf-smoke.ndjson",
   "target/zio-perf-allocation-smoke.ndjson",
 ]

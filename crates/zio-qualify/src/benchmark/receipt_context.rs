@@ -4,7 +4,7 @@ use crate::Implementation;
 
 use super::{
     candidate_bench::version, config::Config, json, measure::Metric, metadata::Metadata,
-    scenario::Scenario,
+    receipt_calibration, runner_support::CandidateSamples, scenario::Scenario,
 };
 
 pub(crate) fn common(
@@ -14,6 +14,7 @@ pub(crate) fn common(
     config: &Config,
     implementation: Implementation,
     scenario: Scenario,
+    sampling: Option<&CandidateSamples>,
 ) {
     git(output, metadata);
     output.push(',');
@@ -25,7 +26,7 @@ pub(crate) fn common(
     output.push(',');
     scenario_json(output, scenario, implementation);
     output.push(',');
-    parameters(output, config, scenario);
+    parameters(output, metric, config, scenario, sampling);
     output.push(',');
 }
 
@@ -127,23 +128,74 @@ fn scenario_json(output: &mut String, scenario: Scenario, implementation: Implem
         "absence_window_timed",
         scenario.absence_window_timed(),
     );
+    output.push(',');
+    json::key(output, "blocked_wake_settle_us");
+    match scenario.blocked_wake_settle_us() {
+        Some(value) => output.push_str(&value.to_string()),
+        None => output.push_str("null"),
+    }
     output.push('}');
 }
 
-fn parameters(output: &mut String, config: &Config, scenario: Scenario) {
+fn parameters(
+    output: &mut String,
+    metric: Metric,
+    config: &Config,
+    scenario: Scenario,
+    sampling: Option<&CandidateSamples>,
+) {
     json::key(output, "parameters");
     output.push('{');
     json::field_number(output, "samples", config.samples, true);
-    json::field_number(output, "iterations", config.iterations_for(scenario), true);
+    json::field_number(
+        output,
+        "iterations",
+        sampling.map_or_else(|| config.iterations_for(scenario), |value| value.iterations),
+        true,
+    );
     json::field_string(
         output,
         "iterations_source",
-        config.iterations_source(),
+        config.iterations_source(metric, scenario),
         true,
     );
-    json::field_number(output, "warmup_iterations", config.warmup_iterations, true);
+    json::field_number(
+        output,
+        "warmup_iterations",
+        sampling.map_or(config.warmup_iterations, |value| value.warmup_iterations),
+        true,
+    );
+    json::field_string(
+        output,
+        "warmup_source",
+        config.warmup_source(metric, scenario),
+        true,
+    );
+    receipt_calibration::write(output, config, scenario, sampling);
+    output.push(',');
     json::field_string(output, "candidate_order", "rotate_left_by_round", true);
-    json::field_string(output, "operation_unit", "scenario_iteration", false);
+    json::field_string(output, "operation_unit", "scenario_operation", true);
+    json::field_string(
+        output,
+        "timing_statistic",
+        match metric {
+            Metric::Timing => "sample_mean_ns_per_operation",
+            Metric::Allocation => "not_applicable",
+        },
+        true,
+    );
+    json::field_string(
+        output,
+        "allocation_thread_scope",
+        match (metric, scenario) {
+            (Metric::Allocation, Scenario::WakeBlocked) => {
+                "waiting_thread_only_trigger_worker_excluded"
+            }
+            (Metric::Allocation, _) => "calling_thread",
+            (Metric::Timing, _) => "not_applicable",
+        },
+        false,
+    );
     output.push('}');
 }
 

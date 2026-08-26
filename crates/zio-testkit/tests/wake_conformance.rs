@@ -9,8 +9,8 @@
 
 use zio_testkit::{
     WAKE_CAPACITY_ONE_SATURATION, WAKE_CLONE_ACROSS_WAIT, WAKE_CONFLICTING_KEY,
-    WAKE_PRE_WAIT_STORM, WAKE_SAME_KEY_CLONES, WakeCheck, WakeFailure, WakeScenario,
-    run_wake_conformance,
+    WAKE_MULTI_PRODUCER_STORM, WAKE_PRE_WAIT_STORM, WAKE_REPEATED_CROSS_THREAD,
+    WAKE_SAME_KEY_CLONES, WakeCheck, WakeFailure, WakeScenario, run_wake_conformance,
 };
 
 #[test]
@@ -45,6 +45,8 @@ fn wake_scenario_names_are_stable() {
             "wake.conflicting_key",
             "wake.pre_wait_storm",
             "wake.clone_across_wait",
+            "wake.multi_producer_storm",
+            "wake.repeated_cross_thread",
             "wake.capacity_one_saturation",
         ]
     );
@@ -52,6 +54,11 @@ fn wake_scenario_names_are_stable() {
     assert_eq!(WAKE_CONFLICTING_KEY, WakeScenario::ConflictingKey);
     assert_eq!(WAKE_PRE_WAIT_STORM, WakeScenario::PreWaitStorm);
     assert_eq!(WAKE_CLONE_ACROSS_WAIT, WakeScenario::CloneAcrossWait);
+    assert_eq!(WAKE_MULTI_PRODUCER_STORM, WakeScenario::MultiProducerStorm);
+    assert_eq!(
+        WAKE_REPEATED_CROSS_THREAD,
+        WakeScenario::RepeatedCrossThread
+    );
     assert_eq!(
         WAKE_CAPACITY_ONE_SATURATION,
         WakeScenario::CapacityOneSaturation

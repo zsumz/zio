@@ -6,7 +6,7 @@ use super::{
     measure::{Captured, Metric},
     mio_backend::MioBackend,
     polling_backend::PollingBackend,
-    polling_direct,
+    polling_direct, polling_lifecycle,
     resource_limit::{self, Unsupported},
     scenario::Scenario,
     workload,
@@ -31,7 +31,9 @@ pub(crate) fn support(
     if let Some(reason) = resource_limit::preflight(implementation, scenario)? {
         return Ok(Support::Unavailable(reason));
     }
-    if implementation == Implementation::Polling && scenario == Scenario::LevelRepeat {
+    if implementation == Implementation::Polling
+        && (scenario == Scenario::LevelRepeat || scenario.is_persistent())
+    {
         return PollingBackend::supports_level().map(|supported| {
             if supported {
                 Support::Available
@@ -58,6 +60,8 @@ pub(crate) fn run(
             Scenario::RegisterDelete => {
                 polling_direct::register_delete(scenario, iterations, metric)
             }
+            Scenario::Register64 => polling_lifecycle::register_only(scenario, iterations, metric),
+            Scenario::Delete64 => polling_lifecycle::delete_only(scenario, iterations, metric),
             Scenario::ReadySingle | Scenario::ReadyBatch64 | Scenario::ReadyBatch1024 => {
                 polling_direct::ready(scenario, iterations, metric)
             }

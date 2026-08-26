@@ -1,6 +1,8 @@
 //! Metric-isolated timing, allocation, descriptor, and distribution capture.
 
-use std::{fs, path::PathBuf, time::Instant};
+use std::time::Instant;
+
+pub(crate) use super::resource_measure::{FdProbe, LiveFds, Resources};
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub(crate) struct Counts {
@@ -50,40 +52,89 @@ pub(crate) enum CapturedMetric {
 pub(crate) struct Captured {
     pub(crate) counts: Counts,
     pub(crate) metric: CapturedMetric,
+    pub(crate) resources: Resources,
+}
+
+impl Captured {
+    pub(crate) const fn with_live_fds(mut self, live_fds: Option<LiveFds>) -> Self {
+        self.resources.live_fds = live_fds;
+        self
+    }
 }
 
 pub(crate) fn capture(
     iterations: usize,
     metric: Option<Metric>,
+    iteration: impl FnMut() -> Result<u64, String>,
+) -> Result<Captured, String> {
+    capture_counted(iterations, 1, metric, iteration)
+}
+
+pub(crate) fn capture_counted(
+    iterations: usize,
+    operations_per_iteration: u64,
+    metric: Option<Metric>,
     mut iteration: impl FnMut() -> Result<u64, String>,
 ) -> Result<Captured, String> {
     match metric {
-        None => run_loop(iterations, &mut iteration).map(|counts| Captured {
-            counts,
-            metric: CapturedMetric::Warmup,
-        }),
+        None => {
+            run_loop(iterations, operations_per_iteration, &mut iteration).map(|counts| Captured {
+                counts,
+                metric: CapturedMetric::Warmup,
+                resources: Resources::default(),
+            })
+        }
         Some(Metric::Timing) => {
             let started = Instant::now();
-            run_loop(iterations, &mut iteration).map(|counts| Captured {
+            run_loop(iterations, operations_per_iteration, &mut iteration).map(|counts| Captured {
                 counts,
                 metric: CapturedMetric::Timing {
                     elapsed_ns: started.elapsed().as_nanos(),
                 },
+                resources: Resources::default(),
             })
         }
-        Some(Metric::Allocation) => capture_allocations(iterations, &mut iteration),
+        Some(Metric::Allocation) => {
+            capture_allocations(iterations, operations_per_iteration, &mut iteration)
+        }
     }
+}
+
+pub(crate) fn capture_latency(
+    iterations: usize,
+    metric: Option<Metric>,
+    mut iteration: impl FnMut() -> Result<(u64, u128), String>,
+) -> Result<Captured, String> {
+    if metric != Some(Metric::Timing) {
+        return capture(iterations, metric, || {
+            iteration().map(|(events, _elapsed)| events)
+        });
+    }
+    let mut counts = Counts::default();
+    let mut elapsed_ns = 0_u128;
+    for _ in 0..iterations {
+        let (events, elapsed) = iteration()?;
+        counts.operations = counts.operations.saturating_add(1);
+        counts.events = counts.events.saturating_add(events);
+        elapsed_ns = elapsed_ns.saturating_add(elapsed);
+    }
+    Ok(Captured {
+        counts,
+        metric: CapturedMetric::Timing { elapsed_ns },
+        resources: Resources::default(),
+    })
 }
 
 fn capture_allocations(
     iterations: usize,
+    operations_per_iteration: u64,
     iteration: &mut impl FnMut() -> Result<u64, String>,
 ) -> Result<Captured, String> {
     #[cfg(feature = "allocation-metrics")]
     {
         let mut result = Ok(Counts::default());
         let measured = allocation_counter::measure(|| {
-            result = run_loop(iterations, iteration);
+            result = run_loop(iterations, operations_per_iteration, iteration);
         });
         result.map(|counts| Captured {
             counts,
@@ -95,72 +146,27 @@ fn capture_allocations(
                 bytes_current: measured.bytes_current,
                 bytes_peak: measured.bytes_max,
             }),
+            resources: Resources::default(),
         })
     }
     #[cfg(not(feature = "allocation-metrics"))]
     {
-        let _ = (iterations, iteration);
+        let _ = (iterations, operations_per_iteration, iteration);
         Err("allocation capture requires the `allocation-metrics` feature".to_owned())
     }
 }
 
 fn run_loop(
     iterations: usize,
+    operations_per_iteration: u64,
     iteration: &mut impl FnMut() -> Result<u64, String>,
 ) -> Result<Counts, String> {
     let mut counts = Counts::default();
     for _ in 0..iterations {
         counts.events = counts.events.saturating_add(iteration()?);
-        counts.operations = counts.operations.saturating_add(1);
+        counts.operations = counts.operations.saturating_add(operations_per_iteration);
     }
     Ok(counts)
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) enum FdProbe {
-    Available(PathBuf),
-    Unavailable(&'static str),
-}
-
-impl FdProbe {
-    pub(crate) fn discover() -> Self {
-        for path in ["/proc/self/fd", "/dev/fd"] {
-            if count_entries(path).is_ok() {
-                return Self::Available(PathBuf::from(path));
-            }
-        }
-        Self::Unavailable("neither /proc/self/fd nor /dev/fd is readable")
-    }
-
-    pub(crate) fn count(&self) -> Option<usize> {
-        match self {
-            Self::Available(path) => count_entries(path).ok(),
-            Self::Unavailable(_) => None,
-        }
-    }
-
-    pub(crate) fn path(&self) -> Option<&str> {
-        match self {
-            Self::Available(path) => path.to_str(),
-            Self::Unavailable(_) => None,
-        }
-    }
-
-    pub(crate) const fn reason(&self) -> Option<&'static str> {
-        match self {
-            Self::Available(_) => None,
-            Self::Unavailable(reason) => Some(reason),
-        }
-    }
-}
-
-fn count_entries(path: impl AsRef<std::path::Path>) -> Result<usize, std::io::Error> {
-    let mut count = 0_usize;
-    for entry in fs::read_dir(path)? {
-        entry?;
-        count = count.saturating_add(1);
-    }
-    Ok(count)
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

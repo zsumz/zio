@@ -1,6 +1,5 @@
 //! Consumer-visible mutation, wake, and readiness conformance for [`zio`].
 //! Native wake and readiness checks use only the public [`zio::Poll`] API.
-
 #![deny(unsafe_code)]
 
 mod calls;
@@ -42,6 +41,7 @@ mod scenario;
 mod setup;
 pub mod support;
 mod verify;
+mod wake_concurrent;
 mod wake_config;
 mod wake_delivery;
 mod wake_failure;
@@ -50,7 +50,6 @@ mod wake_runner;
 mod wake_saturation;
 mod wake_scenario;
 mod wake_verify;
-
 pub use failure::{ConformanceCheck, ConformanceFailure};
 pub use model_sequence::{
     MODEL_SEQUENCE_DISARM_REARM_SEED, MODEL_SEQUENCE_OUTCOME_MATRIX_SEED,
@@ -76,5 +75,6 @@ pub use wake_report::{WakeCaseResult, WakeReport};
 pub use wake_runner::{run_wake_conformance, run_wake_scenario};
 pub use wake_scenario::{
     WAKE_CAPACITY_ONE_SATURATION, WAKE_CLONE_ACROSS_WAIT, WAKE_CONFLICTING_KEY,
-    WAKE_PRE_WAIT_STORM, WAKE_SAME_KEY_CLONES, WakeScenario,
+    WAKE_MULTI_PRODUCER_STORM, WAKE_PRE_WAIT_STORM, WAKE_REPEATED_CROSS_THREAD,
+    WAKE_SAME_KEY_CLONES, WakeScenario,
 };

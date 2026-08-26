@@ -2,12 +2,13 @@
 
 use std::{
     os::{fd::AsRawFd, unix::net::UnixStream},
+    sync::Arc,
     time::Duration,
 };
 
 use mio::{Events, Poll, Token, Waker, unix::SourceFd};
 
-use super::backend::{Backend, Profile, display};
+use super::backend::{Backend, Profile, WakeHandle, display};
 
 const WAKE_TOKEN: Token = Token(usize::MAX - 1);
 
@@ -19,11 +20,12 @@ pub(crate) struct MioRegistration {
 pub(crate) struct MioBackend {
     poll: Poll,
     events: Events,
-    waker: Option<Waker>,
+    waker: Option<Arc<Waker>>,
 }
 
 impl Backend for MioBackend {
     type Registration<'source> = MioRegistration;
+    type Wake = Arc<Waker>;
 
     fn new(event_capacity: usize, _registration_capacity: usize) -> Result<Self, String> {
         Ok(Self {
@@ -93,16 +95,19 @@ impl Backend for MioBackend {
     }
 
     fn configure_wake(&mut self) -> Result<(), String> {
-        self.waker = Some(Waker::new(self.poll.registry(), WAKE_TOKEN).map_err(display)?);
+        self.waker = Some(Arc::new(
+            Waker::new(self.poll.registry(), WAKE_TOKEN).map_err(display)?,
+        ));
         Ok(())
     }
 
-    fn wake_roundtrip(&mut self, timeout: Duration) -> Result<u64, String> {
+    fn wake_handle(&self) -> Result<Self::Wake, String> {
         self.waker
-            .as_ref()
-            .ok_or_else(|| "Mio wake was not configured".to_owned())?
-            .wake()
-            .map_err(display)?;
+            .clone()
+            .ok_or_else(|| "Mio wake was not configured".to_owned())
+    }
+
+    fn wait_for_wake(&mut self, timeout: Duration) -> Result<u64, String> {
         self.events.clear();
         self.poll
             .poll(&mut self.events, Some(timeout))
@@ -114,5 +119,11 @@ impl Backend for MioBackend {
         } else {
             Err(format!("unexpected Mio wake observations: {observed:?}"))
         }
+    }
+}
+
+impl WakeHandle for Arc<Waker> {
+    fn wake(&self) -> Result<(), String> {
+        Waker::wake(self).map_err(display)
     }
 }

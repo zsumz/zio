@@ -11,17 +11,23 @@ pub enum WakeScenario {
     PreWaitStorm,
     /// A cloned waker makes a bounded wait return with its wake event.
     CloneAcrossWait,
+    /// Concurrent cloned producers coalesce without losing a later wake.
+    MultiProducerStorm,
+    /// Repeated cross-thread triggers remain observable across waits.
+    RepeatedCrossThread,
     /// A wake and ready resource both survive an event capacity of one.
     CapacityOneSaturation,
 }
 
 impl WakeScenario {
-    /// Every V1 wake scenario in stable execution order.
-    pub const ALL: [Self; 5] = [
+    /// Every wake scenario in stable execution order.
+    pub const ALL: [Self; 7] = [
         WAKE_SAME_KEY_CLONES,
         WAKE_CONFLICTING_KEY,
         WAKE_PRE_WAIT_STORM,
         WAKE_CLONE_ACROSS_WAIT,
+        WAKE_MULTI_PRODUCER_STORM,
+        WAKE_REPEATED_CROSS_THREAD,
         WAKE_CAPACITY_ONE_SATURATION,
     ];
 
@@ -32,6 +38,8 @@ impl WakeScenario {
             Self::ConflictingKey => "wake.conflicting_key",
             Self::PreWaitStorm => "wake.pre_wait_storm",
             Self::CloneAcrossWait => "wake.clone_across_wait",
+            Self::MultiProducerStorm => "wake.multi_producer_storm",
+            Self::RepeatedCrossThread => "wake.repeated_cross_thread",
             Self::CapacityOneSaturation => "wake.capacity_one_saturation",
         }
     }
@@ -45,5 +53,9 @@ pub const WAKE_CONFLICTING_KEY: WakeScenario = WakeScenario::ConflictingKey;
 pub const WAKE_PRE_WAIT_STORM: WakeScenario = WakeScenario::PreWaitStorm;
 /// A cloned waker remains observable across a bounded wait.
 pub const WAKE_CLONE_ACROSS_WAIT: WakeScenario = WakeScenario::CloneAcrossWait;
+/// Concurrent cloned producers coalesce without losing a later wake.
+pub const WAKE_MULTI_PRODUCER_STORM: WakeScenario = WakeScenario::MultiProducerStorm;
+/// Repeated cross-thread triggers remain observable across waits.
+pub const WAKE_REPEATED_CROSS_THREAD: WakeScenario = WakeScenario::RepeatedCrossThread;
 /// Wake and resource readiness survive capacity-one saturation.
 pub const WAKE_CAPACITY_ONE_SATURATION: WakeScenario = WakeScenario::CapacityOneSaturation;

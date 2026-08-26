@@ -11,9 +11,9 @@ use super::{
     metadata::Metadata,
     receipt,
     record::Sample,
+    runner_prepare,
     runner_support::{
-        CandidateSamples, context, emit_failure, fd_delta, selected_implementations, write_line,
-        write_passed_summary, write_summary_line,
+        CandidateSamples, context, emit_failure, fd_delta, write_line, write_passed_summary,
     },
     scenario::Scenario,
 };
@@ -94,48 +94,9 @@ fn execute_scenario<D: Driver>(
     output: &mut dyn Write,
     summary: &mut dyn Write,
 ) -> Result<usize, String> {
-    let mut failures = 0_usize;
-    let mut active = Vec::new();
-    for implementation in selected_implementations(config, scenario) {
-        let context = context(metric, metadata, config, implementation, scenario);
-        match D::support(implementation, scenario) {
-            Ok(Support::Available) => {
-                match D::run(implementation, scenario, config.warmup_iterations, None) {
-                    Ok(_) => active.push(CandidateSamples::new(implementation, config.samples)),
-                    Err(error) => {
-                        emit_failure(context, "warmup", &error, fd_probe, &[], output, summary)?;
-                        failures = failures.saturating_add(1);
-                    }
-                }
-            }
-            Ok(Support::Unavailable(reason)) => {
-                write_line(
-                    output,
-                    &receipt::unsupported(
-                        metric,
-                        metadata,
-                        config,
-                        implementation,
-                        scenario,
-                        &reason,
-                    ),
-                )?;
-                write_summary_line(
-                    summary,
-                    &format!(
-                        "{} {}: unsupported ({})",
-                        implementation.name(),
-                        scenario.name(),
-                        reason.reason
-                    ),
-                )?;
-            }
-            Err(error) => {
-                emit_failure(context, "preflight", &error, fd_probe, &[], output, summary)?;
-                failures = failures.saturating_add(1);
-            }
-        }
-    }
+    let (mut active, mut failures) = runner_prepare::candidates::<D>(
+        metric, config, metadata, scenario, fd_probe, output, summary,
+    )?;
     failures = failures.saturating_add(measure_rounds::<D>(
         metric,
         config,
@@ -147,15 +108,7 @@ fn execute_scenario<D: Driver>(
         summary,
     )?);
     for candidate in active.into_iter().filter(|candidate| !candidate.failed) {
-        let line = receipt::measurement(
-            metric,
-            metadata,
-            config,
-            candidate.implementation,
-            scenario,
-            fd_probe,
-            &candidate.samples,
-        )?;
+        let line = receipt::measurement(metric, metadata, config, &candidate, scenario, fd_probe)?;
         write_line(output, &line)?;
         write_passed_summary(
             metric,
@@ -194,7 +147,7 @@ fn measure_rounds<D: Driver>(
             match D::run(
                 implementation,
                 scenario,
-                config.iterations_for(scenario),
+                active[index].iterations,
                 Some(metric),
             ) {
                 Ok(captured) => active[index].samples.push(Sample {

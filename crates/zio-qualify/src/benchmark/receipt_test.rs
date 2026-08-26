@@ -5,10 +5,11 @@ use crate::Implementation;
 use super::{
     candidate_bench::version,
     config::Config,
-    measure::{Allocations, Captured, CapturedMetric, Counts, FdProbe, Metric},
+    measure::{Allocations, Captured, CapturedMetric, Counts, FdProbe, Metric, Resources},
     metadata, receipt,
     record::Sample,
     resource_limit::Unsupported,
+    runner_support::CandidateSamples,
     scenario::Scenario,
 };
 
@@ -16,12 +17,21 @@ use super::{
 fn timing_receipt_has_timing_and_no_allocation_fields() -> Result<(), String> {
     let receipt = measurement(Metric::Timing, CapturedMetric::Timing { elapsed_ns: 640 })?;
     check(receipt.contains("\"metric\":\"timing\""), "metric")?;
-    check(receipt.contains("\"elapsed_ns\":[640]"), "elapsed")?;
+    check(receipt.contains("\"measured_elapsed_ns\":[640]"), "elapsed")?;
     check(
-        receipt.contains("\"ns_per_operation\":[320]"),
+        receipt.contains("\"sample_mean_ns_per_operation\":[320]"),
         "per operation",
     )?;
-    check(!receipt.contains("allocation_"), "allocation field leaked")?;
+    check(
+        receipt.contains("\"sample_mean_ns_per_event\":[5]"),
+        "per event",
+    )?;
+    check(
+        !receipt.contains("allocation_count")
+            && !receipt.contains("allocation_bytes")
+            && !receipt.contains("allocation_rate"),
+        "allocation metric field leaked",
+    )?;
     check(
         !receipt.contains("allocation-counter"),
         "allocator version leaked",
@@ -50,7 +60,14 @@ fn allocation_receipt_has_allocations_and_no_timing_fields() -> Result<(), Strin
         receipt.contains("\"allocation_bytes_total\":[96]"),
         "raw allocations",
     )?;
-    check(!receipt.contains("elapsed_ns"), "elapsed leaked")?;
+    check(
+        receipt.contains("\"operations_denominator\":2,\"events_denominator\":128"),
+        "allocation normalization denominators",
+    )?;
+    check(
+        !receipt.contains("measured_elapsed_ns"),
+        "measured elapsed leaked",
+    )?;
     check(
         !receipt.contains("ns_per_operation"),
         "timing summary leaked",
@@ -76,7 +93,7 @@ fn receipt_records_scenario_specific_wait_and_absence_windows() -> Result<(), St
     let no_wait = measurement_for(
         Metric::Timing,
         CapturedMetric::Timing { elapsed_ns: 10 },
-        Scenario::ConstructDrop,
+        Scenario::Construct1024,
     )?;
     check(no_wait.contains("\"wait_timeout_ms\":null"), "no wait")?;
     let nonblocking = measurement_for(
@@ -88,17 +105,6 @@ fn receipt_records_scenario_specific_wait_and_absence_windows() -> Result<(), St
         nonblocking.contains("\"wait_timeout_ms\":0"),
         "nonblocking wait",
     )?;
-    let disarm = measurement_for(
-        Metric::Timing,
-        CapturedMetric::Timing { elapsed_ns: 10 },
-        Scenario::OneShotDisarm,
-    )?;
-    check(
-        disarm.contains(
-            "\"wait_timeout_ms\":1000,\"absence_window_ms\":2,\"absence_window_timed\":true",
-        ),
-        "timed absence metadata",
-    )?;
     let rearm = measurement_for(
         Metric::Timing,
         CapturedMetric::Timing { elapsed_ns: 10 },
@@ -107,6 +113,21 @@ fn receipt_records_scenario_specific_wait_and_absence_windows() -> Result<(), St
     check(
         rearm.contains("\"absence_window_ms\":2,\"absence_window_timed\":false"),
         "untimed absence metadata",
+    )
+}
+
+#[test]
+fn blocked_wake_discloses_allocation_thread_scope() -> Result<(), String> {
+    let receipt = measurement_for(
+        Metric::Allocation,
+        CapturedMetric::Allocation(Allocations::default()),
+        Scenario::WakeBlocked,
+    )?;
+    check(
+        receipt.contains(
+            "\"allocation_thread_scope\":\"waiting_thread_only_trigger_worker_excluded\"",
+        ),
+        "blocked wake allocation scope",
     )
 }
 
@@ -151,7 +172,7 @@ fn measurement_for(
     captured_metric: CapturedMetric,
     scenario: Scenario,
 ) -> Result<String, String> {
-    let samples = [Sample {
+    let sample = Sample {
         round: 0,
         order_position: 2,
         captured: Captured {
@@ -160,17 +181,25 @@ fn measurement_for(
                 events: 128,
             },
             metric: captured_metric,
+            resources: Resources::default(),
         },
         retained_fd_delta: Some(0),
-    }];
+    };
+    let candidate = CandidateSamples {
+        implementation: Implementation::Zio,
+        samples: vec![sample],
+        failed: false,
+        calibration: None,
+        iterations: 1,
+        warmup_iterations: 1,
+    };
     receipt::measurement(
         metric,
         &metadata::fixture(),
         &config(scenario),
-        Implementation::Zio,
+        &candidate,
         scenario,
         &FdProbe::Unavailable("fixture"),
-        &samples,
     )
 }
 
@@ -179,6 +208,8 @@ fn config(scenario: Scenario) -> Config {
         samples: 1,
         iterations: None,
         warmup_iterations: 1,
+        warmup_explicit: false,
+        target_sample_time_ms: 100,
         implementation: None,
         scenario: Some(scenario),
         output: None,

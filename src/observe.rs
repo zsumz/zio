@@ -79,14 +79,6 @@ impl Poll {
                 })
                 .map_err(|_| Error::Invariant)?;
         }
-        if woke {
-            self.backend
-                .acknowledge_wake()
-                .map_err(|source| Error::Io {
-                    operation: Operation::AcknowledgeWake,
-                    source,
-                })?;
-        }
         self.push_wake(events, woke)
     }
 

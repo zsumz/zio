@@ -12,7 +12,7 @@ use polling::{Event, Events, PollMode, Poller};
 use crate::polling_registration::PollingRegistration;
 
 use super::{
-    measure::{Captured, Metric, capture},
+    measure::{Captured, FdProbe, LiveFds, Metric, capture},
     scenario::{Scenario, WAIT_TIMEOUT_MS},
 };
 
@@ -21,14 +21,31 @@ pub(crate) fn register_delete(
     iterations: usize,
     metric: Option<Metric>,
 ) -> Result<Captured, String> {
+    let probe = FdProbe::discover();
     let (source, _peer) = UnixStream::pair().map_err(display)?;
+    let fixture_baseline = probe.count();
     let poller = Poller::new().map_err(display)?;
+    let candidate_setup = probe.count();
+    let probe_registration =
+        PollingRegistration::borrowed(&poller, &source, Event::readable(0), PollMode::Oneshot)
+            .map_err(display)?;
+    let active = probe.count();
+    probe_registration.delete().map_err(display)?;
+    let post_cleanup = probe.count();
     capture(iterations, metric, || {
         PollingRegistration::borrowed(&poller, &source, Event::readable(0), PollMode::Oneshot)
             .map_err(display)?
             .delete()
             .map_err(display)?;
         Ok(0)
+    })
+    .map(|captured| {
+        captured.with_live_fds(LiveFds::from_options(
+            fixture_baseline,
+            candidate_setup,
+            active,
+            post_cleanup,
+        ))
     })
 }
 
@@ -40,10 +57,17 @@ pub(crate) fn ready(
     let batch = scenario.batch_size();
     let capacity = NonZeroUsize::new(scenario.event_capacity())
         .ok_or_else(|| "polling event capacity must be nonzero".to_owned())?;
+    let probe = FdProbe::discover();
     let (sources, peers) = pairs(batch)?;
+    let fixture_baseline = probe.count();
     let poller = Poller::new().map_err(display)?;
     let mut events = Events::with_capacity(capacity);
+    let candidate_setup = probe.count();
     let mut registrations = Vec::with_capacity(batch);
+    register_all(&poller, &sources, &mut registrations)?;
+    let active = probe.count();
+    delete_all(&mut registrations)?;
+    let post_cleanup = probe.count();
     let mut seen = vec![false; batch];
     capture(iterations, metric, || {
         transaction(
@@ -55,6 +79,14 @@ pub(crate) fn ready(
             &mut seen,
         )?;
         u64::try_from(batch).map_err(display)
+    })
+    .map(|captured| {
+        captured.with_live_fds(LiveFds::from_options(
+            fixture_baseline,
+            candidate_setup,
+            active,
+            post_cleanup,
+        ))
     })
 }
 
@@ -76,7 +108,7 @@ fn transaction<'poller, 'source>(
     }
 }
 
-fn register_all<'poller, 'source>(
+pub(super) fn register_all<'poller, 'source>(
     poller: &'poller Poller,
     sources: &'source [UnixStream],
     registrations: &mut Vec<PollingRegistration<'poller, 'source>>,
@@ -153,7 +185,9 @@ fn observe_key(key: usize, sources: &[UnixStream], seen: &mut [bool]) -> Result<
     Ok(())
 }
 
-fn delete_all(registrations: &mut Vec<PollingRegistration<'_, '_>>) -> Result<(), String> {
+pub(super) fn delete_all(
+    registrations: &mut Vec<PollingRegistration<'_, '_>>,
+) -> Result<(), String> {
     let mut failure = None;
     while let Some(registration) = registrations.pop() {
         if let Err(error) = registration.delete().map_err(display)
@@ -165,7 +199,7 @@ fn delete_all(registrations: &mut Vec<PollingRegistration<'_, '_>>) -> Result<()
     failure.map_or(Ok(()), Err)
 }
 
-fn pairs(count: usize) -> Result<(Vec<UnixStream>, Vec<UnixStream>), String> {
+pub(super) fn pairs(count: usize) -> Result<(Vec<UnixStream>, Vec<UnixStream>), String> {
     let mut sources = Vec::with_capacity(count);
     let mut peers = Vec::with_capacity(count);
     for _ in 0..count {

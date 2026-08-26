@@ -83,7 +83,7 @@ including successful peers, after the poller is reused. Other wait errors leave
 
 Poll construction retains native-event, coalescing, mutation, receipt, and
 ownership scratch. Successful waits reuse it without growing zio-owned heap
-storage.
+storage. A configured wake trigger and observation also allocate nothing.
 
 `Error::Recovery` alone creates one owned `Vec` snapshot, bounded by the smaller
 configured event and registration limit. Allocation exhaustion follows Rust's
@@ -105,9 +105,9 @@ Use nonblocking descriptors and perform I/O until it would block.
 A poller binds its wake source to one key. Same-key requests and clones share
 it. A conflicting key is rejected without replacing the original.
 
-Triggers may coalesce. One observation drains them, and a later trigger remains
-observable. Wake and resource events share the fixed event capacity without
-silent loss.
+Triggers may coalesce. One observation consumes the pending notification, and a
+later trigger remains observable. Wake and resource events share the fixed event
+capacity without silent loss.
 
 ## Mutation outcomes
 

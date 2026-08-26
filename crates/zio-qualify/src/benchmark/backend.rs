@@ -5,6 +5,7 @@ use std::{os::unix::net::UnixStream, time::Duration};
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum Profile {
     InitialObservation,
+    Persistent,
     Level,
     OneShot,
 }
@@ -13,11 +14,22 @@ pub(crate) trait Backend: Sized {
     type Registration<'source>
     where
         Self: 'source;
+    type Wake: WakeHandle;
 
     fn new(event_capacity: usize, registration_capacity: usize) -> Result<Self, String>;
 
     fn construct_once(event_capacity: usize, registration_capacity: usize) -> Result<(), String> {
         drop(Self::new(event_capacity, registration_capacity)?);
+        Ok(())
+    }
+
+    fn construct_with_waker_once(
+        event_capacity: usize,
+        registration_capacity: usize,
+    ) -> Result<(), String> {
+        let mut backend = Self::new(event_capacity, registration_capacity)?;
+        backend.configure_wake()?;
+        drop(backend.wake_handle()?);
         Ok(())
     }
 
@@ -44,7 +56,13 @@ pub(crate) trait Backend: Sized {
 
     fn configure_wake(&mut self) -> Result<(), String>;
 
-    fn wake_roundtrip(&mut self, timeout: Duration) -> Result<u64, String>;
+    fn wake_handle(&self) -> Result<Self::Wake, String>;
+
+    fn wait_for_wake(&mut self, timeout: Duration) -> Result<u64, String>;
+}
+
+pub(crate) trait WakeHandle: Send + 'static {
+    fn wake(&self) -> Result<(), String>;
 }
 
 pub(crate) fn display(error: impl std::fmt::Display) -> String {

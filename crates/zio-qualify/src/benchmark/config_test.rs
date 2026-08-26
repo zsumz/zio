@@ -12,18 +12,21 @@ use super::{
 
 #[test]
 fn smoke_is_bounded_and_rejects_tuning() -> Result<(), String> {
-    let config = Config::parse([OsString::from("--smoke")])?;
+    let config = Config::parse([OsString::from("--smoke")], Metric::Timing)?;
     check(config.samples == 2, "smoke samples")?;
     check(
         config.iterations_for(Scenario::ReadyBatch1024) == 1,
         "smoke iterations",
     )?;
     check(
-        Config::parse([
-            OsString::from("--smoke"),
-            OsString::from("--samples"),
-            OsString::from("1"),
-        ])
+        Config::parse(
+            [
+                OsString::from("--smoke"),
+                OsString::from("--samples"),
+                OsString::from("1"),
+            ],
+            Metric::Timing,
+        )
         .is_err(),
         "smoke accepted tuning",
     )
@@ -31,8 +34,8 @@ fn smoke_is_bounded_and_rejects_tuning() -> Result<(), String> {
 
 #[test]
 fn defaults_are_scenario_aware_and_explicit_is_exact() -> Result<(), String> {
-    let default = Config::parse([])?;
-    check(default.samples == 12, "balanced measured rounds")?;
+    let default = Config::parse([], Metric::Timing)?;
+    check(default.samples == 90, "publication timing rounds")?;
     check(
         default.samples % Implementation::ALL.len() == 0 && default.samples % 2 == 0,
         "two- and three-candidate rotation balance",
@@ -45,7 +48,12 @@ fn defaults_are_scenario_aware_and_explicit_is_exact() -> Result<(), String> {
         default.iterations_for(Scenario::ReadyBatch1024) == 4,
         "batch default",
     )?;
-    let explicit = Config::parse([OsString::from("--iterations"), OsString::from("17")])?;
+    let allocation = Config::parse([], Metric::Allocation)?;
+    check(allocation.samples == 12, "allocation rounds")?;
+    let explicit = Config::parse(
+        [OsString::from("--iterations"), OsString::from("17")],
+        Metric::Timing,
+    )?;
     check(
         explicit.iterations_for(Scenario::ReadyBatch1024) == 17,
         "explicit iterations",
@@ -65,28 +73,49 @@ fn help_names_every_stable_scenario_for_each_binary() -> Result<(), String> {
 
 #[test]
 fn rejects_unknown_zero_and_unexposed_pairs() -> Result<(), String> {
-    check(Config::parse([OsString::from("--wat")]).is_err(), "unknown")?;
     check(
-        Config::parse([
-            OsString::from("--samples"),
-            OsString::from("1"),
-            OsString::from("--samples"),
-            OsString::from("2"),
-        ])
+        Config::parse(
+            [OsString::from("--sample-time-ms"), OsString::from("10")],
+            Metric::Allocation,
+        )
+        .is_err(),
+        "allocation sample-time accepted",
+    )?;
+    check(
+        Config::parse([OsString::from("--wat")], Metric::Timing).is_err(),
+        "unknown",
+    )?;
+    check(
+        Config::parse(
+            [
+                OsString::from("--samples"),
+                OsString::from("1"),
+                OsString::from("--samples"),
+                OsString::from("2"),
+            ],
+            Metric::Timing,
+        )
         .is_err(),
         "duplicate",
     )?;
     check(
-        Config::parse([OsString::from("--iterations"), OsString::from("0")]).is_err(),
+        Config::parse(
+            [OsString::from("--iterations"), OsString::from("0")],
+            Metric::Timing,
+        )
+        .is_err(),
         "zero",
     )?;
     check(
-        Config::parse([
-            OsString::from("--implementation"),
-            OsString::from("mio"),
-            OsString::from("--scenario"),
-            OsString::from("wait.ready.readable.level.repeat"),
-        ])
+        Config::parse(
+            [
+                OsString::from("--implementation"),
+                OsString::from("mio"),
+                OsString::from("--scenario"),
+                OsString::from("wait.ready.readable.level.repeat"),
+            ],
+            Metric::Timing,
+        )
         .is_err(),
         "Mio level label",
     )

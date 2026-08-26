@@ -53,7 +53,6 @@ impl Wake {
 #[derive(Debug)]
 pub(crate) struct Backend {
     epoll: Epoll,
-    wake: Arc<Wake>,
 }
 
 impl Backend {
@@ -68,16 +67,14 @@ impl Backend {
             raw: EventFd::new()
                 .map_err(|source| SetupFailure::new(Operation::CreateWaker, source))?,
         });
+        // Edge delivery makes consuming an epoll observation the logical
+        // acknowledgement. A later eventfd write queues a fresh edge without
+        // a read syscall on the normal wake path.
+        let wake_flags = libc::EPOLLIN.cast_unsigned() | libc::EPOLLET.cast_unsigned();
         epoll
-            .add(wake.raw.as_fd(), 0, libc::EPOLLIN.cast_unsigned())
+            .add(wake.raw.as_fd(), 0, wake_flags)
             .map_err(|source| SetupFailure::new(Operation::RegisterWaker, source))?;
-        Ok((
-            Self {
-                epoll,
-                wake: Arc::clone(&wake),
-            },
-            wake,
-        ))
+        Ok((Self { epoll }, wake))
     }
 
     pub(crate) fn register(
@@ -119,10 +116,6 @@ impl Backend {
 
     pub(crate) fn wait(&self, batch: &mut RawBatch, wait: Wait) -> io::Result<usize> {
         self.epoll.wait(&mut batch.raw, epoll_timeout(wait))
-    }
-
-    pub(crate) fn acknowledge_wake(&self) -> io::Result<()> {
-        self.wake.raw.drain()
     }
 }
 

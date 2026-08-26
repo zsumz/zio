@@ -4,7 +4,7 @@ use std::{os::unix::net::UnixStream, time::Duration};
 
 use zio::{Event, Key, Mode, Poll, Registration, Wait, Waker};
 
-use super::backend::{Backend, Profile, display};
+use super::backend::{Backend, Profile, WakeHandle, display};
 
 pub(crate) struct ZioBackend {
     poll: Poll,
@@ -14,6 +14,7 @@ pub(crate) struct ZioBackend {
 
 impl Backend for ZioBackend {
     type Registration<'source> = Registration;
+    type Wake = Waker;
 
     fn new(event_capacity: usize, registration_capacity: usize) -> Result<Self, String> {
         let poll = Poll::with_capacity(event_capacity, registration_capacity).map_err(display)?;
@@ -91,12 +92,13 @@ impl Backend for ZioBackend {
         Ok(())
     }
 
-    fn wake_roundtrip(&mut self, timeout: Duration) -> Result<u64, String> {
-        let waker = self
-            .waker
-            .as_ref()
-            .ok_or_else(|| "zio wake was not configured".to_owned())?;
-        waker.wake().map_err(display)?;
+    fn wake_handle(&self) -> Result<Self::Wake, String> {
+        self.waker
+            .clone()
+            .ok_or_else(|| "zio wake was not configured".to_owned())
+    }
+
+    fn wait_for_wake(&mut self, timeout: Duration) -> Result<u64, String> {
         self.events.clear();
         self.poll
             .wait(&mut self.events, Wait::For(timeout))
@@ -108,9 +110,15 @@ impl Backend for ZioBackend {
     }
 }
 
+impl WakeHandle for Waker {
+    fn wake(&self) -> Result<(), String> {
+        self.wake().map_err(display)
+    }
+}
+
 const fn mode(profile: Profile) -> Mode {
     match profile {
-        Profile::InitialObservation | Profile::Level => Mode::Level,
+        Profile::InitialObservation | Profile::Persistent | Profile::Level => Mode::Level,
         Profile::OneShot => Mode::OneShot,
     }
 }

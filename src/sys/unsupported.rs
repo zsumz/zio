@@ -90,10 +90,6 @@ impl Backend {
         Err(unsupported_error())
     }
 
-    pub(crate) fn acknowledge_wake(&self) -> io::Result<()> {
-        Err(unsupported_error())
-    }
-
     pub(crate) fn disarm(
         &self,
         _descriptor: i32,

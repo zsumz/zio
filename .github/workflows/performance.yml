@@ -15,17 +15,14 @@ defaults:
 
 jobs:
   measure:
-    name: ${{ matrix.name }} receipts
+    name: ${{ matrix.runner }} replica ${{ matrix.replica }} receipts
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 30
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - name: Linux epoll
-            runner: ubuntu-24.04
-          - name: macOS kqueue
-            runner: macos-15
+        runner: [ubuntu-24.04, macos-15]
+        replica: [1, 2, 3, 4, 5]
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -59,10 +56,10 @@ jobs:
             uname -a
             rustc +1.97.1 -vV
             git rev-parse HEAD
+            printf 'replica=%s\n' '${{ matrix.replica }}'
             printf 'open-file-soft-limit=%s\n' "$(ulimit -n)"
           } > "$PERF_DIR/platform.txt"
           target/release/zio-perf \
-            --samples 12 \
             --output "$PERF_DIR/timing.ndjson" \
             2> "$PERF_DIR/timing-summary.txt"
 
@@ -77,7 +74,6 @@ jobs:
           PERF_DIR: ${{ runner.temp }}/zio-performance
         run: >-
           target/release/zio-perf-alloc
-          --samples 12
           --output "$PERF_DIR/allocation.ndjson"
           2> "$PERF_DIR/allocation-summary.txt"
 
@@ -86,13 +82,14 @@ jobs:
           PERF_DIR: ${{ runner.temp }}/zio-performance
         run: |
           jq -e -s '
-            length == 54 and
-            ([.[] | select(.metric == "timing")] | length) == 27 and
-            ([.[] | select(.metric == "allocation")] | length) == 27 and
-            ([.[] | [.metric, .candidate.name, .scenario.name]] | unique | length) == 54 and
+            length == 116 and
+            ([.[] | select(.metric == "timing")] | length) == 58 and
+            ([.[] | select(.metric == "allocation")] | length) == 58 and
+            ([.[] | [.metric, .candidate.name, .scenario.name]] | unique | length) == 116 and
             all(.[];
-              .schema == "zio.perf.v1" and
+              .schema == "zio.perf.v2" and
               (.status == "passed" or .status == "unsupported") and
+              .parameters.samples == (if .metric == "timing" then 90 else 12 end) and
               .git.sha == env.GITHUB_SHA and
               .git.dirty == false
             )
@@ -107,33 +104,77 @@ jobs:
           sudo apt-get install --yes --no-install-recommends strace
           strace --version > "$PERF_DIR/strace-version.txt"
 
-      - name: Capture Linux syscall summaries
+      - name: Prove Linux wake and persistent syscall contracts
         if: runner.os == 'Linux'
         env:
           PERF_DIR: ${{ runner.temp }}/zio-performance
         run: |
           set -euo pipefail
           command -v strace
-          printf '%s\n' \
-            'instrumentation=strace -qq -c' \
-            'scenario=wait.ready.readable.single.initial' \
-            'timing-receipts=discarded' \
-            > "$PERF_DIR/syscalls-context.txt"
-          for implementation in zio mio polling; do
-            strace -qq -c \
-              -o "$PERF_DIR/syscalls-$implementation.txt" \
+
+          wake_trace="$PERF_DIR/syscalls-wake-pretriggered.trace"
+          strace -qq -yy \
+            -e trace=eventfd2,read,write,epoll_create1,epoll_ctl,epoll_wait \
+            -o "$wake_trace" \
+            target/release/zio-perf \
+            --implementation zio \
+            --scenario wake.notify.pretriggered \
+            --samples 1 --iterations 100 --warmup 1 \
+            --output "$PERF_DIR/syscalls-wake-pretriggered.ndjson" \
+            2> "$PERF_DIR/syscalls-wake-pretriggered-summary.txt"
+          jq -e '
+            .schema == "zio.perf.v2" and .status == "passed" and
+            .parameters.iterations == 100 and .raw.operations == [100]
+          ' "$PERF_DIR/syscalls-wake-pretriggered.ndjson"
+          wake_writes="$(grep -Ec 'write\(.*<anon_inode:\[eventfd\]>' "$wake_trace" || true)"
+          wake_reads="$(grep -Ec 'read\(.*<anon_inode:\[eventfd\]>' "$wake_trace" || true)"
+          test "$wake_writes" -eq 101
+          test "$wake_reads" -eq 0
+
+          for iterations in 1 100; do
+            trace="$PERF_DIR/syscalls-persistent-$iterations.trace"
+            receipt="$PERF_DIR/syscalls-persistent-$iterations.ndjson"
+            strace -qq -yy -e trace=fcntl,epoll_ctl \
+              -o "$trace" \
               target/release/zio-perf \
-              --implementation "$implementation" \
-              --scenario wait.ready.readable.single.initial \
-              --samples 5 --iterations 50 --warmup 5 \
-              --output /dev/null \
-              2> /dev/null
+              --implementation zio \
+              --scenario wait.ready.readable.single.persistent \
+              --samples 1 --iterations "$iterations" --warmup 1 \
+              --output "$receipt" \
+              2> "$PERF_DIR/syscalls-persistent-$iterations-summary.txt"
+            jq -e --argjson iterations "$iterations" '
+              .schema == "zio.perf.v2" and .status == "passed" and
+              .parameters.iterations == $iterations and
+              .raw.operations == [$iterations]
+            ' "$receipt"
           done
+          one_adds="$(grep -c 'EPOLL_CTL_ADD' "$PERF_DIR/syscalls-persistent-1.trace")"
+          one_deletes="$(grep -c 'EPOLL_CTL_DEL' "$PERF_DIR/syscalls-persistent-1.trace")"
+          one_dups="$(grep -c 'F_DUPFD_CLOEXEC' "$PERF_DIR/syscalls-persistent-1.trace")"
+          hundred_adds="$(grep -c 'EPOLL_CTL_ADD' "$PERF_DIR/syscalls-persistent-100.trace")"
+          hundred_deletes="$(grep -c 'EPOLL_CTL_DEL' "$PERF_DIR/syscalls-persistent-100.trace")"
+          hundred_dups="$(grep -c 'F_DUPFD_CLOEXEC' "$PERF_DIR/syscalls-persistent-100.trace")"
+          test "$one_adds" -eq 4
+          test "$one_deletes" -eq 2
+          test "$one_dups" -eq 2
+          test "$hundred_adds" -eq "$one_adds"
+          test "$hundred_deletes" -eq "$one_deletes"
+          test "$hundred_dups" -eq "$one_dups"
+          {
+            printf 'wake-eventfd-writes=%s\n' "$wake_writes"
+            printf 'wake-eventfd-reads=%s\n' "$wake_reads"
+            printf 'persistent-1-epoll-adds=%s\n' "$one_adds"
+            printf 'persistent-1-epoll-deletes=%s\n' "$one_deletes"
+            printf 'persistent-1-descriptor-dups=%s\n' "$one_dups"
+            printf 'persistent-100-epoll-adds=%s\n' "$hundred_adds"
+            printf 'persistent-100-epoll-deletes=%s\n' "$hundred_deletes"
+            printf 'persistent-100-descriptor-dups=%s\n' "$hundred_dups"
+          } > "$PERF_DIR/syscalls-contract.txt"
 
       - name: Upload performance evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: zio-performance-${{ runner.os }}
+          name: zio-performance-${{ runner.os }}-replica-${{ matrix.replica }}
           path: ${{ runner.temp }}/zio-performance
           if-no-files-found: error

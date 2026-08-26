@@ -7,7 +7,7 @@ use crate::Implementation;
 use super::{
     candidate_bench::Support,
     config::Config,
-    measure::{Allocations, Captured, CapturedMetric, Counts, Metric},
+    measure::{Allocations, Captured, CapturedMetric, Counts, Metric, Resources},
     metadata,
     runner::{Driver, execute, execute_with, selected_scenarios},
     scenario::Scenario,
@@ -104,6 +104,10 @@ fn unfiltered_smoke_excludes_the_descriptor_heavy_batch() -> Result<(), String> 
         "descriptor-heavy smoke scenario",
     )?;
     check(
+        !selected.contains(&Scenario::PersistentBatch1024),
+        "persistent descriptor-heavy smoke scenario",
+    )?;
+    check(
         selected.contains(&Scenario::ReadyBatch64),
         "small batch omitted",
     )
@@ -131,6 +135,7 @@ impl Driver for FailingMio {
                 events: 0,
             },
             metric: captured_metric(metric),
+            resources: Resources::default(),
         })
     }
 }
@@ -156,6 +161,8 @@ fn config(implementation: Option<Implementation>, scenario: Option<Scenario>) ->
         samples: 2,
         iterations: None,
         warmup_iterations: 1,
+        warmup_explicit: false,
+        target_sample_time_ms: 100,
         implementation,
         scenario,
         output: None,

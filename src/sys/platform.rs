@@ -184,11 +184,6 @@ impl Backend {
         }
     }
 
-    #[cfg(target_os = "linux")]
-    pub(crate) fn acknowledge_wake(&self) -> io::Result<()> {
-        self.linux.acknowledge_wake()
-    }
-
     #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
     pub(crate) fn submit_disarms(&self, batch: &mut RawBatch) -> io::Result<()> {
         self.kqueue.submit_disarms(&mut batch.kqueue)

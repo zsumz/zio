@@ -47,7 +47,7 @@ impl WakeCaseResult {
     }
 }
 
-/// Complete result of the five isolated wake scenarios.
+/// Complete result of the isolated wake scenarios.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct WakeReport {
     results: Box<[WakeCaseResult]>,

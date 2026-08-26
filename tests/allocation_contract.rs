@@ -51,3 +51,31 @@ fn successful_one_shot_wait_allocates_nothing() -> Result<(), Box<dyn std::error
     poll.delete(registration)?;
     Ok(())
 }
+
+#[test]
+fn successful_wake_roundtrip_allocates_nothing() -> Result<(), Box<dyn std::error::Error>> {
+    let mut poll = Poll::with_capacity(1, 1)?;
+    let waker = poll.waker(Key::new(82))?;
+    let mut events = poll.events()?;
+    let mut wake_result = None;
+    let mut wait_result = None;
+
+    let allocations = allocation_counter::measure(|| {
+        wake_result = Some(waker.wake());
+        wait_result = Some(poll.wait(&mut events, Wait::For(Duration::from_secs(1))));
+    });
+
+    wake_result.ok_or_else(|| io::Error::other("measured wake did not complete"))??;
+    wait_result.ok_or_else(|| io::Error::other("measured wake wait did not complete"))??;
+    assert_eq!(allocations.count_total, 0);
+    assert_eq!(allocations.count_current, 0);
+    assert_eq!(allocations.count_max, 0);
+    assert_eq!(allocations.bytes_total, 0);
+    assert_eq!(allocations.bytes_current, 0);
+    assert_eq!(allocations.bytes_max, 0);
+    assert!(matches!(
+        events.as_slice(),
+        [Event::Wake { key }] if *key == Key::new(82)
+    ));
+    Ok(())
+}
