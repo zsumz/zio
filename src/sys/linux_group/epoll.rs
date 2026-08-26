@@ -7,6 +7,7 @@
 
 use std::{
     io,
+    mem::MaybeUninit,
     os::fd::{AsRawFd, BorrowedFd, FromRawFd, OwnedFd},
 };
 
@@ -27,10 +28,11 @@ impl EpollEvent {
     }
 }
 
-/// Fixed initialized storage written only by `epoll_wait`.
+/// Fixed storage initialized only by `epoll_wait`.
 pub(super) struct EpollBatch {
-    events: Box<[libc::epoll_event]>,
+    events: Box<[MaybeUninit<libc::epoll_event>]>,
     max_events: libc::c_int,
+    observed: usize,
 }
 
 impl EpollBatch {
@@ -40,18 +42,22 @@ impl EpollBatch {
             .filter(|count| *count > 0)?;
         let mut events = Vec::new();
         events.try_reserve_exact(capacity).ok()?;
-        events.resize_with(capacity, || libc::epoll_event { events: 0, u64: 0 });
+        events.resize_with(capacity, MaybeUninit::uninit);
         Some(Self {
             events: events.into_boxed_slice(),
             max_events,
+            observed: 0,
         })
     }
 
     pub(super) fn event(&self, index: usize, observed: usize) -> Option<EpollEvent> {
-        if index >= observed {
+        if observed != self.observed || index >= observed {
             return None;
         }
         let event = self.events.get(index)?;
+        // SAFETY: `wait` records exactly the prefix initialized by the most
+        // recent successful `epoll_wait`, and both bounds were checked above.
+        let event = unsafe { event.assume_init_ref() };
         Some(EpollEvent {
             flags: event.events,
             token: event.u64,
@@ -109,12 +115,13 @@ impl Epoll {
     }
 
     pub(super) fn wait(&self, batch: &mut EpollBatch, timeout: libc::c_int) -> io::Result<usize> {
-        // SAFETY: the batch owns `max_events` initialized writable entries and
-        // epoll_wait does not retain the pointer.
+        batch.observed = 0;
+        // SAFETY: the batch owns `max_events` properly aligned writable slots.
+        // `epoll_wait` initializes the returned prefix and retains no pointer.
         let observed = unsafe {
             libc::epoll_wait(
                 self.descriptor.as_raw_fd(),
-                batch.events.as_mut_ptr(),
+                batch.events.as_mut_ptr().cast(),
                 batch.max_events,
                 timeout,
             )
@@ -122,8 +129,10 @@ impl Epoll {
         if observed < 0 {
             Err(io::Error::last_os_error())
         } else {
-            usize::try_from(observed)
-                .map_err(|_| io::Error::other("epoll returned an invalid event count"))
+            let observed = usize::try_from(observed)
+                .map_err(|_| io::Error::other("epoll returned an invalid event count"))?;
+            batch.observed = observed;
+            Ok(observed)
         }
     }
 

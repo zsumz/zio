@@ -5,15 +5,15 @@ producer = "0.0.3-rc.4"
 contract_sha256 = "e89deef5eb54323ed4babefeb6a4fc98d62c63b64d714fbf042436581daad438"
 
 [analysis]
-inventory_sha256 = "a9db0d36868fe3565db85280ab46b5911dd6ef90ba38d7562c33744139e9a060"
+inventory_sha256 = "529d679edd0c5af41143cd0801a199308a552f03940339de8388ea73f914b0a2"
 exclusions_sha256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 cargo_lock_sha256 = "7a3d7c32284a9a0f8b16489476c27fb9e41b8d3ded6c77cebac146bcde4d97da"
 packages = 3
 targets = 28
-physical_rust_files = 195
-base_source_contexts = 339
+physical_rust_files = 196
+base_source_contexts = 340
 derived_source_contexts = 0
-source_facts = 52904
+source_facts = 52996
 projection_queries = 0
 projected_facts = 0
 unresolved_bindings = 0
@@ -545,7 +545,7 @@ value = 7
 [[ratchet]]
 rule = "rust.hygiene.unsafe"
 target = "src/sys/linux_group/epoll.rs"
-value = 5
+value = 6
 
 [[ratchet]]
 rule = "rust.hygiene.unsafe"
