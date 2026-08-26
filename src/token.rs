@@ -14,6 +14,7 @@ pub(crate) fn encode(index: u32, generation: NonZeroU32) -> Option<RegistrationI
     ))
 }
 
+#[inline]
 pub(crate) fn decode(id: RegistrationId) -> Result<(usize, NonZeroU32), Error> {
     let token = id.get();
     if token == 0 {

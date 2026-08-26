@@ -140,6 +140,7 @@ impl Backend {
         }
     }
 
+    #[inline]
     pub(crate) fn delete(
         &self,
         source: BorrowedFd<'_>,
@@ -225,6 +226,7 @@ impl MutationDriver for Backend {
         )
     }
 
+    #[inline]
     fn delete(&mut self, request: DeleteRequest<'_>) -> Result<(), MutationFailure> {
         let _ = request.registration;
         Backend::delete(self, request.descriptor, request.interest, request.state)

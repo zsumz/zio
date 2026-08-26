@@ -104,6 +104,7 @@ impl Backend {
         self.epoll.modify(source, token, flags).map_err(not_applied)
     }
 
+    #[inline]
     pub(crate) fn delete(
         &self,
         source: BorrowedFd<'_>,
