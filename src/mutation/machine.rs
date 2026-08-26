@@ -62,6 +62,7 @@ impl<'state, Driver: MutationDriver> MutationSession<'state, Driver> {
         unsafe_code,
         reason = "this internal seam propagates the public borrowed-descriptor contract"
     )]
+    #[inline]
     pub(crate) unsafe fn register_borrowed<F: AsFd + ?Sized>(
         &mut self,
         source: &F,
@@ -76,6 +77,7 @@ impl<'state, Driver: MutationDriver> MutationSession<'state, Driver> {
         self.register_descriptor(descriptor, key, interest, mode)
     }
 
+    #[inline]
     fn register_descriptor(
         &mut self,
         descriptor: Descriptor,
@@ -91,27 +93,26 @@ impl<'state, Driver: MutationDriver> MutationSession<'state, Driver> {
             .owner
             .get_or_assign()
             .map_err(|error| RegisterError::new(error, None))?;
-        let reservation = permit
-            .reserve(descriptor, key, interest, mode)
-            .map_err(|error| RegisterError::new(error, None))?;
-        let id = reservation.id();
+        let id = permit.id();
         let registration = Registration::new(owner, id);
-        let reserved_descriptor = match reservation.descriptor() {
-            Ok(descriptor) => descriptor,
-            Err(error) => {
-                if let Err(retire) = reservation.retire() {
-                    return Err(RegisterError::new(retire, None));
-                }
-                return Err(RegisterError::new(error, None));
-            }
-        };
-        let result = self.driver.register(RegisterRequest {
-            descriptor: reserved_descriptor,
-            registration: id,
-            key,
-            interest,
-            mode,
-        });
+        let driver = &mut *self.driver;
+        let (reservation, result) = permit
+            .reserve_with(
+                descriptor,
+                key,
+                interest,
+                mode,
+                |reserved_descriptor, id| {
+                    driver.register(RegisterRequest {
+                        descriptor: reserved_descriptor,
+                        registration: id,
+                        key,
+                        interest,
+                        mode,
+                    })
+                },
+            )
+            .map_err(|error| RegisterError::new(error, None))?;
         let Err(failure) = result else {
             return Ok(reservation.keep(registration));
         };
@@ -181,6 +182,7 @@ impl<'state, Driver: MutationDriver> MutationSession<'state, Driver> {
             .commit_modify(registration.id(), interest, mode)
     }
 
+    #[inline]
     pub(crate) fn delete(&mut self, registration: Registration) -> Result<(), DeleteError> {
         if let Err(error) = require_owner(self.owner.current(), &registration) {
             return Err(DeleteError::new(error, registration));
@@ -222,6 +224,7 @@ impl<'state, Driver: MutationDriver> MutationSession<'state, Driver> {
     }
 }
 
+#[inline]
 fn validate_registration_interest(interest: Interest) -> Result<(), RegisterError> {
     (!interest.is_empty())
         .then_some(())

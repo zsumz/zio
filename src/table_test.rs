@@ -32,8 +32,8 @@ impl RegistrationTable {
         mode: Mode,
     ) -> Result<RegistrationId, Error> {
         let permit = self.check_reservable()?;
+        let id = permit.id();
         let reservation = permit.reserve(descriptor, key, interest, mode)?;
-        let id = reservation.id();
         Ok(reservation.keep(id))
     }
 
@@ -126,15 +126,15 @@ fn reservation_carries_the_inserted_descriptor_and_retire_proof() -> Result<(), 
     let descriptor = source.as_fd().try_clone_to_owned()?;
     let raw_descriptor = descriptor.as_raw_fd();
     let permit = table.check_reservable()?;
-    let reservation = permit.reserve(
+    let id = permit.id();
+    let (reservation, observed) = permit.reserve_with(
         Descriptor::owned(descriptor),
         Key::new(1),
         Interest::READABLE,
         Mode::Level,
+        |descriptor, id| (descriptor.as_raw_fd(), id),
     )?;
-    let id = reservation.id();
-
-    assert_eq!(reservation.descriptor()?.as_raw_fd(), raw_descriptor);
+    assert_eq!(observed, (raw_descriptor, id));
     reservation.retire()?;
     assert!(matches!(
         table.state(id),

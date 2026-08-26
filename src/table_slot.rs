@@ -39,13 +39,3 @@ pub(super) struct Slot {
     pub(super) entry: Option<Entry>,
     pub(super) next_free: u32,
 }
-
-impl Slot {
-    pub(super) const fn occupied(generation: u32, entry: Entry) -> Self {
-        Self {
-            generation,
-            entry: Some(entry),
-            next_free: FREE_END,
-        }
-    }
-}

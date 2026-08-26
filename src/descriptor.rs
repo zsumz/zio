@@ -32,6 +32,7 @@ impl Descriptor {
         Self(descriptor.as_raw_fd() | BORROWED_TAG)
     }
 
+    #[inline]
     pub(crate) fn as_fd(&self) -> BorrowedFd<'_> {
         // SAFETY: owned values consume and retain an `OwnedFd`. Borrowed values
         // are created only behind the public unsafe registration contract,
@@ -59,6 +60,7 @@ impl fmt::Debug for Descriptor {
 }
 
 impl Drop for Descriptor {
+    #[inline]
     fn drop(&mut self) {
         if self.is_owned() {
             // SAFETY: `owned` consumed this exact `OwnedFd`, and the encoded

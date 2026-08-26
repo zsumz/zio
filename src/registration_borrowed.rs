@@ -35,6 +35,7 @@ impl Poll {
         unsafe_code,
         reason = "the caller explicitly assumes the borrowed descriptor lifetime contract"
     )]
+    #[inline]
     pub unsafe fn register_borrowed<F: AsFd + ?Sized>(
         &mut self,
         source: &F,

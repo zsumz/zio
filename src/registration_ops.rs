@@ -70,6 +70,7 @@ impl Poll {
     /// [`CommitStatus::Applied`]: crate::CommitStatus::Applied
     /// [`CommitStatus::NotApplied`]: crate::CommitStatus::NotApplied
     /// [`CommitStatus::Unknown`]: crate::CommitStatus::Unknown
+    #[inline]
     pub fn delete(&mut self, registration: Registration) -> Result<(), DeleteError> {
         self.mutations().delete(registration)
     }

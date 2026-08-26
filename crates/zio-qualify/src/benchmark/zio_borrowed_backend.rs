@@ -23,12 +23,13 @@ pub(crate) struct ZioBorrowedRegistration<'source> {
 }
 
 impl ZioBorrowedBackend {
+    #[inline]
     pub(super) fn poll_mut(&mut self) -> Result<&mut Poll, String> {
-        self.poll
-            .as_mut()
-            .ok_or_else(|| "zio borrowed backend was invalidated".to_owned())
+        self.poll.as_mut().ok_or_else(invalidated)
     }
 
+    #[cold]
+    #[inline(never)]
     fn invalidate(&mut self, error: impl std::fmt::Display) -> String {
         let message = error.to_string();
         self.waker = None;
@@ -55,6 +56,7 @@ impl Backend for ZioBorrowedBackend {
         unsafe_code,
         reason = "sources live through deletion; adapter errors terminally invalidate the poller"
     )]
+    #[inline]
     fn register<'source>(
         &mut self,
         source: &'source UnixStream,
@@ -93,6 +95,7 @@ impl Backend for ZioBorrowedBackend {
         result.map_err(|error| self.invalidate(error))
     }
 
+    #[inline]
     fn delete(&mut self, registration: Self::Registration<'_>) -> Result<(), String> {
         let result = self.poll_mut()?.delete(registration.registration);
         result.map_err(|error| self.invalidate(error))
@@ -164,6 +167,12 @@ impl Backend for ZioBorrowedBackend {
         };
         observed.map_err(|error| self.invalidate(error))
     }
+}
+
+#[cold]
+#[inline(never)]
+fn invalidated() -> String {
+    "zio borrowed backend was invalidated".to_owned()
 }
 
 const fn mode(profile: Profile) -> Mode {

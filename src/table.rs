@@ -120,6 +120,7 @@ impl RegistrationTable {
         self.entry_with_index(id).map(|(_, entry)| entry)
     }
 
+    #[inline]
     fn entry_with_index(&self, id: RegistrationId) -> Result<(usize, &Entry), Error> {
         let (index, generation) = decode(id)?;
         let slot = self

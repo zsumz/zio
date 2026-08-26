@@ -13,7 +13,7 @@ targets = 31
 physical_rust_files = 218
 base_source_contexts = 371
 derived_source_contexts = 0
-source_facts = 62135
+source_facts = 62138
 projection_queries = 0
 projected_facts = 0
 unresolved_bindings = 0
@@ -474,7 +474,7 @@ sha256 = "47989a99e20ea57784efa3ae9f4e7cc4484ad5c60da62e5ea02f490def90f4a8"
 
 [[gate.input]]
 path = "crates/zio-qualify/src/benchmark/zio_borrowed_backend.rs"
-sha256 = "a0db4acbdb57fc3fcffb8e94f1e398f5200e5c6dd19f33645060de9c9599d4eb"
+sha256 = "18e62b65a5a1ebeab5c9edcc30faee40a488ce865ed64a0705a55ffa516b823c"
 
 [[gate.input]]
 path = "crates/zio-qualify/src/benchmark/zio_borrowed_backend_test.rs"
