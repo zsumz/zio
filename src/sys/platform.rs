@@ -57,6 +57,7 @@ impl Backend {
         }
     }
 
+    #[inline]
     pub(crate) fn register(
         &self,
         source: BorrowedFd<'_>,
@@ -202,6 +203,7 @@ impl Backend {
 }
 
 impl MutationDriver for Backend {
+    #[inline]
     fn register(&mut self, request: RegisterRequest<'_>) -> Result<(), MutationFailure> {
         let _ = request.key;
         Backend::register(

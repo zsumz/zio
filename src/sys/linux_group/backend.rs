@@ -75,6 +75,7 @@ impl Backend {
         Ok((Self { epoll }, wake))
     }
 
+    #[inline]
     pub(crate) fn register(
         &self,
         source: BorrowedFd<'_>,
