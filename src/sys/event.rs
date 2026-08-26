@@ -1,5 +1,10 @@
 //! Normalized observations detached from syscall-owned storage.
 
+#![cfg_attr(
+    target_os = "linux",
+    allow(dead_code, reason = "projection-stable non-Linux raw-event facade")
+)]
+
 use crate::Readiness;
 
 /// One normalized resource or administrative observation.

@@ -1,5 +1,4 @@
 //! Caller keys, portable readiness hints, and bounded event storage.
-
 use std::num::NonZeroUsize;
 
 use crate::Error;
@@ -145,13 +144,8 @@ impl Event {
     }
 }
 
-/// Reusable event destination with a fixed logical capacity.
-///
-/// One wait emits at most one resource event per registration. Resource events
-/// retain first-native-observation order, split native hints for one
-/// registration are unioned, and an observed wake follows resource events.
-/// Separate registrations can therefore produce separate events with the same
-/// caller key.
+/// Reusable fixed-capacity destination preserving native resource order.
+/// A wake follows resource events, and separate registrations may share a key.
 #[derive(Debug)]
 pub struct Events {
     capacity: NonZeroUsize,
@@ -218,6 +212,12 @@ impl Events {
         self.events.drain(..)
     }
 
+    #[cfg(target_os = "linux")]
+    pub(crate) fn linux_storage(&mut self) -> &mut Vec<Event> {
+        &mut self.events
+    }
+
+    #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
     pub(crate) fn try_push(&mut self, event: Event) -> Result<(), Error> {
         if self.events.len() >= self.capacity.get() {
             return Err(Error::EventsTooSmall {

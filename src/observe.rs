@@ -31,7 +31,7 @@ impl Poll {
         }
         let observed = self
             .backend
-            .wait(&mut self.raw_events, wait)
+            .wait(&mut self.raw_events, events, wait)
             .map_err(|source| Error::Io {
                 operation: Operation::Wait,
                 source,
@@ -51,35 +51,20 @@ impl Poll {
     }
 
     #[cfg(target_os = "linux")]
+    #[inline]
     fn translate_linux(&mut self, observed: usize, events: &mut Events) -> Result<(), Error> {
-        let mut woke = false;
-        for index in 0..observed {
-            let raw = self
-                .raw_events
-                .event(index, observed)
-                .ok_or(Error::Invariant)?;
-            if raw.is_control() {
-                woke = true;
-                continue;
-            }
-            let Some(resource) = self.registrations.resolve(raw.token()) else {
-                continue;
-            };
-            if raw.descriptor() >= 0 && raw.descriptor() != resource.descriptor {
-                continue;
-            }
-            if resource.mode == Mode::OneShot {
-                self.registrations
-                    .apply_disarm(resource.id, crate::CommitStatus::Applied)?;
-            }
-            events
-                .try_push(crate::Event::Resource {
-                    key: resource.key,
-                    readiness: raw.readiness(),
-                })
-                .map_err(|_| Error::Invariant)?;
-        }
-        self.push_wake(events, woke)
+        let registrations = &mut self.registrations;
+        self.raw_events
+            .translate_linux(events, observed, self.wake_key, |token| {
+                let Some(resource) = registrations.resolve(token) else {
+                    return Ok(None);
+                };
+                let _ = resource.descriptor;
+                if resource.mode == Mode::OneShot {
+                    registrations.apply_disarm(resource.id, crate::CommitStatus::Applied)?;
+                }
+                Ok(Some(resource.key))
+            })
     }
 
     #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
@@ -135,16 +120,6 @@ impl Poll {
                     binding.interest,
                 )
                 .ok_or(Error::Invariant)?;
-        }
-        Ok(())
-    }
-
-    #[cfg(target_os = "linux")]
-    fn push_wake(&mut self, events: &mut Events, woke: bool) -> Result<(), Error> {
-        if let (true, Some(key)) = (woke, self.wake_key) {
-            events
-                .try_push(crate::Event::Wake { key })
-                .map_err(|_| Error::Invariant)?;
         }
         Ok(())
     }

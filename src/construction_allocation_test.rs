@@ -32,16 +32,14 @@ fn waker_normalized_construction_stays_compact() -> Result<(), Box<dyn StdError>
         Some(Err(error)) => return Err(Box::new(error)),
         None => return Err(io::Error::other("construction did not run").into()),
     };
-    let expected_count = if cfg!(target_os = "linux") { 4 } else { 7 };
+    let expected_count = if cfg!(target_os = "linux") { 3 } else { 7 };
     assert_eq!(allocations.count_total, expected_count);
     assert_eq!(allocations.count_current, i64::try_from(expected_count)?);
     assert_eq!(allocations.count_max, expected_count);
     #[cfg(all(target_os = "linux", target_pointer_width = "64"))]
     {
         let capacity = u64::try_from(CAPACITY)?;
-        // Linux packs `epoll_event` to 12 bytes on x86; other 64-bit ABIs use 16.
-        let native_event = if cfg!(target_arch = "x86_64") { 12 } else { 16 };
-        let expected_linux_bytes = 24 + capacity * (40 + native_event);
+        let expected_linux_bytes = 24 + capacity * 40;
         assert_eq!(allocations.bytes_total, expected_linux_bytes);
         assert_eq!(
             allocations.bytes_current,

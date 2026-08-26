@@ -1,5 +1,11 @@
 //! Opaque registration ownership and authoritative state vocabulary.
 
+use std::sync::atomic::{AtomicU64, Ordering};
+
+use crate::Error;
+
+static NEXT_POLL_ID: AtomicU64 = AtomicU64::new(1);
+
 /// Opaque identity for one exact registration generation.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -22,6 +28,44 @@ pub(crate) struct PollId(u64);
 impl PollId {
     pub(crate) const fn new(raw: u64) -> Self {
         Self(raw)
+    }
+}
+
+/// Lazily assigned process-unique poller authority.
+#[derive(Debug)]
+pub(crate) struct PollOwner(u64);
+
+impl PollOwner {
+    pub(crate) const fn unassigned() -> Self {
+        Self(0)
+    }
+
+    pub(crate) const fn current(&self) -> Option<PollId> {
+        if self.0 == 0 {
+            None
+        } else {
+            Some(PollId::new(self.0))
+        }
+    }
+
+    pub(crate) fn get_or_assign(&mut self) -> Result<PollId, Error> {
+        self.get_or_assign_from(&NEXT_POLL_ID)
+    }
+
+    fn get_or_assign_from(&mut self, next: &AtomicU64) -> Result<PollId, Error> {
+        if let Some(owner) = self.current() {
+            return Ok(owner);
+        }
+        let raw = next
+            .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |value| {
+                value.checked_add(1)
+            })
+            .map_err(|_| Error::Invariant)?;
+        if raw == 0 {
+            return Err(Error::Invariant);
+        }
+        self.0 = raw;
+        Ok(PollId::new(raw))
     }
 }
 
@@ -74,3 +118,7 @@ pub enum RegistrationState {
     /// The backend state cannot be proven after a partial mutation.
     Uncertain,
 }
+
+#[cfg(test)]
+#[path = "registration_test.rs"]
+mod tests;

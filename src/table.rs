@@ -49,17 +49,9 @@ impl RegistrationTable {
         interest: Interest,
         mode: Mode,
     ) -> Result<RegistrationId, Error> {
+        self.check_reservable()?;
         if self.free_head != FREE_END {
             return self.reserve_reused(descriptor, key, interest, mode);
-        }
-        if self.slots.len() == self.limit.get() {
-            return if self.exhausted == self.limit.get() {
-                Err(Error::RegistrationSpaceExhausted)
-            } else {
-                Err(Error::Capacity {
-                    limit: self.limit.get(),
-                })
-            };
         }
         let index = u32::try_from(self.slots.len()).map_err(|_| Error::BackendOverflow)?;
         let generation = core::num::NonZeroU32::new(1).ok_or(Error::Invariant)?;
@@ -67,6 +59,19 @@ impl RegistrationTable {
         let entry = Entry::registered(descriptor, key, interest, mode);
         self.slots.push(Slot::occupied(generation.get(), entry));
         Ok(id)
+    }
+
+    pub(crate) fn check_reservable(&self) -> Result<(), Error> {
+        if self.free_head != FREE_END || self.slots.len() < self.limit.get() {
+            return Ok(());
+        }
+        if self.exhausted == self.limit.get() {
+            Err(Error::RegistrationSpaceExhausted)
+        } else {
+            Err(Error::Capacity {
+                limit: self.limit.get(),
+            })
+        }
     }
 
     fn reserve_reused(

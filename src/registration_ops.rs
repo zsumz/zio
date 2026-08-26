@@ -79,10 +79,14 @@ impl Poll {
         &self,
         registration: &Registration,
     ) -> Result<RegistrationState, Error> {
-        registration_state(self.id, &self.registrations, registration)
+        registration_state(self.owner.current(), &self.registrations, registration)
     }
 
     fn mutations(&mut self) -> MutationSession<'_, crate::sys::Backend> {
-        MutationSession::new(self.id, &mut self.registrations, &mut self.backend)
+        MutationSession::new(&mut self.owner, &mut self.registrations, &mut self.backend)
     }
 }
+
+#[cfg(test)]
+#[path = "registration_ops_test.rs"]
+mod tests;

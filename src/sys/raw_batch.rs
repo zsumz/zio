@@ -43,10 +43,30 @@ impl RawBatch {
         }
     }
 
+    #[cfg(target_os = "linux")]
+    #[inline]
+    pub(crate) fn translate_linux<F>(
+        &mut self,
+        events: &mut crate::Events,
+        observed: usize,
+        wake_key: Option<crate::Key>,
+        classify: F,
+    ) -> Result<(), crate::Error>
+    where
+        F: FnMut(u64) -> Result<Option<crate::Key>, crate::Error>,
+    {
+        self.linux.translate(events, observed, wake_key, classify)
+    }
+
+    #[cfg_attr(
+        target_os = "linux",
+        allow(dead_code, reason = "projection-stable non-Linux raw-event facade")
+    )]
     pub(crate) fn event(&self, index: usize, observed: usize) -> Option<RawEvent> {
         #[cfg(target_os = "linux")]
         {
-            self.linux.event(index, observed)
+            let _ = (self, index, observed);
+            None
         }
         #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
         {

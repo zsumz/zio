@@ -495,12 +495,17 @@ reason = "Only the reviewed polling adapters and their focused safety proof may 
 within = ["crates/zio-qualify/src/**"]
 
 [[ratchet]]
+reason = "The epoll leaf keeps caller-arena layout, stamp validation, and unsafe phase transitions in one review boundary."
+rule = "rust.file-size"
+target = "src/sys/linux_group/epoll.rs"
+
+[[ratchet]]
 reason = "Reviewed kqueue FFI and kevent initialization remain confined to this syscall leaf."
 rule = "rust.hygiene.unsafe"
 target = "src/sys/kqueue_group/kqueue.rs"
 
 [[ratchet]]
-reason = "Reviewed epoll FFI and descriptor adoption remain confined to this syscall leaf."
+reason = "Reviewed epoll FFI, descriptor adoption, and caller-arena transitions remain confined to this syscall leaf."
 rule = "rust.hygiene.unsafe"
 target = "src/sys/linux_group/epoll.rs"
 

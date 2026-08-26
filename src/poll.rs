@@ -1,13 +1,10 @@
 //! Poll ownership, registration mutation, and wake capabilities.
 
-use std::{
-    num::NonZeroUsize,
-    sync::atomic::{AtomicU64, Ordering},
-};
+use std::num::NonZeroUsize;
 
 use crate::{
     Error, Events, Key, Operation,
-    registration::PollId,
+    registration::PollOwner,
     sys::{Backend, RawBatch, Wake},
     table::RegistrationTable,
 };
@@ -39,7 +36,7 @@ impl Waker {
 /// Owner-local portable readiness poller.
 #[derive(Debug)]
 pub struct Poll {
-    pub(crate) id: PollId,
+    pub(crate) owner: PollOwner,
     pub(crate) backend: Backend,
     pub(crate) raw_events: RawBatch,
     pub(crate) registrations: RegistrationTable,
@@ -75,7 +72,7 @@ impl Poll {
             }
         })?;
         Ok(Self {
-            id: next_poll_id()?,
+            owner: PollOwner::unassigned(),
             backend,
             raw_events,
             registrations,
@@ -116,13 +113,4 @@ impl Poll {
             wake: self.wake.clone(),
         })
     }
-}
-
-pub(crate) fn next_poll_id() -> Result<PollId, Error> {
-    static NEXT: AtomicU64 = AtomicU64::new(1);
-    NEXT.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |value| {
-        value.checked_add(1)
-    })
-    .map(PollId::new)
-    .map_err(|_| Error::Invariant)
 }

@@ -9,7 +9,8 @@ use crate::{
     CommitStatus, DeleteError, Error, Interest, Key, Mode, RegisterError, Registration,
     RegistrationId, RegistrationState,
     mutation::{MutationSession, registration_state},
-    poll::{DEFAULT_REGISTRATION_CAPACITY, next_poll_id},
+    poll::DEFAULT_REGISTRATION_CAPACITY,
+    registration::PollOwner,
     table::RegistrationTable,
 };
 
@@ -24,7 +25,7 @@ use super::{
 /// implement waiting.
 #[derive(Debug)]
 pub struct ScriptedPoll {
-    id: crate::registration::PollId,
+    owner: PollOwner,
     registrations: RegistrationTable,
     driver: ScriptedDriver,
 }
@@ -44,7 +45,7 @@ impl ScriptedPoll {
             limit: registrations,
         })?;
         Ok(Self {
-            id: next_poll_id()?,
+            owner: PollOwner::unassigned(),
             registrations: RegistrationTable::new(capacity)?,
             driver: ScriptedDriver::new(steps),
         })
@@ -81,12 +82,12 @@ impl ScriptedPoll {
         &self,
         registration: &Registration,
     ) -> Result<RegistrationState, Error> {
-        registration_state(self.id, &self.registrations, registration)
+        registration_state(self.owner.current(), &self.registrations, registration)
     }
 
     /// Establishes a delivered, disarmed one-shot state in both models.
     pub fn establish_disarmed(&mut self, registration: &Registration) -> Result<(), Error> {
-        registration_state(self.id, &self.registrations, registration)?;
+        registration_state(self.owner.current(), &self.registrations, registration)?;
         let descriptor = {
             let binding = self.registrations.binding(registration.id(), false)?;
             if binding.mode != Mode::OneShot {
@@ -118,6 +119,6 @@ impl ScriptedPoll {
     }
 
     fn mutations(&mut self) -> MutationSession<'_, ScriptedDriver> {
-        MutationSession::new(self.id, &mut self.registrations, &mut self.driver)
+        MutationSession::new(&mut self.owner, &mut self.registrations, &mut self.driver)
     }
 }

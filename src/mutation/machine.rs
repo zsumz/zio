@@ -4,21 +4,23 @@ use std::os::fd::AsFd;
 
 use crate::{
     CommitStatus, DeleteError, Error, Interest, Key, Mode, MutationError, Operation, RegisterError,
-    Registration, RegistrationState, registration::PollId, table::RegistrationTable,
+    Registration, RegistrationState,
+    registration::{PollId, PollOwner},
+    table::RegistrationTable,
 };
 
 use super::{DeleteRequest, ModifyRequest, MutationDriver, RegisterRequest};
 
 /// Borrowed mutation state with a statically selected driver.
 pub(crate) struct MutationSession<'state, Driver> {
-    owner: PollId,
+    owner: &'state mut PollOwner,
     registrations: &'state mut RegistrationTable,
     driver: &'state mut Driver,
 }
 
 impl<'state, Driver: MutationDriver> MutationSession<'state, Driver> {
     pub(crate) const fn new(
-        owner: PollId,
+        owner: &'state mut PollOwner,
         registrations: &'state mut RegistrationTable,
         driver: &'state mut Driver,
     ) -> Self {
@@ -48,11 +50,18 @@ impl<'state, Driver: MutationDriver> MutationSession<'state, Driver> {
                 None,
             )
         })?;
+        self.registrations
+            .check_reservable()
+            .map_err(|error| RegisterError::new(error, None))?;
+        let owner = self
+            .owner
+            .get_or_assign()
+            .map_err(|error| RegisterError::new(error, None))?;
         let id = self
             .registrations
             .reserve(descriptor, key, interest, mode)
             .map_err(|error| RegisterError::new(error, None))?;
-        let registration = Registration::new(self.owner, id);
+        let registration = Registration::new(owner, id);
         let result = {
             let binding = self
                 .registrations
@@ -94,7 +103,7 @@ impl<'state, Driver: MutationDriver> MutationSession<'state, Driver> {
         interest: Interest,
         mode: Mode,
     ) -> Result<(), Error> {
-        require_owner(self.owner, registration)?;
+        require_owner(self.owner.current(), registration)?;
         if interest.is_empty() {
             return Err(Error::InvalidInterest);
         }
@@ -133,7 +142,7 @@ impl<'state, Driver: MutationDriver> MutationSession<'state, Driver> {
     }
 
     pub(crate) fn delete(&mut self, registration: Registration) -> Result<(), DeleteError> {
-        if let Err(error) = require_owner(self.owner, &registration) {
+        if let Err(error) = require_owner(self.owner.current(), &registration) {
             return Err(DeleteError::new(error, registration));
         }
         let id = registration.id();
@@ -167,7 +176,7 @@ impl<'state, Driver: MutationDriver> MutationSession<'state, Driver> {
 }
 
 pub(crate) fn registration_state(
-    owner: PollId,
+    owner: Option<PollId>,
     registrations: &RegistrationTable,
     registration: &Registration,
 ) -> Result<RegistrationState, Error> {
@@ -175,8 +184,8 @@ pub(crate) fn registration_state(
     registrations.state(registration.id())
 }
 
-fn require_owner(owner: PollId, registration: &Registration) -> Result<(), Error> {
-    if registration.owner() == owner {
+fn require_owner(owner: Option<PollId>, registration: &Registration) -> Result<(), Error> {
+    if owner == Some(registration.owner()) {
         Ok(())
     } else {
         Err(Error::WrongPoller {

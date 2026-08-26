@@ -3,14 +3,11 @@
 use std::{io, os::fd::BorrowedFd, sync::Arc};
 
 use crate::{
-    ArmState, Interest, Mode, Readiness, Wait,
+    ArmState, Error, Events, Interest, Key, Mode, Readiness, Wait,
     error::{CommitStatus, Operation},
 };
 
-use super::super::{
-    event::RawEvent,
-    failure::{MutationFailure, SetupFailure},
-};
+use super::super::failure::{MutationFailure, SetupFailure};
 use super::{
     epoll::{Epoll, EpollBatch},
     eventfd::EventFd,
@@ -23,17 +20,18 @@ pub(crate) struct RawBatch {
 }
 
 impl RawBatch {
-    pub(crate) fn event(&self, index: usize, observed: usize) -> Option<RawEvent> {
-        let event = self.raw.event(index, observed)?;
-        if event.token() == 0 {
-            Some(RawEvent::control())
-        } else {
-            Some(RawEvent::resource(
-                event.token(),
-                -1,
-                from_epoll_flags(event.flags()),
-            ))
-        }
+    #[inline]
+    pub(crate) fn translate<F>(
+        &mut self,
+        events: &mut Events,
+        observed: usize,
+        wake_key: Option<Key>,
+        classify: F,
+    ) -> Result<(), Error>
+    where
+        F: FnMut(u64) -> Result<Option<Key>, Error>,
+    {
+        self.raw.translate(events, observed, wake_key, classify)
     }
 }
 
@@ -114,8 +112,13 @@ impl Backend {
         self.epoll.delete(source).map_err(not_applied)
     }
 
-    pub(crate) fn wait(&self, batch: &mut RawBatch, wait: Wait) -> io::Result<usize> {
-        self.epoll.wait(&mut batch.raw, epoll_timeout(wait))
+    pub(crate) fn wait(
+        &self,
+        batch: &mut RawBatch,
+        events: &mut Events,
+        wait: Wait,
+    ) -> io::Result<usize> {
+        self.epoll.wait(&mut batch.raw, events, epoll_timeout(wait))
     }
 }
 
@@ -138,6 +141,7 @@ fn epoll_flags(token: u64, interest: Interest, mode: Mode) -> Result<u32, Mutati
     Ok(flags)
 }
 
+#[inline]
 pub(super) fn from_epoll_flags(flags: u32) -> Readiness {
     let contains = |flag: libc::c_int| flags & flag.cast_unsigned() != 0;
     let mut readiness = Readiness::EMPTY;

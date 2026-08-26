@@ -3,7 +3,7 @@
 use std::{io, os::fd::BorrowedFd};
 
 use crate::{
-    ArmState, Interest, Mode, Wait,
+    ArmState, Events, Interest, Mode, Wait,
     mutation::{DeleteRequest, ModifyRequest, MutationDriver, RegisterRequest},
 };
 
@@ -164,13 +164,19 @@ impl Backend {
         }
     }
 
-    pub(crate) fn wait(&self, batch: &mut RawBatch, wait: Wait) -> io::Result<usize> {
+    pub(crate) fn wait(
+        &self,
+        batch: &mut RawBatch,
+        events: &mut Events,
+        wait: Wait,
+    ) -> io::Result<usize> {
         #[cfg(target_os = "linux")]
         {
-            self.linux.wait(&mut batch.linux, wait)
+            self.linux.wait(&mut batch.linux, events, wait)
         }
         #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
         {
+            let _ = events;
             self.kqueue.wait(&mut batch.kqueue, wait)
         }
         #[cfg(not(any(
@@ -180,6 +186,7 @@ impl Backend {
             target_os = "netbsd"
         )))]
         {
+            let _ = events;
             self.unsupported.wait(&mut batch.unsupported, wait)
         }
     }
