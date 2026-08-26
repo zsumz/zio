@@ -1,16 +1,5 @@
-//! Reference mutation, wake, and readiness conformance for [`zio`].
-//!
-//! The mutation runner uses zio's feature-gated scripted poller and checks the
-//! same errors, registration capabilities, and authoritative state that a
-//! downstream library observes. The native wake and readiness runners treat
-//! [`zio::Poll`] as a black box through only its ordinary public API.
-//!
-//! ```
-//! let report = zio_testkit::run_all();
-//! report.into_result()?;
-//! zio_testkit::run_readiness_conformance().into_result()?;
-//! # Ok::<(), Box<dyn std::error::Error>>(())
-//! ```
+//! Consumer-visible mutation, wake, and readiness conformance for [`zio`].
+//! Native wake and readiness checks use only the public [`zio::Poll`] API.
 
 #![deny(unsafe_code)]
 
@@ -18,6 +7,21 @@ mod calls;
 mod delete;
 mod delete_failure;
 mod failure;
+mod model_sequence;
+mod model_sequence_coverage;
+mod model_sequence_expect;
+mod model_sequence_failure;
+mod model_sequence_generate;
+mod model_sequence_model;
+#[cfg(test)]
+mod model_sequence_preflight_test;
+mod model_sequence_probe;
+mod model_sequence_report;
+mod model_sequence_runner;
+#[cfg(test)]
+mod model_sequence_runner_test;
+mod model_sequence_step;
+mod model_sequence_verify;
 mod modify;
 mod modify_commit;
 mod readiness_expectation;
@@ -48,6 +52,14 @@ mod wake_scenario;
 mod wake_verify;
 
 pub use failure::{ConformanceCheck, ConformanceFailure};
+pub use model_sequence::{
+    MODEL_SEQUENCE_DISARM_REARM_SEED, MODEL_SEQUENCE_OUTCOME_MATRIX_SEED,
+    MODEL_SEQUENCE_SENTINEL_SEEDS, MODEL_SEQUENCE_STALE_REUSE_SEED,
+    MODEL_SEQUENCE_WRONG_POLLER_SEED,
+};
+pub use model_sequence_failure::{ModelSequenceCheck, ModelSequenceFailure, ModelSequencePhase};
+pub use model_sequence_report::{ModelSequenceCaseResult, ModelSequenceReport};
+pub use model_sequence_runner::{run_model_sequence, run_model_sequences};
 pub use readiness_failure::{ReadinessCheck, ReadinessFailure};
 pub use readiness_report::{ReadinessCaseResult, ReadinessReport};
 pub use readiness_runner::{run_readiness_conformance, run_readiness_scenario};

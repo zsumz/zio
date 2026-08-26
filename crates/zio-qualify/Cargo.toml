@@ -1,0 +1,34 @@
+[package]
+name = "zio-qualify"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+description = "Workspace-private readiness qualification for Zio and peer libraries."
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+publish = false
+readme = "README.md"
+
+[dependencies]
+allocation-counter = { version = "=0.8.1", optional = true }
+mio = { version = "=1.2.2", default-features = false, features = ["os-ext", "os-poll"] }
+polling = { version = "=3.11.0", default-features = false }
+zio = { path = "../..", version = "=0.0.1-dev.1" }
+
+[features]
+default = []
+allocation-metrics = ["dep:allocation-counter"]
+
+[[bin]]
+name = "zio-perf"
+path = "src/bin/zio-perf.rs"
+
+[[bin]]
+name = "zio-perf-alloc"
+path = "src/bin/zio-perf-alloc.rs"
+required-features = ["allocation-metrics"]
+
+[lints]
+workspace = true

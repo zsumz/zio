@@ -25,9 +25,39 @@ contents, and diff hygiene.
 | --- | --- |
 | Linux | Native tests through the canonical graph |
 | macOS | Native kqueue tests, Clippy, and rustdoc |
-| FreeBSD, NetBSD | MSRV checks and pinned-toolchain Clippy cross-builds |
+| FreeBSD, NetBSD | Pinned native guest workflow plus MSRV and Clippy cross-builds |
 
-BSD support remains experimental until native execution is hosted.
+Each native BSD evidence bundle retains the guest release, toolchains, source
+commit, verified `rustup-init` checksum, logs, and machine-readable result.
+
+## Model
+
+`zio-testkit` replays a fixed 64-seed, 64-action mutation corpus. It checks every
+step against an independent state model, retains the first failing prefix, and
+pins focused seeds for outcome, rearm, stale-generation, and wrong-poller
+behavior. Invalid-interest actions must do no backend work or consume a
+generation.
+
+Wake and kqueue recovery stay separate evidence lanes because they exercise
+native delivery and post-observation recovery rather than the mutation reducer.
+
+## Peer matrix
+
+`zio-qualify` runs Zio, Mio, and `polling` independently against the same
+readiness contracts. Receipts state the delivery semantics used by each
+candidate; agreement between candidates is never the oracle.
+
+See [Performance](performance.md) for the reproducible benchmark method.
+
+## Release rehearsal
+
+```sh
+zcheck run release
+```
+
+The release graph starts with the canonical gate, then verifies the clean crate
+archive, VCS provenance, package contents, MSRV/current extracted tests,
+rustdoc, and an independent consumer. It does not publish or tag.
 
 ## Dependency roles
 
@@ -35,9 +65,10 @@ Normal zio builds depend only on target-gated `libc`.
 
 Development uses:
 
-- `mio` as an independent readiness oracle;
+- `mio` and `polling` as independent readiness comparators;
 - `socket2` to create safe refused-connect and abortive-reset fixtures;
-- `allocation-counter` to measure wait-path allocation;
-- `zio-testkit` for reusable mutation, wake, and readiness conformance.
+- `allocation-counter` to measure test and benchmark allocations;
+- `zio-testkit` for mutation, model, wake, and readiness conformance;
+- `zio-qualify` for the private peer matrix and benchmark runner.
 
 None enters zio's production dependency graph.

@@ -17,16 +17,25 @@ requirement = "0.2.189"
 
 [[dependencies.crate_root]]
 package = "mio"
-reason = "The dev-only Mio package is the differential readiness oracle."
+reason = "Private differential tests and qualification measure Mio as an independent readiness candidate."
 root = "mio"
 
 [dependencies.crate_root.source]
 kind = "registry"
-requirement = "1.2.2"
+requirement = "=1.2.2"
+
+[[dependencies.crate_root]]
+package = "polling"
+reason = "The private qualification package measures polling as an independent readiness candidate."
+root = "polling"
+
+[dependencies.crate_root.source]
+kind = "registry"
+requirement = "=3.11.0"
 
 [[dependencies.crate_root]]
 package = "allocation-counter"
-reason = "The dev-only allocation counter measures wait-path heap behavior in native tests."
+reason = "The optional allocation counter measures qualification and test allocation behavior."
 root = "allocation_counter"
 
 [dependencies.crate_root.source]
@@ -43,10 +52,13 @@ kind = "registry"
 requirement = "=0.6.5"
 
 [[dependency]]
-deny = ["zio-testkit"]
+deny = [
+    "zio-qualify",
+    "zio-testkit",
+]
 from = "zio"
 name = "library-remains-verification-free"
-reason = "The published readiness library must not depend on workspace-private conformance machinery."
+reason = "The published readiness library must not depend on workspace-private conformance or qualification machinery."
 
 [[gate]]
 inputs = [
@@ -62,10 +74,14 @@ inputs = [
     "rust-toolchain.toml",
     "rustfmt.toml",
     "clippy.toml",
+    "crates/zio-qualify/Cargo.toml",
+    "crates/zio-qualify/README.md",
     "crates/zio-testkit/Cargo.toml",
     "crates/zio-testkit/README.md",
     "docs/contracts.md",
+    "docs/performance.md",
     "docs/qualification.md",
+    "scripts/rehearse-release",
 ]
 kind = "local"
 name = "check"
@@ -80,7 +96,68 @@ inputs = [
 kind = "ci"
 name = "ci"
 path = ".github/workflows/ci.yml"
-reason = "Hosted qualification runs the canonical Linux graph and real macOS kqueue tests."
+reason = "Hosted qualification runs the canonical Linux graph plus native macOS, FreeBSD, and NetBSD execution."
+requires = ["check"]
+
+[[gate]]
+inputs = [
+    "Cargo.lock",
+    "Cargo.toml",
+    "crates/zio-qualify/Cargo.toml",
+    "crates/zio-qualify/src/bin/zio-perf-alloc.rs",
+    "crates/zio-qualify/src/bin/zio-perf.rs",
+    "crates/zio-qualify/src/benchmark.rs",
+    "crates/zio-qualify/src/benchmark/backend.rs",
+    "crates/zio-qualify/src/benchmark/candidate_bench.rs",
+    "crates/zio-qualify/src/benchmark/config.rs",
+    "crates/zio-qualify/src/benchmark/json.rs",
+    "crates/zio-qualify/src/benchmark/measure.rs",
+    "crates/zio-qualify/src/benchmark/metadata.rs",
+    "crates/zio-qualify/src/benchmark/mio_backend.rs",
+    "crates/zio-qualify/src/benchmark/polling_backend.rs",
+    "crates/zio-qualify/src/benchmark/polling_direct.rs",
+    "crates/zio-qualify/src/benchmark/profile_workload.rs",
+    "crates/zio-qualify/src/benchmark/ready_workload.rs",
+    "crates/zio-qualify/src/benchmark/receipt.rs",
+    "crates/zio-qualify/src/benchmark/receipt_context.rs",
+    "crates/zio-qualify/src/benchmark/receipt_data.rs",
+    "crates/zio-qualify/src/benchmark/record.rs",
+    "crates/zio-qualify/src/benchmark/resource_limit.rs",
+    "crates/zio-qualify/src/benchmark/runner.rs",
+    "crates/zio-qualify/src/benchmark/runner_support.rs",
+    "crates/zio-qualify/src/benchmark/scenario.rs",
+    "crates/zio-qualify/src/benchmark/workload.rs",
+    "crates/zio-qualify/src/benchmark/zio_backend.rs",
+    "crates/zio-qualify/src/model.rs",
+    "crates/zio-qualify/src/lib.rs",
+    "crates/zio-qualify/src/polling_registration.rs",
+    "docs/performance.md",
+    "rust-toolchain.toml",
+]
+kind = "ci"
+name = "performance"
+path = ".github/workflows/performance.yml"
+reason = "Hosted Linux and macOS runs retain reproducible timing, allocation, descriptor, and syscall receipts."
+requires = ["check"]
+
+[[gate]]
+inputs = [
+    "Cargo.lock",
+    "Cargo.toml",
+    "LICENSE",
+    "README.md",
+    "docs/contracts.md",
+    "docs/performance.md",
+    "docs/qualification.md",
+    "rust-toolchain.toml",
+    "scripts/rehearse-release",
+    "zcheck.toml",
+    "zio-logo.svg",
+]
+kind = "release"
+name = "release"
+path = ".github/workflows/release-rehearsal.yml"
+reason = "Hosted release qualification executes the reviewed clean-checkout rehearsal and retains its receipt."
 requires = ["check"]
 
 [[invariant]]
@@ -246,6 +323,94 @@ id = "MUTATION-01"
 status = "enforced"
 title = "Mutation outcomes preserve exact state and capabilities"
 
+[[invariant]]
+document = "docs/qualification.md#model"
+evidence = [
+    "rust-test:crates/zio-testkit/tests/model_sequence.rs::model_sequence_corpus_is_complete_and_conformant",
+    "rust-test:crates/zio-testkit/tests/model_sequence.rs::model_sequence_sentinel_seeds_replay_exactly",
+    "rust-test:crates/zio-testkit/tests/model_sequence.rs::model_sequence_results_replay_by_reported_seed",
+    "rust-test:crates/zio-testkit/src/model_sequence_preflight_test.rs::invalid_register_does_not_consume_a_generation",
+    "rust-test:crates/zio-testkit/src/model_sequence_preflight_test.rs::invalid_modify_preserves_the_exact_prior_tuple",
+    "rust-test:crates/zio-testkit/src/model_sequence_runner_test.rs::failing_sequence_keeps_seed_and_minimal_replay_prefix",
+    "rust-test:crates/zio-testkit/src/model_sequence_runner_test.rs::sentinel_action_fingerprints_are_stable",
+    "gate:check",
+    "gate:ci",
+]
+id = "MODEL-01"
+status = "enforced"
+title = "Generated mutation sequences replay against an independent state model"
+
+[[invariant]]
+document = "docs/qualification.md#peer-matrix"
+evidence = [
+    "rust-test:crates/zio-qualify/tests/qualification_matrix.rs::initial_observation_contracts_pass_for_every_candidate",
+    "rust-test:crates/zio-qualify/tests/qualification_matrix.rs::exact_delivery_profiles_are_never_attributed_to_mio",
+    "rust-test:crates/zio-qualify/tests/qualification_matrix.rs::qualification_report_has_no_candidate_oracle",
+    "rust-test:crates/zio-qualify/tests/qualification_matrix.rs::receipts_name_the_exact_configured_delivery",
+    "rust-test:crates/zio-qualify/tests/qualification_matrix.rs::implementation_reports_cover_their_explicit_scope",
+    "rust-test:crates/zio-qualify/tests/qualification_matrix.rs::executed_delivery_profiles_have_exact_repeat_observations",
+    "rust-test:crates/zio-qualify/src/report_test.rs::an_all_not_run_matrix_is_not_conformant",
+    "rust-test:crates/zio-qualify/src/report_test.rs::full_matrix_scope_rejects_one_implementation",
+    "rust-test:crates/zio-qualify/src/polling_registration_test.rs::failed_delete_drops_exclusive_poller_while_source_lives",
+    "rust-test:crates/zio-qualify/src/runner_test.rs::always_ready_adapter_is_rejected_before_activation",
+    "rust-test:crates/zio-qualify/src/runner_test.rs::duplicate_batch_and_cleanup_failures_are_both_retained",
+    "rust-test:crates/zio-qualify/src/runner_test.rs::empty_adapter_is_rejected_at_wait",
+    "rust-test:crates/zio-qualify/src/runner_test.rs::unexpected_key_adapter_is_rejected_at_wait",
+    "rust-test:crates/zio-qualify/src/runner_test.rs::cleanup_only_failure_is_rejected",
+    "rust-test:crates/zio-qualify/src/runner_test.rs::one_shot_redelivery_while_disarmed_is_rejected",
+    "rust-test:crates/zio-qualify/src/runner_test.rs::one_shot_rearm_without_redelivery_is_rejected",
+    "rust-test:crates/zio-qualify/src/runner_test.rs::one_shot_rearmed_observation_must_match_the_contract",
+    "gate:check",
+    "gate:ci",
+]
+id = "DIFFERENTIAL-01"
+status = "enforced"
+title = "Every peer is judged independently against the same readiness contract"
+
+[[invariant]]
+document = "docs/performance.md#performance"
+evidence = [
+    "rust-test:crates/zio-qualify/src/benchmark/config_test.rs::defaults_are_scenario_aware_and_explicit_is_exact",
+    "rust-test:crates/zio-qualify/src/benchmark/config_test.rs::help_names_every_stable_scenario_for_each_binary",
+    "rust-test:crates/zio-qualify/src/benchmark/receipt_test.rs::timing_receipt_has_timing_and_no_allocation_fields",
+    "rust-test:crates/zio-qualify/src/benchmark/receipt_test.rs::allocation_receipt_has_allocations_and_no_timing_fields",
+    "rust-test:crates/zio-qualify/src/benchmark/receipt_test.rs::source_and_exact_versions_are_stable",
+    "rust-test:crates/zio-qualify/src/benchmark/receipt_test.rs::receipt_records_scenario_specific_wait_and_absence_windows",
+    "rust-test:crates/zio-qualify/src/benchmark/receipt_test.rs::unavailable_fd_limit_is_structured",
+    "rust-test:crates/zio-qualify/src/benchmark/runner_test.rs::instrumented_runner_rejects_timing_before_output",
+    "rust-test:crates/zio-qualify/src/benchmark/runner_test.rs::one_candidate_failure_is_retained_and_peers_continue",
+    "rust-test:crates/zio-qualify/src/benchmark/runner_test.rs::unfiltered_smoke_excludes_the_descriptor_heavy_batch",
+    "rust-test:crates/zio-qualify/src/benchmark/scenario_test.rs::mio_is_never_scheduled_under_exact_delivery_labels",
+    "rust-test:crates/zio-qualify/src/benchmark/scenario_test.rs::scenario_names_are_stable",
+    "rust-test:crates/zio-qualify/src/benchmark/scenario_test.rs::wait_and_absence_windows_match_the_measured_work",
+    "gate:check",
+    "gate:performance",
+]
+id = "PERF-01"
+status = "enforced"
+title = "Performance receipts preserve method, provenance, resources, and delivery semantics"
+
+[[invariant]]
+document = "docs/qualification.md#coverage"
+evidence = [
+    "rust-test:src/sys/kqueue_group/kqueue_disarm_test.rs::freebsd_and_netbsd_interruptions_are_applied",
+    "rust-test:src/sys/kqueue_group/kqueue_disarm_matrix_test.rs::target_selected_interruption_policy_is_exact",
+    "gate:ci",
+]
+id = "PLATFORM-BSD-01"
+status = "enforced"
+title = "FreeBSD and NetBSD execute the native qualification suite"
+
+[[invariant]]
+document = "docs/qualification.md#release-rehearsal"
+evidence = [
+    "rust-test:tests/readiness.rs::wake_before_wait_is_observable",
+    "gate:release",
+]
+id = "RELEASE-01"
+status = "enforced"
+title = "The clean release-shaped package builds and runs outside the workspace"
+
 [[layer]]
 may_depend_on = []
 name = "library"
@@ -264,6 +429,15 @@ reason = "Deterministic conformance support may exercise the public library with
 [layer.dependencies]
 external = "none"
 
+[[layer]]
+may_depend_on = ["library"]
+name = "qualification"
+packages = ["zio-qualify"]
+reason = "Workspace-private peer adapters and benchmarks may exercise the public library without entering its dependency graph."
+
+[layer.dependencies]
+external = "locked"
+
 [[owner]]
 allow = [
     "src/sys/kqueue_group/kqueue.rs",
@@ -281,6 +455,20 @@ name = "native-libc-capability"
 reason = "Only native backend and ABI-codec modules use libc directly; unsafe calls remain confined to the three reviewed syscall leaves."
 within = ["src/**"]
 
+[[owner]]
+allow = [
+    "crates/zio-qualify/src/benchmark/polling_backend.rs",
+    "crates/zio-qualify/src/benchmark/polling_direct.rs",
+    "crates/zio-qualify/src/polling_candidate.rs",
+    "crates/zio-qualify/src/polling_registration.rs",
+    "crates/zio-qualify/src/polling_registration_test.rs",
+]
+kind = "capability"
+match = "polling"
+name = "polling-adapter-capability"
+reason = "Only the reviewed polling adapters and their focused safety proof may use polling directly."
+within = ["crates/zio-qualify/src/**"]
+
 [[ratchet]]
 reason = "Reviewed kqueue FFI and kevent initialization remain confined to this syscall leaf."
 rule = "rust.hygiene.unsafe"
@@ -295,6 +483,11 @@ target = "src/sys/linux_group/epoll.rs"
 reason = "Reviewed eventfd FFI and descriptor adoption remain confined to this syscall leaf."
 rule = "rust.hygiene.unsafe"
 target = "src/sys/linux_group/eventfd.rs"
+
+[[ratchet]]
+reason = "The sole polling registration leaf uses its unsafe borrowed-source API under an explicit delete-before-drop lifetime guard."
+rule = "rust.hygiene.unsafe"
+target = "crates/zio-qualify/src/polling_registration.rs"
 
 [repository]
 exclude = []

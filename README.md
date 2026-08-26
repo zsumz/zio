@@ -15,7 +15,7 @@ an async runtime.
 | --- | --- | --- |
 | Linux | epoll + eventfd | Native-qualified |
 | 64-bit macOS | kqueue + `EVFILT_USER` | Native-qualified |
-| 64-bit FreeBSD, NetBSD | kqueue + `EVFILT_USER` | Compile-qualified, experimental |
+| 64-bit FreeBSD, NetBSD | kqueue + `EVFILT_USER` | Native CI, experimental |
 
 Requires Rust 1.88 or newer.
 
@@ -67,7 +67,8 @@ zcheck run check
 zrail diff --base HEAD --deny-grants
 ```
 
-See [Qualification](docs/qualification.md) for the support and evidence model.
+See [Qualification](docs/qualification.md) for the evidence model and
+[Performance](docs/performance.md) for reproducible peer measurements.
 
 ## Scope
 

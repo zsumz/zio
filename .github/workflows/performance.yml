@@ -1,0 +1,139 @@
+name: Performance qualification
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  measure:
+    name: ${{ matrix.name }} receipts
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux epoll
+            runner: ubuntu-24.04
+          - name: macOS kqueue
+            runner: macos-15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install 1.97.1 --profile minimal
+
+      - name: Fetch the locked dependency graph
+        run: cargo +1.97.1 fetch --locked
+
+      - name: Build the benchmark runner
+        run: >-
+          cargo +1.97.1 build -p zio-qualify --bin zio-perf
+          --release --no-default-features --locked --offline
+
+      - name: Capture uninstrumented timing receipts
+        env:
+          PERF_DIR: ${{ runner.temp }}/zio-performance
+        run: |
+          set -euo pipefail
+          mkdir -p "$PERF_DIR"
+          hard_limit="$(ulimit -Hn)"
+          desired_limit=8192
+          if [[ "$hard_limit" != unlimited && "$hard_limit" -lt "$desired_limit" ]]; then
+            desired_limit="$hard_limit"
+          fi
+          ulimit -Sn "$desired_limit"
+          {
+            uname -a
+            rustc +1.97.1 -vV
+            git rev-parse HEAD
+            printf 'open-file-soft-limit=%s\n' "$(ulimit -n)"
+          } > "$PERF_DIR/platform.txt"
+          target/release/zio-perf \
+            --samples 12 \
+            --output "$PERF_DIR/timing.ndjson" \
+            2> "$PERF_DIR/timing-summary.txt"
+
+      - name: Build the allocation runner
+        run: >-
+          cargo +1.97.1 build -p zio-qualify --bin zio-perf-alloc
+          --release --no-default-features --features allocation-metrics
+          --locked --offline
+
+      - name: Capture instrumented allocation receipts
+        env:
+          PERF_DIR: ${{ runner.temp }}/zio-performance
+        run: >-
+          target/release/zio-perf-alloc
+          --samples 12
+          --output "$PERF_DIR/allocation.ndjson"
+          2> "$PERF_DIR/allocation-summary.txt"
+
+      - name: Validate complete receipt coverage
+        env:
+          PERF_DIR: ${{ runner.temp }}/zio-performance
+        run: |
+          jq -e -s '
+            length == 54 and
+            ([.[] | select(.metric == "timing")] | length) == 27 and
+            ([.[] | select(.metric == "allocation")] | length) == 27 and
+            ([.[] | [.metric, .candidate.name, .scenario.name]] | unique | length) == 54 and
+            all(.[];
+              .schema == "zio.perf.v1" and
+              (.status == "passed" or .status == "unsupported") and
+              .git.sha == env.GITHUB_SHA and
+              .git.dirty == false
+            )
+          ' "$PERF_DIR/timing.ndjson" "$PERF_DIR/allocation.ndjson"
+
+      - name: Install Linux syscall tracer
+        if: runner.os == 'Linux'
+        env:
+          PERF_DIR: ${{ runner.temp }}/zio-performance
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends strace
+          strace --version > "$PERF_DIR/strace-version.txt"
+
+      - name: Capture Linux syscall summaries
+        if: runner.os == 'Linux'
+        env:
+          PERF_DIR: ${{ runner.temp }}/zio-performance
+        run: |
+          set -euo pipefail
+          command -v strace
+          printf '%s\n' \
+            'instrumentation=strace -qq -c' \
+            'scenario=wait.ready.readable.single.initial' \
+            'timing-receipts=discarded' \
+            > "$PERF_DIR/syscalls-context.txt"
+          for implementation in zio mio polling; do
+            strace -qq -c \
+              -o "$PERF_DIR/syscalls-$implementation.txt" \
+              target/release/zio-perf \
+              --implementation "$implementation" \
+              --scenario wait.ready.readable.single.initial \
+              --samples 5 --iterations 50 --warmup 5 \
+              --output /dev/null \
+              2> /dev/null
+          done
+
+      - name: Upload performance evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: zio-performance-${{ runner.os }}
+          path: ${{ runner.temp }}/zio-performance
+          if-no-files-found: error

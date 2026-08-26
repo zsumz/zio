@@ -1,0 +1,137 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+export LC_ALL=C
+
+repository_root="$(git rev-parse --show-toplevel)"
+cd "$repository_root"
+
+if [[ -n "$(git status --porcelain)" ]]; then
+  echo "release rehearsal requires a clean checkout" >&2
+  exit 1
+fi
+
+head_sha="$(git rev-parse HEAD)"
+package_id="$(cargo pkgid -p zio)"
+version="${package_id##*#}"
+package_name="zio-$version"
+target_dir="$(cargo metadata --no-deps --format-version 1 --locked --offline | jq -er '.target_directory')"
+archive="$target_dir/package/$package_name.crate"
+evidence_dir="${ZIO_RELEASE_EVIDENCE_DIR:-$target_dir/release-rehearsal}"
+
+cargo package -p zio --locked --offline
+test -f "$archive"
+
+rehearsal_dir="$(mktemp -d "${TMPDIR:-/tmp}/zio-release.XXXXXX")"
+cleanup() {
+  case "$rehearsal_dir" in
+    "${TMPDIR:-/tmp}"/zio-release.*) rm -rf -- "$rehearsal_dir" ;;
+    *) echo "refusing to remove unexpected rehearsal path" >&2 ;;
+  esac
+}
+trap cleanup EXIT
+
+listing="$rehearsal_dir/package-files.txt"
+tar -tzf "$archive" > "$listing"
+for required in \
+  "$package_name/Cargo.toml" \
+  "$package_name/Cargo.lock" \
+  "$package_name/LICENSE" \
+  "$package_name/README.md" \
+  "$package_name/docs/contracts.md" \
+  "$package_name/docs/performance.md" \
+  "$package_name/docs/qualification.md" \
+  "$package_name/zio-logo.svg"; do
+  grep -Fxq "$required" "$listing"
+done
+
+if grep -Eq '/(crates|\.github)/|/(zcheck|zrail)(\.|/)' "$listing"; then
+  echo "workspace-private files escaped into the zio archive" >&2
+  exit 1
+fi
+
+tar -xzf "$archive" -C "$rehearsal_dir"
+package_dir="$rehearsal_dir/$package_name"
+jq -e \
+  --arg head "$head_sha" \
+  '.git.sha1 == $head and .git.dirty == false' \
+  "$package_dir/.cargo_vcs_info.json" > /dev/null
+
+cargo +1.88.0 test \
+  --manifest-path "$package_dir/Cargo.toml" \
+  --all-targets --all-features --locked --offline
+cargo +1.97.1 test \
+  --manifest-path "$package_dir/Cargo.toml" \
+  --all-targets --all-features --locked --offline
+RUSTDOCFLAGS='-D warnings' cargo +1.97.1 doc \
+  --manifest-path "$package_dir/Cargo.toml" \
+  --no-deps --all-features --locked --offline
+
+consumer_dir="$rehearsal_dir/consumer"
+mkdir -p "$consumer_dir/src"
+printf '%s\n' \
+  '[package]' \
+  'name = "zio-release-smoke"' \
+  'version = "0.0.0"' \
+  'edition = "2024"' \
+  'rust-version = "1.88"' \
+  '' \
+  '[dependencies]' \
+  "zio = { path = \"$package_dir\", version = \"=$version\", default-features = false }" \
+  > "$consumer_dir/Cargo.toml"
+printf '%s\n' \
+  'use std::{io, time::Duration};' \
+  'use zio::{Event, Key, Poll, Wait};' \
+  '' \
+  'fn main() -> Result<(), Box<dyn std::error::Error>> {' \
+  '    let mut poll = Poll::new()?;' \
+  '    let waker = poll.waker(Key::new(91))?;' \
+  '    let mut events = poll.events()?;' \
+  '    waker.wake()?;' \
+  '    poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?;' \
+  '    if events.as_slice() != [Event::Wake { key: Key::new(91) }] {' \
+  '        return Err(io::Error::other("registry consumer missed wake").into());' \
+  '    }' \
+  '    Ok(())' \
+  '}' \
+  > "$consumer_dir/src/main.rs"
+
+cargo +1.88.0 generate-lockfile \
+  --manifest-path "$consumer_dir/Cargo.toml" --offline
+cargo +1.88.0 run \
+  --manifest-path "$consumer_dir/Cargo.toml" --locked --offline
+cargo +1.97.1 run \
+  --manifest-path "$consumer_dir/Cargo.toml" --locked --offline
+
+tree_file="$rehearsal_dir/normal-tree.txt"
+cargo +1.97.1 tree \
+  --manifest-path "$consumer_dir/Cargo.toml" \
+  --edges normal --locked --offline > "$tree_file"
+if grep -Eq 'mio|polling|zio-testkit|zio-qualify' "$tree_file"; then
+  echo "verification dependencies escaped into the normal package graph" >&2
+  exit 1
+fi
+grep -Fq 'zio-release-smoke v0.0.0' "$tree_file"
+grep -Fq 'zio v' "$tree_file"
+grep -Eq 'libc v0\.2\.' "$tree_file"
+
+mkdir -p "$evidence_dir"
+archive_sha256="$(shasum -a 256 "$archive" | awk '{print $1}')"
+archive_basename="$package_name.crate"
+cp "$archive" "$evidence_dir/$archive_basename"
+cp "$package_dir/.cargo_vcs_info.json" "$evidence_dir/cargo-vcs-info.json"
+cp "$package_dir/Cargo.toml" "$evidence_dir/Cargo.toml"
+cp "$package_dir/Cargo.lock" "$evidence_dir/Cargo.lock"
+cp "$listing" "$evidence_dir/package-files.txt"
+cp "$tree_file" "$evidence_dir/normal-tree.txt"
+copied_sha256="$(shasum -a 256 "$evidence_dir/$archive_basename" | awk '{print $1}')"
+test "$copied_sha256" = "$archive_sha256"
+jq -n \
+  --arg commit "$head_sha" \
+  --arg version "$version" \
+  --arg archive "$archive_basename" \
+  --arg archive_sha256 "$archive_sha256" \
+  '{schema:"zio.release-rehearsal.v1", status:"passed", commit:$commit, version:$version, archive:$archive, archive_sha256:$archive_sha256}' \
+  > "$evidence_dir/receipt.json"
+
+printf 'release rehearsal passed: zio %s (%s)\n' "$version" "$archive_sha256"

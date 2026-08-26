@@ -39,6 +39,7 @@ run = [
   "clippy",
   "--workspace",
   "--all-targets",
+  "--all-features",
   "--locked",
   "--offline",
   "--",
@@ -50,7 +51,15 @@ resources = ["cargo-target"]
 
 [tasks.docs]
 description = "Build workspace documentation with warnings denied."
-run = ["cargo", "doc", "--workspace", "--no-deps", "--locked", "--offline"]
+run = [
+  "cargo",
+  "doc",
+  "--workspace",
+  "--all-features",
+  "--no-deps",
+  "--locked",
+  "--offline",
+]
 env = { RUSTDOCFLAGS = "-D warnings" }
 tools = ["cargo"]
 resources = ["cargo-target"]
@@ -61,19 +70,44 @@ needs = ["format", "clippy", "docs"]
 
 [tasks.test-msrv]
 description = "Run every workspace test target on Rust 1.88."
-run = ["cargo", "+1.88.0", "test", "--workspace", "--all-targets", "--locked", "--offline"]
+run = [
+  "cargo",
+  "+1.88.0",
+  "test",
+  "--workspace",
+  "--all-targets",
+  "--all-features",
+  "--locked",
+  "--offline",
+]
 tools = ["cargo"]
 resources = ["cargo-target"]
 
 [tasks.test-current]
 description = "Run every workspace test target on the repository-pinned toolchain."
-run = ["cargo", "test", "--workspace", "--all-targets", "--locked", "--offline"]
+run = [
+  "cargo",
+  "test",
+  "--workspace",
+  "--all-targets",
+  "--all-features",
+  "--locked",
+  "--offline",
+]
 tools = ["cargo"]
 resources = ["cargo-target"]
 
 [tasks.doctest]
 description = "Run workspace public API examples and documentation tests."
-run = ["cargo", "test", "--workspace", "--doc", "--locked", "--offline"]
+run = [
+  "cargo",
+  "test",
+  "--workspace",
+  "--doc",
+  "--all-features",
+  "--locked",
+  "--offline",
+]
 tools = ["cargo"]
 resources = ["cargo-target"]
 
@@ -87,6 +121,78 @@ run = ["cargo", "package", "-p", "zio", "--allow-dirty", "--locked", "--offline"
 tools = ["cargo"]
 resources = ["cargo-target"]
 
+[tasks.qualify-smoke]
+description = "Exercise the bounded timing runner and receipt path."
+run = [
+  "cargo",
+  "run",
+  "-p",
+  "zio-qualify",
+  "--no-default-features",
+  "--bin",
+  "zio-perf",
+  "--locked",
+  "--offline",
+  "--",
+  "--smoke",
+  "--output",
+  "target/zio-perf-smoke.ndjson",
+]
+tools = ["cargo"]
+resources = ["cargo-target"]
+
+[tasks.qualify-allocation-smoke]
+description = "Exercise the bounded allocation runner and receipt path."
+run = [
+  "cargo",
+  "run",
+  "-p",
+  "zio-qualify",
+  "--no-default-features",
+  "--features",
+  "allocation-metrics",
+  "--bin",
+  "zio-perf-alloc",
+  "--locked",
+  "--offline",
+  "--",
+  "--smoke",
+  "--output",
+  "target/zio-perf-allocation-smoke.ndjson",
+]
+tools = ["cargo"]
+resources = ["cargo-target"]
+
+[tasks.qualify-smoke-receipts]
+description = "Validate every bounded timing and allocation smoke receipt."
+needs = ["qualify-smoke", "qualify-allocation-smoke"]
+run = [
+  "jq",
+  "-e",
+  "-s",
+  "length == 48 and ([.[] | select(.metric == \"timing\")] | length) == 24 and ([.[] | select(.metric == \"allocation\")] | length) == 24 and ([.[] | [.metric, .candidate.name, .scenario.name]] | unique | length) == 48 and all(.[]; .schema == \"zio.perf.v1\" and (.status == \"passed\" or .status == \"unsupported\"))",
+  "target/zio-perf-smoke.ndjson",
+  "target/zio-perf-allocation-smoke.ndjson",
+]
+tools = ["jq"]
+
 [tasks.check]
 description = "Run complete local zio qualification."
-needs = ["repository", "rust-lint", "rust-test", "package"]
+needs = [
+  "repository",
+  "rust-lint",
+  "rust-test",
+  "package",
+  "qualify-smoke-receipts",
+]
+
+[tasks.release-rehearsal]
+description = "Verify a clean package archive and independent consumer."
+needs = ["check"]
+run = ["scripts/rehearse-release"]
+tools = ["bash", "cargo", "git", "jq", "shasum", "tar"]
+resources = ["cargo-target"]
+
+[tasks.release]
+description = "Run the complete release-candidate rehearsal."
+needs = ["release-rehearsal"]

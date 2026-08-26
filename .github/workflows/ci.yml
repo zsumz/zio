@@ -41,8 +41,8 @@ jobs:
 
       - name: Install qualification tools
         run: |
-          cargo +1.97.1 install zcheck --version 0.0.2 --locked
-          cargo +1.97.1 install zrail --version 0.0.3-rc.4 --locked
+          cargo +1.97.1 install zcheck --version '=0.0.2' --locked
+          cargo +1.97.1 install zrail --version '=0.0.3-rc.4' --locked
 
       - name: Fetch the locked dependency graph
         run: cargo +1.88.0 fetch --locked
@@ -84,20 +84,26 @@ jobs:
         run: cargo +1.88.0 fetch --locked
 
       - name: Run kqueue tests on the MSRV
-        run: cargo +1.88.0 test --workspace --all-targets --locked --offline
+        run: >-
+          cargo +1.88.0 test --workspace --all-targets --all-features
+          --locked --offline
 
       - name: Run kqueue tests on the pinned toolchain
-        run: cargo +1.97.1 test --workspace --all-targets --locked --offline
+        run: >-
+          cargo +1.97.1 test --workspace --all-targets --all-features
+          --locked --offline
 
       - name: Lint the kqueue implementation
         run: >-
-          cargo +1.97.1 clippy --workspace --all-targets
+          cargo +1.97.1 clippy --workspace --all-targets --all-features
           --locked --offline -- -D warnings
 
       - name: Build kqueue documentation
         env:
           RUSTDOCFLAGS: -D warnings
-        run: cargo +1.97.1 doc --workspace --no-deps --locked --offline
+        run: >-
+          cargo +1.97.1 doc --workspace --all-features --no-deps
+          --locked --offline
 
   bsd:
     name: BSD compile checks
@@ -124,13 +130,181 @@ jobs:
       - name: Compile BSD backends on the MSRV
         run: |
           cargo +1.88.0 check --target x86_64-unknown-freebsd \
-            --workspace --all-targets --locked --offline
+            --workspace --all-targets --all-features --locked --offline
           cargo +1.88.0 check --target x86_64-unknown-netbsd \
-            --workspace --all-targets --locked --offline
+            --workspace --all-targets --all-features --locked --offline
 
       - name: Lint BSD backends on the pinned toolchain
         run: |
           cargo +1.97.1 clippy --target x86_64-unknown-freebsd \
-            --workspace --all-targets --locked --offline -- -D warnings
+            --workspace --all-targets --all-features \
+            --locked --offline -- -D warnings
           cargo +1.97.1 clippy --target x86_64-unknown-netbsd \
-            --workspace --all-targets --locked --offline -- -D warnings
+            --workspace --all-targets --all-features \
+            --locked --offline -- -D warnings
+
+  bsd-native-platform:
+    name: ${{ matrix.name }} native tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: FreeBSD 15.1
+            os: freebsd
+            version: "15.1"
+            rustup_sha256: c3fdfa4553e088edad701ea74776eb707644bed9f4a44f42a077e733201e966a
+          - name: NetBSD 11.0
+            os: netbsd
+            version: "11.0"
+            rustup_sha256: 0f513ad0d0dd4e6f650183793b47f1a59f69a89862f18b59c42503d08828ed90
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Start ${{ matrix.name }} guest
+        uses: cross-platform-actions/action@24ef01df165c76df1ed2b9f9e9212e78dc2fc963
+        with:
+          operating_system: ${{ matrix.os }}
+          architecture: x86-64
+          version: ${{ matrix.version }}
+          shell: sh
+          memory: 4G
+          cpu_count: 2
+
+      - name: Run the Rust test graph on ${{ matrix.name }}
+        shell: >-
+          cpa.sh {0} --environment-variables
+          BSD_NAME BSD_OS BSD_RUSTUP_SHA256 CARGO_TERM_COLOR RUST_BACKTRACE
+        env:
+          BSD_NAME: ${{ matrix.name }}
+          BSD_OS: ${{ matrix.os }}
+          BSD_RUSTUP_SHA256: ${{ matrix.rustup_sha256 }}
+          CARGO_TERM_COLOR: always
+          RUST_BACKTRACE: "1"
+        run: |
+          set -u
+          set +e
+          repository_root="$(pwd)"
+          evidence_dir="$repository_root/native-evidence/$BSD_OS"
+          mkdir -p "$evidence_dir/logs"
+          commit="$(git rev-parse HEAD 2>/dev/null || printf unavailable)"
+          printf 'guest=%s\nos=%s\ncommit=%s\n' \
+            "$BSD_NAME" "$BSD_OS" "$commit" > "$evidence_dir/platform.txt"
+
+          guest_status=0
+          (
+            set -eu
+
+            case "$BSD_OS" in
+              freebsd) sudo pkg install -y curl ;;
+              netbsd) sudo pkgin -y install curl ;;
+              *) echo "unsupported BSD guest: $BSD_OS" >&2; exit 2 ;;
+            esac
+
+            rustup_url="https://static.rust-lang.org/rustup/archive/1.29.0/x86_64-unknown-${BSD_OS}/rustup-init"
+            curl --proto '=https' --tlsv1.2 -fL --retry 3 \
+              --output /tmp/rustup-init "$rustup_url"
+            actual_sha256="$(sha256 -q /tmp/rustup-init)"
+            printf '%s\n' "$actual_sha256" > "$evidence_dir/rustup-init.sha256"
+            test "$actual_sha256" = "$BSD_RUSTUP_SHA256"
+            chmod +x /tmp/rustup-init
+            /tmp/rustup-init -y --profile minimal --default-toolchain none
+            . "$HOME/.cargo/env"
+
+            rustup toolchain install 1.88.0 --profile minimal
+            rustup toolchain install 1.97.1 --profile minimal --component clippy
+            cargo +1.88.0 fetch --locked
+
+            {
+              uname -a
+              uname -m
+              rustc +1.88.0 -vV
+              rustc +1.97.1 -vV
+              printf 'rustup-init-sha256=%s\n' "$actual_sha256"
+            } >> "$evidence_dir/platform.txt"
+
+            run_logged() {
+              label="$1"
+              shift
+              if "$@" > "$evidence_dir/logs/$label.log" 2>&1; then
+                cat "$evidence_dir/logs/$label.log"
+              else
+                status=$?
+                cat "$evidence_dir/logs/$label.log"
+                return "$status"
+              fi
+            }
+
+            run_logged msrv-tests \
+              cargo +1.88.0 test --workspace --all-targets --all-features \
+              --locked --offline
+            run_logged current-tests \
+              cargo +1.97.1 test --workspace --all-targets --all-features \
+              --locked --offline
+            run_logged current-doctests \
+              cargo +1.97.1 test --workspace --doc --all-features \
+              --locked --offline
+            run_logged current-clippy \
+              cargo +1.97.1 clippy --workspace --all-targets --all-features \
+              --locked --offline -- -D warnings
+          ) > "$evidence_dir/logs/guest.log" 2>&1
+          guest_status=$?
+
+          cat "$evidence_dir/logs/guest.log"
+          actual_sha256="unavailable"
+          if test -s "$evidence_dir/rustup-init.sha256"; then
+            IFS= read -r actual_sha256 < "$evidence_dir/rustup-init.sha256"
+          fi
+          receipt_status="failed"
+          if test "$guest_status" -eq 0; then
+            receipt_status="passed"
+          fi
+          if ! rm -rf "$repository_root/target"; then
+            printf 'target cleanup failed\n' >&2
+            if test "$guest_status" -eq 0; then
+              guest_status=125
+              receipt_status="failed"
+            fi
+          fi
+          printf \
+            '{"schema":"zio.native-bsd.v1","status":"%s","exit_code":%s,"os":"%s","guest":"%s","commit":"%s","rustup_init_sha256":"%s"}\n' \
+            "$receipt_status" "$guest_status" "$BSD_OS" "$BSD_NAME" \
+            "$commit" "$actual_sha256" \
+            > "$evidence_dir/receipt.json"
+          printf '%s\n' "$guest_status" > "$evidence_dir/status"
+          exit 0
+
+      - name: Require ${{ matrix.name }} qualification
+        env:
+          BSD_OS: ${{ matrix.os }}
+        run: |
+          evidence_dir="native-evidence/$BSD_OS"
+          test -s "$evidence_dir/receipt.json"
+          test -s "$evidence_dir/status"
+          cat "$evidence_dir/receipt.json"
+          IFS= read -r guest_status < "$evidence_dir/status"
+          test "$guest_status" = 0
+          grep -Fq '"status":"passed"' "$evidence_dir/receipt.json"
+
+      - name: Upload ${{ matrix.name }} evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: zio-native-${{ matrix.os }}
+          path: native-evidence/${{ matrix.os }}
+          if-no-files-found: error
+
+  bsd-native:
+    name: BSD native
+    if: always()
+    needs: bsd-native-platform
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require every native BSD guest
+        env:
+          BSD_NATIVE_RESULT: ${{ needs.bsd-native-platform.result }}
+        run: test "$BSD_NATIVE_RESULT" = success

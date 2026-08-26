@@ -4,6 +4,7 @@ Reference conformance for zio consumers.
 
 - Mutation scenarios cover every register, modify, and delete outcome without
   operating-system fault injection.
+- Replayable model sequences check bounded mutation histories after every step.
 - Wake and readiness scenarios exercise zio's public API on the native backend.
 - Reports use stable scenario names and structured failures.
 
@@ -19,5 +20,6 @@ backend trait.
 zio_testkit::run_all().into_result()?;
 zio_testkit::run_wake_conformance().into_result()?;
 zio_testkit::run_readiness_conformance().into_result()?;
+zio_testkit::run_model_sequences().into_result()?;
 # Ok::<(), Box<dyn std::error::Error>>(())
 ```
