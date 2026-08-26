@@ -3,7 +3,7 @@
 use std::{io, os::fd::BorrowedFd};
 
 use crate::{
-    ArmState, Events, Interest, Mode, Wait,
+    ArmState, Events, Interest, Mode, RegistrationState, Wait,
     mutation::{DeleteRequest, ModifyRequest, MutationDriver, RegisterRequest},
 };
 
@@ -144,14 +144,16 @@ impl Backend {
         &self,
         source: BorrowedFd<'_>,
         interest: Interest,
+        state: RegistrationState,
     ) -> Result<(), MutationFailure> {
         #[cfg(target_os = "linux")]
         {
+            let _ = state;
             self.linux.delete(source, interest)
         }
         #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
         {
-            self.kqueue.delete(source, interest)
+            self.kqueue.delete(source, interest, state)
         }
         #[cfg(not(any(
             target_os = "linux",
@@ -160,6 +162,7 @@ impl Backend {
             target_os = "netbsd"
         )))]
         {
+            let _ = state;
             self.unsupported.delete(source, interest)
         }
     }
@@ -223,7 +226,7 @@ impl MutationDriver for Backend {
     }
 
     fn delete(&mut self, request: DeleteRequest<'_>) -> Result<(), MutationFailure> {
-        let _ = (request.registration, request.state);
-        Backend::delete(self, request.descriptor, request.interest)
+        let _ = request.registration;
+        Backend::delete(self, request.descriptor, request.interest, request.state)
     }
 }

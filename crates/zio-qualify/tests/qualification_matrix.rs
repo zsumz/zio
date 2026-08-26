@@ -54,10 +54,11 @@ fn receipts_name_the_exact_configured_delivery() -> Result<(), io::Error> {
     let report = qualify_all();
     for result in report.results() {
         let expected = match (result.implementation(), result.scenario().profile()) {
-            (Implementation::Zio, DeliveryProfile::InitialObservation | DeliveryProfile::Level) => {
-                Some(ConfiguredDelivery::Level)
-            }
-            (Implementation::Zio, DeliveryProfile::OneShot)
+            (
+                Implementation::Zio | Implementation::ZioBorrowed,
+                DeliveryProfile::InitialObservation | DeliveryProfile::Level,
+            ) => Some(ConfiguredDelivery::Level),
+            (Implementation::Zio | Implementation::ZioBorrowed, DeliveryProfile::OneShot)
             | (
                 Implementation::Polling,
                 DeliveryProfile::InitialObservation | DeliveryProfile::OneShot,
@@ -66,12 +67,10 @@ fn receipts_name_the_exact_configured_delivery() -> Result<(), io::Error> {
                 Some(ConfiguredDelivery::NativeDefault)
             }
             (Implementation::Mio, DeliveryProfile::Level | DeliveryProfile::OneShot) => None,
-            (Implementation::Polling, DeliveryProfile::Level)
-                if matches!(result.outcome(), CaseOutcome::NotRun(_)) =>
-            {
-                None
+            (Implementation::Polling, DeliveryProfile::Level) => {
+                (!matches!(result.outcome(), CaseOutcome::NotRun(_)))
+                    .then_some(ConfiguredDelivery::Level)
             }
-            (Implementation::Polling, DeliveryProfile::Level) => Some(ConfiguredDelivery::Level),
         };
         check(
             result.configured_delivery() == expected,

@@ -184,7 +184,7 @@ impl Builder {
         } else {
             (
                 self.samples.unwrap_or(match metric {
-                    Metric::Timing => 90,
+                    Metric::Timing => 96,
                     Metric::Allocation => 12,
                 }),
                 self.iterations,

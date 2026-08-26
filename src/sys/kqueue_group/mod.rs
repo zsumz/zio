@@ -9,6 +9,14 @@ mod kqueue;
 mod kqueue_arena;
 mod kqueue_change;
 mod kqueue_codec;
+#[cfg(test)]
+mod kqueue_delete_native_test;
+#[cfg(test)]
+mod kqueue_delete_recovery_test;
+#[cfg(test)]
+mod kqueue_delete_scope_test;
+#[cfg(test)]
+mod kqueue_delete_transition_test;
 mod kqueue_disarm;
 #[cfg(test)]
 mod kqueue_disarm_matrix_test;

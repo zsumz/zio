@@ -90,6 +90,12 @@ fn candidate(
     json::key(output, "comparison_set");
     output.push('{');
     json::field_string(output, "zio", version(Implementation::Zio), true);
+    json::field_string(
+        output,
+        "zio_borrowed",
+        version(Implementation::ZioBorrowed),
+        true,
+    );
     json::field_string(output, "mio", version(Implementation::Mio), true);
     json::field_string(output, "polling", version(Implementation::Polling), false);
     output.push('}');

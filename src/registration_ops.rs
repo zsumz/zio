@@ -56,7 +56,7 @@ impl Poll {
         self.mutations().modify(registration, interest, mode)
     }
 
-    /// Deletes a registration and releases its retained descriptor.
+    /// Deletes a registration and releases its retained descriptor state.
     ///
     /// Success retires the exact generation and makes every remaining handle
     /// copy stale. Every failed deletion retains the exact handle through

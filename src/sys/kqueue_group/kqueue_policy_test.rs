@@ -6,7 +6,7 @@ use crate::{ArmState, Interest, Mode, error::CommitStatus};
 
 use super::{
     kqueue_change::{Action, Change, ChangeList, Filter, Receipt, Receipts},
-    kqueue_policy::{ChangeExecutor, delete_descriptor, modify_descriptor, register_descriptor},
+    kqueue_policy::{ChangeExecutor, modify_descriptor, register_descriptor},
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -210,29 +210,4 @@ fn partial_register_failure_with_failed_cleanup_is_unknown() {
             enabled: true,
         })
     );
-}
-
-#[test]
-fn failed_delete_cleanup_is_unknown_and_retains_failed_filter() {
-    const TOKEN: u64 = 41;
-    let prior = InstalledFilters {
-        read: Some(InstalledFilter {
-            token: TOKEN,
-            enabled: true,
-        }),
-        write: Some(InstalledFilter {
-            token: TOKEN,
-            enabled: true,
-        }),
-    };
-    let script = Script::new(prior, [vec![Ok(()), Err(libc::EIO)]]);
-
-    let result = delete_descriptor(&script, 13);
-
-    assert_eq!(
-        result.err().map(|failure| failure.commit()),
-        Some(CommitStatus::Unknown)
-    );
-    assert_eq!(script.installed().read, None);
-    assert_eq!(script.installed().write, prior.write);
 }

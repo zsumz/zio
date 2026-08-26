@@ -51,10 +51,11 @@ pub(crate) fn text(
 pub(crate) fn implementation(value: &str) -> Result<Implementation, String> {
     match value {
         "zio" => Ok(Implementation::Zio),
+        "zio-borrowed" => Ok(Implementation::ZioBorrowed),
         "mio" => Ok(Implementation::Mio),
         "polling" => Ok(Implementation::Polling),
         _ => Err(format!(
-            "unknown implementation `{value}`; expected zio, mio, or polling"
+            "unknown implementation `{value}`; expected zio, zio-borrowed, mio, or polling"
         )),
     }
 }

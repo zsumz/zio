@@ -1,9 +1,9 @@
 # zio-qualify
 
-`zio-qualify` is the workspace-private readiness qualification harness for Zio,
-Mio, and `polling`. Each implementation receives a fresh native fixture and is
-checked independently against the same declared contract. No implementation is
-an oracle for another.
+`zio-qualify` is the workspace-private readiness qualification harness for
+Zio's owned and borrowed tiers, Mio, and `polling`. Each candidate receives a
+fresh native fixture and is checked independently against the same declared
+contract. No candidate is an oracle for another.
 
 The matrix records exact delivery semantics and proves quiet, activation,
 delivery, cardinality, one-shot disarm, rearm, operation, and cleanup behavior.

@@ -60,9 +60,37 @@ fn construction_setup_discloses_wake_normalization() -> Result<(), String> {
         "Zio eager wake disclosure",
     )?;
     check(
+        Scenario::Construct1024.candidate_setup(Implementation::ZioBorrowed)
+            == "eager_native_wake_source_without_public_waker",
+        "Zio borrowed eager wake disclosure",
+    )?;
+    check(
         Scenario::ConstructWaker1024.candidate_setup(Implementation::Mio)
             == "external_usable_wake_handle_materialized",
         "normalized waker disclosure",
+    )
+}
+
+#[test]
+fn registration_setup_distinguishes_owned_and_borrowed_zio() -> Result<(), String> {
+    check(
+        Scenario::Register64.candidate_setup(Implementation::Zio) == "retained_owned_descriptor",
+        "owned lifecycle setup",
+    )?;
+    check(
+        Scenario::Register64.candidate_setup(Implementation::ZioBorrowed)
+            == "caller_managed_borrowed_descriptor",
+        "borrowed lifecycle setup",
+    )?;
+    check(
+        Scenario::ReadyBatch64.candidate_setup(Implementation::Zio)
+            == "owned_descriptor_explicit_level_for_first_observation",
+        "owned readiness setup",
+    )?;
+    check(
+        Scenario::ReadyBatch64.candidate_setup(Implementation::ZioBorrowed)
+            == "borrowed_descriptor_explicit_level_for_first_observation",
+        "borrowed readiness setup",
     )
 }
 

@@ -150,6 +150,9 @@ inputs = [
     "crates/zio-qualify/src/benchmark/wake_workload.rs",
     "crates/zio-qualify/src/benchmark/workload.rs",
     "crates/zio-qualify/src/benchmark/zio_backend.rs",
+    "crates/zio-qualify/src/benchmark/zio_borrowed_backend.rs",
+    "crates/zio-qualify/src/benchmark/zio_borrowed_backend_test.rs",
+    "crates/zio-qualify/src/zio_borrowed_candidate.rs",
     "crates/zio-qualify/src/model.rs",
     "crates/zio-qualify/src/lib.rs",
     "crates/zio-qualify/src/polling_registration.rs",
@@ -195,7 +198,7 @@ evidence = [
 ]
 id = "OWNERSHIP-01"
 status = "enforced"
-title = "Each registration owns a retained descriptor and exact generation"
+title = "Safe registration retains a distinct descriptor and exact generation"
 
 [[invariant]]
 document = "docs/contracts.md#registration-lifetime"
@@ -213,6 +216,28 @@ evidence = [
 id = "LIFETIME-01"
 status = "enforced"
 title = "Copyable handles preserve exact-generation cleanup authority"
+
+[[invariant]]
+document = "docs/contracts.md#borrowed-registration"
+evidence = [
+    "rust-test:src/descriptor_test.rs::representation_remains_one_raw_descriptor",
+    "rust-test:src/descriptor_test.rs::borrowed_descriptor_preserves_caller_ownership",
+    "rust-test:src/descriptor_test.rs::owned_descriptor_preserves_identity",
+    "rust-test:src/construction_allocation_test.rs::waker_normalized_construction_stays_compact",
+    "rust-test:tests/borrowed_registration.rs::borrowed_registration_supports_the_full_lifecycle",
+    "rust-test:tests/borrowed_registration.rs::dropping_poller_does_not_close_borrowed_source",
+    "rust-test:tests/borrowed_registration.rs::borrowed_and_owned_slot_reuse_preserves_generations",
+    "rust-test:tests/borrowed_registration.rs::duplicated_descriptors_have_independent_borrowed_registrations",
+    "rust-test:crates/zio-testkit/tests/borrowed_registration.rs::borrowed_register_failures_preserve_exact_lifetime_state",
+    "rust-test:crates/zio-testkit/tests/borrowed_modify.rs::borrowed_modify_failures_preserve_exact_lifetime_state",
+    "rust-test:crates/zio-testkit/tests/borrowed_registration.rs::borrowed_delete_failures_preserve_exact_lifetime_state",
+    "gate:check",
+    "gate:ci",
+    "gate:performance",
+]
+id = "BORROWED-01"
+status = "enforced"
+title = "Borrowed registration skips descriptor duplication without weakening mutation state"
 
 [[invariant]]
 document = "docs/contracts.md#readiness-modes"
@@ -275,6 +300,7 @@ evidence = [
     "rust-test:src/observe_validation_test.rs::extra_recovery_outcomes_are_rejected_atomically",
     "rust-test:src/observe_validation_test.rs::reordered_recovery_outcomes_are_rejected_atomically",
     "rust-test:src/observe_validation_test.rs::non_armed_recovery_plans_are_rejected_atomically",
+    "rust-test:src/sys/kqueue_group/kqueue_delete_recovery_test.rs::recovery_outcomes_drive_exact_delete_scope",
     "gate:check",
     "gate:ci",
 ]
@@ -335,7 +361,14 @@ evidence = [
     "rust-test:src/sys/kqueue_group/kqueue_policy_test.rs::failed_modify_with_failed_restore_is_unknown",
     "rust-test:src/sys/kqueue_group/kqueue_policy_test.rs::partial_register_failure_with_cleanup_is_not_applied",
     "rust-test:src/sys/kqueue_group/kqueue_policy_test.rs::partial_register_failure_with_failed_cleanup_is_unknown",
-    "rust-test:src/sys/kqueue_group/kqueue_policy_test.rs::failed_delete_cleanup_is_unknown_and_retains_failed_filter",
+    "rust-test:src/sys/kqueue_group/kqueue_delete_scope_test.rs::registered_state_scopes_deletes_while_uncertain_state_sweeps",
+    "rust-test:src/sys/kqueue_group/kqueue_delete_scope_test.rs::failed_singleton_delete_becomes_unknown_and_retry_sweeps",
+    "rust-test:src/sys/kqueue_group/kqueue_delete_scope_test.rs::partial_combined_delete_becomes_unknown_and_retry_sweeps",
+    "rust-test:src/sys/kqueue_group/kqueue_delete_transition_test.rs::failed_single_interest_register_still_sweeps_both_filters",
+    "rust-test:src/sys/kqueue_group/kqueue_delete_transition_test.rs::every_successful_interest_transition_leaves_exact_deletable_state",
+    "rust-test:src/sys/kqueue_group/kqueue_delete_transition_test.rs::successful_rollback_restores_exact_scoped_delete_state",
+    "rust-test:src/sys/kqueue_group/kqueue_delete_native_test.rs::native_scoped_delete_leaves_no_filter_after_interest_changes",
+    "rust-test:src/sys/kqueue_group/kqueue_delete_native_test.rs::native_scoped_delete_removes_a_disabled_one_shot_filter",
     "rust-test:crates/zio-testkit/tests/public_api.rs::full_report_covers_every_scenario",
     "rust-test:crates/zio-testkit/tests/register_conformance.rs::register_branches_preserve_error_state_and_capabilities",
     "rust-test:crates/zio-testkit/tests/modify_conformance.rs::modify_branches_preserve_error_state_and_retries",
@@ -466,6 +499,8 @@ external = "locked"
 allow = [
     "src/sys/kqueue_group/kqueue.rs",
     "src/sys/kqueue_group/kqueue_codec.rs",
+    "src/sys/kqueue_group/kqueue_delete_scope_test.rs",
+    "src/sys/kqueue_group/kqueue_delete_transition_test.rs",
     "src/sys/kqueue_group/kqueue_policy.rs",
     "src/sys/kqueue_group/kqueue_policy_test.rs",
     "src/sys/kqueue_group/kqueue_timeout.rs",
@@ -518,6 +553,36 @@ target = "src/sys/linux_group/eventfd.rs"
 reason = "The sole polling registration leaf uses its unsafe borrowed-source API under an explicit delete-before-drop lifetime guard."
 rule = "rust.hygiene.unsafe"
 target = "crates/zio-qualify/src/polling_registration.rs"
+
+[[ratchet]]
+reason = "The qualification adapter retains its source through deletion while exercising the unsafe borrowed tier as an independent candidate."
+rule = "rust.hygiene.unsafe"
+target = "crates/zio-qualify/src/zio_borrowed_candidate.rs"
+
+[[ratchet]]
+reason = "The benchmark adapter carries source lifetimes through controlled deletion and terminally invalidates its poller before returning any adapter error."
+rule = "rust.hygiene.unsafe"
+target = "crates/zio-qualify/src/benchmark/zio_borrowed_backend.rs"
+
+[[ratchet]]
+reason = "Compact descriptor retention confines raw reconstruction and caller-managed lifetime trust to one reviewed leaf."
+rule = "rust.hygiene.unsafe"
+target = "src/descriptor.rs"
+
+[[ratchet]]
+reason = "The mutation seam explicitly propagates the public borrowed-descriptor lifetime contract into fixed storage."
+rule = "rust.hygiene.unsafe"
+target = "src/mutation/machine.rs"
+
+[[ratchet]]
+reason = "The public borrowed-registration entrypoint states the complete caller-managed descriptor lifetime contract."
+rule = "rust.hygiene.unsafe"
+target = "src/registration_borrowed.rs"
+
+[[ratchet]]
+reason = "The scripted poller mirrors the production unsafe boundary for deterministic lifetime failure evidence."
+rule = "rust.hygiene.unsafe"
+target = "src/test_support/poll.rs"
 
 [repository]
 exclude = []

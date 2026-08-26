@@ -1,15 +1,13 @@
 //! Intrusive registration slot representation.
 
-use std::os::fd::OwnedFd;
-
-use crate::{ArmState, Interest, Key, Mode, RegistrationState};
+use crate::{ArmState, Interest, Key, Mode, RegistrationState, descriptor::Descriptor};
 
 // A capacity is a count, so its largest valid index is always below this value.
 pub(super) const FREE_END: u32 = u32::MAX;
 
 #[derive(Debug)]
 pub(super) struct Entry {
-    pub(super) descriptor: OwnedFd,
+    pub(super) descriptor: Descriptor,
     pub(super) key: Key,
     pub(super) interest: Interest,
     pub(super) mode: Mode,
@@ -18,7 +16,7 @@ pub(super) struct Entry {
 
 impl Entry {
     pub(super) const fn registered(
-        descriptor: OwnedFd,
+        descriptor: Descriptor,
         key: Key,
         interest: Interest,
         mode: Mode,

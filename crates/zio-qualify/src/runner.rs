@@ -9,6 +9,7 @@ use crate::{
     model::RegistrationSpec,
     observe::{observe_profile, verify_initial_quiet},
     polling_candidate::PollingCandidate,
+    zio_borrowed_candidate::ZioBorrowedCandidate,
     zio_candidate::ZioCandidate,
 };
 
@@ -38,6 +39,7 @@ pub fn qualify_implementation(implementation: Implementation) -> QualificationRe
 pub fn qualify_scenario(implementation: Implementation, scenario: Scenario) -> CaseResult {
     match implementation {
         Implementation::Zio => run::<ZioCandidate>(implementation, scenario),
+        Implementation::ZioBorrowed => run::<ZioBorrowedCandidate>(implementation, scenario),
         Implementation::Mio => run::<MioCandidate>(implementation, scenario),
         Implementation::Polling => run::<PollingCandidate>(implementation, scenario),
     }

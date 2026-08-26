@@ -1,7 +1,8 @@
 # Performance
 
-`zio-perf` compares Zio, Mio, and `polling` without treating one as the oracle.
-It is workspace-private and never enters Zio's production graph.
+`zio-perf` compares Zio's owned and borrowed tiers, Mio, and `polling` without
+treating one as the oracle. It is workspace-private and never enters Zio's
+production graph.
 
 ## Run
 
@@ -20,7 +21,7 @@ the runner; it is not a useful timing sample.
 
 - a pilot targets 100 ms per candidate, then every candidate uses the largest
   required iteration count;
-- three shared-iteration warmup batches precede 90 balanced timing rounds;
+- three shared-iteration warmup batches precede 96 balanced timing rounds;
 - allocation uses 12 rounds in a separately instrumented binary;
 - allocation counters are thread-local. Blocked-wake allocation receipts cover
   the waiter; pretriggered wake covers trigger and observation together;
@@ -40,14 +41,16 @@ register and delete segments. Readiness measures initial lifecycle and
 persistent-registration cycles separately at 1, 64, and 1024 events. Wake
 measures pretriggered and blocked cross-thread delivery.
 
-Zio initial readiness uses level delivery, Mio uses its native default, and
-`polling` uses its native one-shot default. Persistent `polling` runs only when
-the host reports native level support. The one-shot rearm absence probe is
-outside the measured segment.
+Both Zio tiers use level delivery for initial readiness, Mio uses its native
+default, and `polling` uses its native one-shot default. Persistent `polling`
+runs only when the host reports native level support. The one-shot rearm
+absence probe is outside the measured segment.
 
-Zio's configured storage and retained descriptor duplicate are included in its
-measurements. Large batches are skipped with a structured reason when the
-process file-descriptor limit is too small.
+Zio's configured storage is included. Its safe tier also includes the retained
+descriptor duplicate; its unsafe tier borrows each caller-owned descriptor.
+Initial readiness includes registration and deletion. Persistent readiness
+isolates the already-registered hot path. Large batches are skipped with a
+structured reason when the process file-descriptor limit is too small.
 
 ## Evidence
 

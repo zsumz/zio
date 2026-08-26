@@ -2,7 +2,7 @@
 
 use std::{io, os::fd::RawFd};
 
-use crate::{ArmState, Interest, Mode, error::CommitStatus};
+use crate::{ArmState, Interest, Mode, RegistrationState, error::CommitStatus};
 
 use super::super::failure::MutationFailure;
 use super::{
@@ -76,14 +76,32 @@ pub(super) fn modify_descriptor<E: ChangeExecutor + ?Sized>(
 pub(super) fn delete_descriptor<E: ChangeExecutor + ?Sized>(
     queue: &E,
     descriptor: RawFd,
+    interest: Interest,
+    state: RegistrationState,
 ) -> Result<(), MutationFailure> {
-    cleanup(queue, descriptor).map_err(|source| MutationFailure::new(CommitStatus::Unknown, source))
+    let exact_interest = match state {
+        RegistrationState::Registered { .. } => interest,
+        RegistrationState::Uncertain => Interest::READABLE.union(Interest::WRITABLE),
+    };
+    cleanup_interests(queue, descriptor, exact_interest)
+        .map_err(|source| MutationFailure::new(CommitStatus::Unknown, source))
 }
 
 pub(super) fn cleanup<E: ChangeExecutor + ?Sized>(queue: &E, descriptor: RawFd) -> io::Result<()> {
+    cleanup_interests(
+        queue,
+        descriptor,
+        Interest::READABLE.union(Interest::WRITABLE),
+    )
+}
+
+fn cleanup_interests<E: ChangeExecutor + ?Sized>(
+    queue: &E,
+    descriptor: RawFd,
+    interest: Interest,
+) -> io::Result<()> {
     let mut changes = ChangeList::new();
-    let _ = changes.push(Change::new(descriptor, Filter::Read, Action::Delete, 0));
-    let _ = changes.push(Change::new(descriptor, Filter::Write, Action::Delete, 0));
+    push_interests(&mut changes, descriptor, 0, interest, Action::Delete);
     exact(queue, &changes, true)
 }
 

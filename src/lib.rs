@@ -33,6 +33,7 @@
 mod binding;
 #[cfg(test)]
 mod construction_allocation_test;
+mod descriptor;
 mod error;
 mod event;
 mod interest;
@@ -52,6 +53,7 @@ mod pending_kqueue;
 mod pending_kqueue_test;
 mod poll;
 mod registration;
+mod registration_borrowed;
 mod registration_ops;
 mod sys;
 mod table;

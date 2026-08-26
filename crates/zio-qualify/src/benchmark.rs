@@ -51,6 +51,9 @@ mod segment_measure;
 mod wake_workload;
 mod workload;
 mod zio_backend;
+mod zio_borrowed_backend;
+#[cfg(test)]
+mod zio_borrowed_backend_test;
 
 use std::{ffi::OsString, fs::File, io, path::Path};
 

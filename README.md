@@ -45,7 +45,7 @@ and wait behavior. Successful waits reuse fixed zio-owned storage.
 
 ## Contracts
 
-- Pollers retain descriptor duplicates; copyable handles name exact generations.
+- Pollers retain descriptor duplicates by default; unsafe borrowing skips them.
 - Level delivery repeats; one-shot delivery requires explicit rearming.
 - Readiness is advisory. Nonblocking I/O remains the source of truth.
 - Wake signals are bounded, coalesced, drainable, and observable.
@@ -74,7 +74,7 @@ See [Qualification](docs/qualification.md) for the evidence model and
 
 zio does not provide edge triggering, Windows support, timers, signals,
 process watching, socket construction, an executor, or an async runtime. Unsafe
-code is confined to the epoll, eventfd, and kqueue syscall leaves.
+code is confined to reviewed syscall and borrowed-descriptor leaves.
 
 zio is a [published pre-alpha](https://crates.io/crates/zio) and is not release-ready.
 

@@ -83,8 +83,19 @@ fn source_and_exact_versions_are_stable() -> Result<(), String> {
         "Zio version",
     )?;
     check(
+        receipt.contains(&format!(
+            "\"zio_borrowed\":\"{}\"",
+            env!("CARGO_PKG_VERSION")
+        )),
+        "Zio borrowed comparison version",
+    )?;
+    check(
         version(Implementation::Zio) == env!("CARGO_PKG_VERSION"),
         "Zio package metadata",
+    )?;
+    check(
+        version(Implementation::ZioBorrowed) == env!("CARGO_PKG_VERSION"),
+        "Zio borrowed package metadata",
     )
 }
 

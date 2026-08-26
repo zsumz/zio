@@ -5,6 +5,7 @@ use std::os::fd::AsFd;
 use crate::{
     CommitStatus, DeleteError, Error, Interest, Key, Mode, MutationError, Operation, RegisterError,
     Registration, RegistrationState,
+    descriptor::Descriptor,
     registration::{PollId, PollOwner},
     table::RegistrationTable,
 };
@@ -38,9 +39,7 @@ impl<'state, Driver: MutationDriver> MutationSession<'state, Driver> {
         interest: Interest,
         mode: Mode,
     ) -> Result<Registration, RegisterError> {
-        if interest.is_empty() {
-            return Err(RegisterError::new(Error::InvalidInterest, None));
-        }
+        validate_registration_interest(interest)?;
         let descriptor = source.as_fd().try_clone_to_owned().map_err(|source| {
             RegisterError::new(
                 Error::Io {
@@ -50,6 +49,40 @@ impl<'state, Driver: MutationDriver> MutationSession<'state, Driver> {
                 None,
             )
         })?;
+        self.register_descriptor(Descriptor::owned(descriptor), key, interest, mode)
+    }
+
+    /// Registers after erasing the source borrow into the retained table.
+    ///
+    /// # Safety
+    ///
+    /// The source must satisfy the complete lifetime and identity contract of
+    /// [`crate::Poll::register_borrowed`].
+    #[allow(
+        unsafe_code,
+        reason = "this internal seam propagates the public borrowed-descriptor contract"
+    )]
+    pub(crate) unsafe fn register_borrowed<F: AsFd + ?Sized>(
+        &mut self,
+        source: &F,
+        key: Key,
+        interest: Interest,
+        mode: Mode,
+    ) -> Result<Registration, RegisterError> {
+        validate_registration_interest(interest)?;
+        // SAFETY: this function requires the caller to uphold the descriptor
+        // lifetime and identity invariant until the retained value is dropped.
+        let descriptor = unsafe { Descriptor::borrowed(source.as_fd()) };
+        self.register_descriptor(descriptor, key, interest, mode)
+    }
+
+    fn register_descriptor(
+        &mut self,
+        descriptor: Descriptor,
+        key: Key,
+        interest: Interest,
+        mode: Mode,
+    ) -> Result<Registration, RegisterError> {
         self.registrations
             .check_reservable()
             .map_err(|error| RegisterError::new(error, None))?;
@@ -59,7 +92,7 @@ impl<'state, Driver: MutationDriver> MutationSession<'state, Driver> {
             .map_err(|error| RegisterError::new(error, None))?;
         let id = self
             .registrations
-            .reserve(descriptor, key, interest, mode)
+            .reserve_descriptor(descriptor, key, interest, mode)
             .map_err(|error| RegisterError::new(error, None))?;
         let registration = Registration::new(owner, id);
         let result = {
@@ -175,6 +208,12 @@ impl<'state, Driver: MutationDriver> MutationSession<'state, Driver> {
     }
 }
 
+fn validate_registration_interest(interest: Interest) -> Result<(), RegisterError> {
+    (!interest.is_empty())
+        .then_some(())
+        .ok_or(RegisterError::new(Error::InvalidInterest, None))
+}
+
 pub(crate) fn registration_state(
     owner: Option<PollId>,
     registrations: &RegistrationTable,
@@ -195,9 +234,7 @@ fn require_owner(owner: Option<PollId>, registration: &Registration) -> Result<(
 }
 
 fn mutation_error(operation: Operation, failure: crate::sys::MutationFailure) -> Error {
-    Error::Mutation(MutationError::new(
-        operation,
-        failure.commit(),
-        failure.into_source(),
-    ))
+    let commit = failure.commit();
+    let source = failure.into_source();
+    Error::Mutation(MutationError::new(operation, commit, source))
 }

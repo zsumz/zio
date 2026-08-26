@@ -5,11 +5,29 @@ matching nonblocking operation is always authoritative.
 
 ## Registration ownership
 
-Each successful registration makes its poller retain a distinct descriptor
-duplicate and exact generation, even for repeated registration of one source
-or its duplicated handles. Caller close and numeric descriptor reuse cannot
-redirect later mutations. Handles are poller-scoped; another poller rejects
-them. Keys need not be unique.
+`Poll::register` is the safe default. Each successful call retains a distinct
+descriptor duplicate and exact generation, even for repeated registration of
+one source or its duplicated handles. Caller close and numeric descriptor reuse
+cannot redirect later mutations. Handles are poller-scoped; another poller
+rejects them. Keys need not be unique.
+
+## Borrowed registration
+
+`Poll::register_borrowed` skips the duplicate and is unsafe. The exact numeric
+descriptor must stay open and identify the same open-file description until
+deletion retires the registration or the poller is dropped. Do not concurrently
+close or reassign it. The same descriptor may not be borrowed into one poller
+twice at the same time; use a real duplicate for a second registration.
+
+The obligation continues while a registration is disarmed or uncertain, after
+dropping any handle copies, and after register or delete failures that retain a
+live registration. It ends after successful deletion or an `Applied` delete
+failure. `NotApplied` and `Unknown` deletion failures retain it.
+`RegisterError::registration() == None` ends it when the call returns.
+
+Explicit deletion gives deterministic native reclamation. On kqueue, a waker
+can outlive its poller and retain the queue; closing the source still removes
+any residual knotes.
 
 ## Registration lifetime
 

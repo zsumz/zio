@@ -1,11 +1,9 @@
 //! Fixed registration ownership and native-token translation.
 
-use std::{
-    num::NonZeroUsize,
-    os::fd::{AsFd, AsRawFd, OwnedFd},
-};
+use std::num::NonZeroUsize;
 
 use crate::binding::{Binding, Observation};
+use crate::descriptor::Descriptor;
 use crate::token::{MAX_GENERATION, MAX_REGISTRATIONS, decode, encode};
 use crate::{
     ArmState, CommitStatus, Error, Interest, Key, Mode, RegistrationId, RegistrationState,
@@ -42,9 +40,9 @@ impl RegistrationTable {
         })
     }
 
-    pub(crate) fn reserve(
+    pub(crate) fn reserve_descriptor(
         &mut self,
-        descriptor: OwnedFd,
+        descriptor: Descriptor,
         key: Key,
         interest: Interest,
         mode: Mode,
@@ -76,7 +74,7 @@ impl RegistrationTable {
 
     fn reserve_reused(
         &mut self,
-        descriptor: OwnedFd,
+        descriptor: Descriptor,
         key: Key,
         interest: Interest,
         mode: Mode,

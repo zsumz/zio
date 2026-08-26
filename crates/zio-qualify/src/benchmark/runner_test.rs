@@ -70,7 +70,7 @@ fn one_candidate_failure_is_retained_and_peers_continue() -> Result<(), String> 
         error.contains("1 benchmark candidate failure"),
         "final error",
     )?;
-    check(receipt.lines().count() == 3, "receipt count")?;
+    check(receipt.lines().count() == 4, "receipt count")?;
     check(receipt.contains("\"status\":\"failed\""), "failed receipt")?;
     check(
         receipt.contains("\"phase\":\"measurement\""),
@@ -87,6 +87,10 @@ fn one_candidate_failure_is_retained_and_peers_continue() -> Result<(), String> 
     check(
         passed_candidate(&receipt, Implementation::Zio),
         "Zio did not continue",
+    )?;
+    check(
+        passed_candidate(&receipt, Implementation::ZioBorrowed),
+        "Zio borrowed did not continue",
     )?;
     check(
         passed_candidate(&receipt, Implementation::Polling),

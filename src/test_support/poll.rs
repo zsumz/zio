@@ -62,6 +62,32 @@ impl ScriptedPoll {
         self.mutations().register(source, key, interest, mode)
     }
 
+    /// Registers one descriptor without duplicating it through the next step.
+    ///
+    /// # Safety
+    ///
+    /// The descriptor must remain open and retain its identity until deletion
+    /// is proven applied or this scripted poller is dropped, matching
+    /// [`crate::Poll::register_borrowed`].
+    #[allow(
+        unsafe_code,
+        reason = "testkit callers explicitly assume the production borrowed descriptor contract"
+    )]
+    pub unsafe fn register_borrowed<F: AsFd + ?Sized>(
+        &mut self,
+        source: &F,
+        key: Key,
+        interest: Interest,
+        mode: Mode,
+    ) -> Result<Registration, RegisterError> {
+        // SAFETY: this unsafe test-support boundary carries the same obligation
+        // as the production entrypoint into the shared mutation state machine.
+        unsafe {
+            self.mutations()
+                .register_borrowed(source, key, interest, mode)
+        }
+    }
+
     /// Modifies one registration through the next scripted modification step.
     pub fn modify(
         &mut self,

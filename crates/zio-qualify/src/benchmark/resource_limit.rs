@@ -39,10 +39,9 @@ pub(crate) fn preflight(
     }
     let required = u64::try_from(batch)
         .map_err(display)?
-        .checked_mul(if implementation == Implementation::Zio {
-            3
-        } else {
-            2
+        .checked_mul(match implementation {
+            Implementation::Zio => 3,
+            Implementation::ZioBorrowed | Implementation::Mio | Implementation::Polling => 2,
         })
         .and_then(|value| value.checked_add(8))
         .ok_or_else(|| "descriptor requirement overflow".to_owned())?;

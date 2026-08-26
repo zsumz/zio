@@ -7,7 +7,7 @@ use std::{
 };
 
 use crate::{
-    ArmState, Interest, Mode, Readiness, RecoveryOutcome, RegistrationId, Wait,
+    ArmState, Interest, Mode, Readiness, RecoveryOutcome, RegistrationId, RegistrationState, Wait,
     error::{CommitStatus, Operation},
 };
 
@@ -174,9 +174,10 @@ impl Backend {
     pub(crate) fn delete(
         &self,
         source: BorrowedFd<'_>,
-        _interest: Interest,
+        interest: Interest,
+        state: RegistrationState,
     ) -> Result<(), MutationFailure> {
-        delete_descriptor(&*self.queue, source.as_raw_fd())
+        delete_descriptor(&*self.queue, source.as_raw_fd(), interest, state)
     }
 
     pub(crate) fn wait(&self, batch: &mut RawBatch, wait: Wait) -> io::Result<usize> {

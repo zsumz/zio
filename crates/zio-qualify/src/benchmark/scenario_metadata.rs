@@ -105,9 +105,10 @@ impl Scenario {
 
     pub(crate) const fn candidate_setup(self, implementation: Implementation) -> &'static str {
         match (self, implementation) {
-            (Self::Construct1 | Self::Construct64 | Self::Construct1024, Implementation::Zio) => {
-                "eager_native_wake_source_without_public_waker"
-            }
+            (
+                Self::Construct1 | Self::Construct64 | Self::Construct1024,
+                Implementation::Zio | Implementation::ZioBorrowed,
+            ) => "eager_native_wake_source_without_public_waker",
             (Self::Construct1 | Self::Construct64 | Self::Construct1024, Implementation::Mio) => {
                 "selector_and_event_storage_without_waker"
             }
@@ -118,10 +119,25 @@ impl Scenario {
             (Self::ConstructWaker1 | Self::ConstructWaker64 | Self::ConstructWaker1024, _) => {
                 "external_usable_wake_handle_materialized"
             }
+            (Self::RegisterDelete | Self::Register64 | Self::Delete64, Implementation::Zio) => {
+                "retained_owned_descriptor"
+            }
+            (
+                Self::RegisterDelete | Self::Register64 | Self::Delete64,
+                Implementation::ZioBorrowed,
+            ) => "caller_managed_borrowed_descriptor",
+            (
+                Self::RegisterDelete | Self::Register64 | Self::Delete64,
+                Implementation::Mio | Implementation::Polling,
+            ) => "peer_borrowed_descriptor",
             (
                 Self::ReadySingle | Self::ReadyBatch64 | Self::ReadyBatch1024,
                 Implementation::Zio,
-            ) => "explicit_level_for_first_observation",
+            ) => "owned_descriptor_explicit_level_for_first_observation",
+            (
+                Self::ReadySingle | Self::ReadyBatch64 | Self::ReadyBatch1024,
+                Implementation::ZioBorrowed,
+            ) => "borrowed_descriptor_explicit_level_for_first_observation",
             (
                 Self::ReadySingle | Self::ReadyBatch64 | Self::ReadyBatch1024,
                 Implementation::Mio,
@@ -131,15 +147,37 @@ impl Scenario {
                 Implementation::Polling,
             ) => "polling_native_default_one_shot",
             (
-                Self::PersistentSingle | Self::PersistentBatch64 | Self::PersistentBatch1024,
-                Implementation::Zio | Implementation::Polling,
-            )
-            | (Self::LevelRepeat, _) => "explicit_native_level",
+                Self::PersistentSingle
+                | Self::PersistentBatch64
+                | Self::PersistentBatch1024
+                | Self::LevelRepeat,
+                Implementation::Zio,
+            ) => "owned_descriptor_explicit_native_level",
+            (
+                Self::PersistentSingle
+                | Self::PersistentBatch64
+                | Self::PersistentBatch1024
+                | Self::LevelRepeat,
+                Implementation::ZioBorrowed,
+            ) => "borrowed_descriptor_explicit_native_level",
+            (
+                Self::PersistentSingle
+                | Self::PersistentBatch64
+                | Self::PersistentBatch1024
+                | Self::LevelRepeat,
+                Implementation::Polling,
+            ) => "explicit_native_level",
             (
                 Self::PersistentSingle | Self::PersistentBatch64 | Self::PersistentBatch1024,
                 Implementation::Mio,
             ) => "mio_native_default_persistent_registration",
-            (Self::OneShotRearm, _) => "explicit_native_one_shot",
+            (Self::OneShotRearm, Implementation::Zio) => {
+                "owned_descriptor_explicit_native_one_shot"
+            }
+            (Self::OneShotRearm, Implementation::ZioBorrowed) => {
+                "borrowed_descriptor_explicit_native_one_shot"
+            }
+            (Self::OneShotRearm, Implementation::Polling) => "explicit_native_one_shot",
             _ => "not_applicable",
         }
     }

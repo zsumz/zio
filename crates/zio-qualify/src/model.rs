@@ -5,6 +5,8 @@
 pub enum Implementation {
     /// Zio's public poller.
     Zio,
+    /// Zio's explicit borrowed-registration tier.
+    ZioBorrowed,
     /// Mio's public poller.
     Mio,
     /// The `polling` crate's public poller.
@@ -13,12 +15,13 @@ pub enum Implementation {
 
 impl Implementation {
     /// Every candidate in stable report order.
-    pub const ALL: [Self; 3] = [Self::Zio, Self::Mio, Self::Polling];
+    pub const ALL: [Self; 4] = [Self::Zio, Self::ZioBorrowed, Self::Mio, Self::Polling];
 
     /// Returns the stable receipt name.
     pub const fn name(self) -> &'static str {
         match self {
             Self::Zio => "zio",
+            Self::ZioBorrowed => "zio-borrowed",
             Self::Mio => "mio",
             Self::Polling => "polling",
         }

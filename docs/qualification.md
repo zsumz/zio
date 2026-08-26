@@ -43,9 +43,9 @@ native delivery and post-observation recovery rather than the mutation reducer.
 
 ## Peer matrix
 
-`zio-qualify` runs Zio, Mio, and `polling` independently against the same
-readiness contracts. Receipts state the delivery semantics used by each
-candidate; agreement between candidates is never the oracle.
+`zio-qualify` runs Zio's owned and borrowed tiers, Mio, and `polling`
+independently against the same readiness contracts. Receipts state each
+candidate's ownership and delivery semantics; agreement is never the oracle.
 
 See [Performance](performance.md) for the reproducible benchmark method.
 

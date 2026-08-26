@@ -11,6 +11,7 @@ use super::{
     scenario::Scenario,
     workload,
     zio_backend::ZioBackend,
+    zio_borrowed_backend::ZioBorrowedBackend,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -55,6 +56,9 @@ pub(crate) fn run(
 ) -> Result<Captured, String> {
     match implementation {
         Implementation::Zio => workload::run::<ZioBackend>(scenario, iterations, metric),
+        Implementation::ZioBorrowed => {
+            workload::run::<ZioBorrowedBackend>(scenario, iterations, metric)
+        }
         Implementation::Mio => workload::run::<MioBackend>(scenario, iterations, metric),
         Implementation::Polling => match scenario {
             Scenario::RegisterDelete => {
@@ -72,7 +76,7 @@ pub(crate) fn run(
 
 pub(crate) const fn version(implementation: Implementation) -> &'static str {
     match implementation {
-        Implementation::Zio => env!("CARGO_PKG_VERSION"),
+        Implementation::Zio | Implementation::ZioBorrowed => env!("CARGO_PKG_VERSION"),
         Implementation::Mio => "1.2.2",
         Implementation::Polling => "3.11.0",
     }
@@ -82,6 +86,9 @@ pub(crate) const fn disclosure(implementation: Implementation) -> &'static str {
     match implementation {
         Implementation::Zio => {
             "Zio retains fixed event and registration capacities and duplicates every registered descriptor; those costs are included."
+        }
+        Implementation::ZioBorrowed => {
+            "Zio retains fixed event and registration capacities but borrows each registered descriptor under its explicit unsafe lifetime contract; no descriptor duplicate is created."
         }
         Implementation::Mio => {
             "Mio is measured under its native default; the API does not expose Level or OneShot selection."

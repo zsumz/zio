@@ -35,10 +35,10 @@ fn smoke_is_bounded_and_rejects_tuning() -> Result<(), String> {
 #[test]
 fn defaults_are_scenario_aware_and_explicit_is_exact() -> Result<(), String> {
     let default = Config::parse([], Metric::Timing)?;
-    check(default.samples == 90, "publication timing rounds")?;
+    check(default.samples == 96, "publication timing rounds")?;
     check(
-        default.samples % Implementation::ALL.len() == 0 && default.samples % 2 == 0,
-        "two- and three-candidate rotation balance",
+        default.samples % Implementation::ALL.len() == 0 && default.samples % 3 == 0,
+        "three- and four-candidate rotation balance",
     )?;
     check(
         default.iterations_for(Scenario::EmptyWait) == 100,
@@ -64,6 +64,10 @@ fn defaults_are_scenario_aware_and_explicit_is_exact() -> Result<(), String> {
 fn help_names_every_stable_scenario_for_each_binary() -> Result<(), String> {
     for metric in [Metric::Timing, Metric::Allocation] {
         let help = help(metric);
+        check(
+            help.contains("Zio borrowed"),
+            "borrowed tier missing from help",
+        )?;
         for scenario in Scenario::ALL {
             check(help.contains(scenario.name()), "scenario missing from help")?;
         }
@@ -73,6 +77,17 @@ fn help_names_every_stable_scenario_for_each_binary() -> Result<(), String> {
 
 #[test]
 fn rejects_unknown_zero_and_unexposed_pairs() -> Result<(), String> {
+    let borrowed = Config::parse(
+        [
+            OsString::from("--implementation"),
+            OsString::from("zio-borrowed"),
+        ],
+        Metric::Timing,
+    )?;
+    check(
+        borrowed.implementation == Some(Implementation::ZioBorrowed),
+        "borrowed candidate",
+    )?;
     check(
         Config::parse(
             [OsString::from("--sample-time-ms"), OsString::from("10")],

@@ -7,14 +7,39 @@
     target_os = "netbsd"
 ))]
 
-use std::{error::Error as StdError, fs::File, mem::size_of, num::NonZeroUsize, os::fd::AsFd};
+use std::{
+    error::Error as StdError,
+    fs::File,
+    mem::size_of,
+    num::NonZeroUsize,
+    os::fd::{AsFd, OwnedFd},
+};
 
 use crate::{
-    Error, Interest, Key, Mode,
+    Error, Interest, Key, Mode, RegistrationId,
+    descriptor::Descriptor,
     token::{MAX_GENERATION, decode},
 };
 
 use super::{RegistrationTable, slot::Slot};
+
+impl RegistrationTable {
+    pub(crate) fn reserve(
+        &mut self,
+        descriptor: OwnedFd,
+        key: Key,
+        interest: Interest,
+        mode: Mode,
+    ) -> Result<RegistrationId, Error> {
+        self.reserve_descriptor(Descriptor::owned(descriptor), key, interest, mode)
+    }
+}
+
+#[test]
+#[cfg(target_pointer_width = "64")]
+fn slot_layout_remains_compact_on_supported_targets() {
+    assert_eq!(size_of::<Slot>(), 24);
+}
 
 #[test]
 fn construction_allocates_only_the_slot_buffer() -> Result<(), Box<dyn StdError>> {
