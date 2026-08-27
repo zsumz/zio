@@ -31,9 +31,19 @@ impl RegistrationTable {
         interest: Interest,
         mode: Mode,
     ) -> Result<RegistrationId, Error> {
-        let permit = self.check_reservable()?;
-        let id = permit.id();
-        let reservation = permit.reserve(descriptor, key, interest, mode)?;
+        let (id, reservation) = if self.has_reusable_slot() {
+            let permit = self.reused_permit()?;
+            let id = permit.id();
+            let (reservation, ()) =
+                permit.reserve_with(descriptor, key, interest, mode, |_, _| ())?;
+            (id, reservation)
+        } else {
+            let permit = self.fresh_permit()?;
+            let id = permit.id();
+            let (reservation, ()) =
+                permit.reserve_with(descriptor, key, interest, mode, |_, _| ())?;
+            (id, reservation)
+        };
         Ok(reservation.keep(id))
     }
 
@@ -125,7 +135,7 @@ fn reservation_carries_the_inserted_descriptor_and_retire_proof() -> Result<(), 
     let source = File::open("/dev/null")?;
     let descriptor = source.as_fd().try_clone_to_owned()?;
     let raw_descriptor = descriptor.as_raw_fd();
-    let permit = table.check_reservable()?;
+    let permit = table.fresh_permit()?;
     let id = permit.id();
     let (reservation, observed) = permit.reserve_with(
         Descriptor::owned(descriptor),

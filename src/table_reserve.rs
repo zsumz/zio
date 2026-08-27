@@ -14,31 +14,28 @@ use super::{
     slot::{Entry, FREE_END, Slot},
 };
 
-/// Capacity proof retaining direct access to one exact vacant slot.
-pub(crate) struct ReservePermit<'table> {
-    slot: ReserveSlot<'table>,
+/// Capacity proof retaining direct access to one exact virgin slot.
+pub(crate) struct FreshPermit<'table> {
+    slots: &'table mut Vec<Slot>,
+    free_head: &'table mut u32,
+    exhausted: &'table mut usize,
+    slot_index: usize,
+    free_index: u32,
     id: EncodedRegistrationId,
 }
 
-enum ReserveSlot<'table> {
-    Fresh {
-        slots: &'table mut Vec<Slot>,
-        free_head: &'table mut u32,
-        exhausted: &'table mut usize,
-        slot_index: usize,
-        free_index: u32,
-    },
-    Reused {
-        slot: &'table mut Slot,
-        free_head: &'table mut u32,
-        exhausted: &'table mut usize,
-        free_index: u32,
-        next_free: u32,
-        next_generation: u32,
-    },
+/// Capacity proof retaining direct access to one exact retired slot.
+pub(crate) struct ReusedPermit<'table> {
+    slot: &'table mut Slot,
+    free_head: &'table mut u32,
+    exhausted: &'table mut usize,
+    free_index: u32,
+    next_free: u32,
+    next_generation: u32,
+    id: EncodedRegistrationId,
 }
 
-impl<'table> ReservePermit<'table> {
+impl<'table> FreshPermit<'table> {
     #[cfg(test)]
     pub(crate) const fn id(&self) -> RegistrationId {
         self.id.id()
@@ -61,61 +58,69 @@ impl<'table> ReservePermit<'table> {
         mode: Mode,
         apply: impl for<'descriptor> FnOnce(BorrowedFd<'descriptor>, RegistrationId) -> Output,
     ) -> Result<(Reservation<'table>, Output), Error> {
-        let id = self.id.id();
-        match self.slot {
-            ReserveSlot::Fresh {
-                slots,
-                free_head,
-                exhausted,
-                slot_index,
-                free_index,
-            } => {
-                slots.push(Slot {
-                    generation: 1,
-                    entry: None,
-                    next_free: FREE_END,
-                });
-                // `slot_index` was the length under this exclusive vector
-                // borrow, and the immediately preceding push added that slot.
-                let slot = slots.get_mut(slot_index).ok_or(Error::Invariant)?;
-                let entry = slot
-                    .entry
-                    .insert(Entry::registered(descriptor, key, interest, mode));
-                let output = apply(entry.descriptor.as_fd(), id);
-                let lease = SlotLease::new(slot, free_head, exhausted, free_index);
-                Ok((Reservation { lease }, output))
-            }
-            ReserveSlot::Reused {
-                slot,
-                free_head,
-                exhausted,
-                free_index,
-                next_free,
-                next_generation,
-            } => {
-                let entry = occupy(
-                    &mut slot.entry,
-                    Entry::registered(descriptor, key, interest, mode),
-                )?;
-                *free_head = next_free;
-                slot.generation = next_generation;
-                let output = apply(entry.descriptor.as_fd(), id);
-                let lease = SlotLease::new(slot, free_head, exhausted, free_index);
-                Ok((Reservation { lease }, output))
-            }
-        }
+        let Self {
+            slots,
+            free_head,
+            exhausted,
+            slot_index,
+            free_index,
+            id,
+        } = self;
+        slots.push(Slot {
+            generation: 1,
+            entry: None,
+            next_free: FREE_END,
+        });
+        // `slot_index` was the length under this exclusive vector borrow, and
+        // the immediately preceding push added that slot.
+        let slot = slots.get_mut(slot_index).ok_or(Error::Invariant)?;
+        let entry = slot
+            .entry
+            .insert(Entry::registered(descriptor, key, interest, mode));
+        let output = apply(entry.descriptor.as_fd(), id.id());
+        let lease = SlotLease::new(slot, free_head, exhausted, free_index);
+        Ok((Reservation { lease }, output))
+    }
+}
+
+impl<'table> ReusedPermit<'table> {
+    #[cfg(test)]
+    pub(crate) const fn id(&self) -> RegistrationId {
+        self.id.id()
     }
 
-    #[cfg(test)]
-    pub(crate) fn reserve(
+    pub(crate) const fn encoded_id(&self) -> EncodedRegistrationId {
+        self.id
+    }
+
+    /// Inserts the descriptor, then lends that exact entry to one native call.
+    #[inline]
+    pub(crate) fn reserve_with<Output>(
         self,
         descriptor: Descriptor,
         key: Key,
         interest: Interest,
         mode: Mode,
-    ) -> Result<Reservation<'table>, Error> {
-        self.reserve_with(descriptor, key, interest, mode, |_, _| ())
-            .map(|(reservation, ())| reservation)
+        apply: impl for<'descriptor> FnOnce(BorrowedFd<'descriptor>, RegistrationId) -> Output,
+    ) -> Result<(Reservation<'table>, Output), Error> {
+        let Self {
+            slot,
+            free_head,
+            exhausted,
+            free_index,
+            next_free,
+            next_generation,
+            id,
+        } = self;
+        let entry = occupy(
+            &mut slot.entry,
+            Entry::registered(descriptor, key, interest, mode),
+        )?;
+        *free_head = next_free;
+        slot.generation = next_generation;
+        let output = apply(entry.descriptor.as_fd(), id.id());
+        let lease = SlotLease::new(slot, free_head, exhausted, free_index);
+        Ok((Reservation { lease }, output))
     }
 }
 
@@ -144,9 +149,13 @@ impl Reservation<'_> {
 
 impl RegistrationTable {
     #[inline]
-    pub(crate) fn check_reservable(&mut self) -> Result<ReservePermit<'_>, Error> {
-        if self.free_head != FREE_END {
-            return self.check_reused();
+    pub(crate) const fn has_reusable_slot(&self) -> bool {
+        self.free_head != FREE_END
+    }
+
+    pub(crate) fn fresh_permit(&mut self) -> Result<FreshPermit<'_>, Error> {
+        if self.has_reusable_slot() {
+            return Err(Error::Invariant);
         }
         if self.slots.len() < self.limit.get() {
             let slot_index = self.slots.len();
@@ -159,14 +168,12 @@ impl RegistrationTable {
                 exhausted,
                 ..
             } = self;
-            return Ok(ReservePermit {
-                slot: ReserveSlot::Fresh {
-                    slots,
-                    free_head,
-                    exhausted,
-                    slot_index,
-                    free_index,
-                },
+            return Ok(FreshPermit {
+                slots,
+                free_head,
+                exhausted,
+                slot_index,
+                free_index,
                 id,
             });
         }
@@ -180,8 +187,11 @@ impl RegistrationTable {
     }
 
     #[inline]
-    fn check_reused(&mut self) -> Result<ReservePermit<'_>, Error> {
+    pub(crate) fn reused_permit(&mut self) -> Result<ReusedPermit<'_>, Error> {
         let free_index = self.free_head;
+        if free_index == FREE_END {
+            return Err(Error::Invariant);
+        }
         let slot_index = usize::try_from(free_index).map_err(|_| Error::Invariant)?;
         let Self {
             slots,
@@ -197,24 +207,28 @@ impl RegistrationTable {
         let generation = NonZeroU32::new(next_generation).ok_or(Error::Invariant)?;
         let id = encode(free_index, generation).ok_or(Error::RegistrationSpaceExhausted)?;
         let next_free = slot.next_free;
-        Ok(ReservePermit {
-            slot: ReserveSlot::Reused {
-                slot,
-                free_head,
-                exhausted,
-                free_index,
-                next_free,
-                next_generation,
-            },
+        Ok(ReusedPermit {
+            slot,
+            free_head,
+            exhausted,
+            free_index,
+            next_free,
+            next_generation,
             id,
         })
     }
 }
 
 #[inline]
-fn occupy(vacancy: &mut Option<Entry>, entry: Entry) -> Result<&mut Entry, Error> {
+pub(super) fn occupy(vacancy: &mut Option<Entry>, entry: Entry) -> Result<&mut Entry, Error> {
     match vacancy {
-        Some(_) => Err(Error::Invariant),
+        Some(_) => Err(reused_slot_occupied()),
         None => Ok(vacancy.insert(entry)),
     }
+}
+
+#[cold]
+#[inline(never)]
+const fn reused_slot_occupied() -> Error {
+    Error::Invariant
 }

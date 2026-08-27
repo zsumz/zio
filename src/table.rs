@@ -15,6 +15,8 @@ mod slot;
 
 use slot::{Entry, FREE_END, Slot};
 
+pub(crate) use reserve::Reservation;
+
 /// Owner-local fixed slot table.
 #[derive(Debug)]
 pub(crate) struct RegistrationTable {

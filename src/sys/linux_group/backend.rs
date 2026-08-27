@@ -193,6 +193,8 @@ pub(super) fn epoll_timeout(wait: Wait) -> libc::c_int {
     }
 }
 
+#[cold]
+#[inline(never)]
 fn not_applied(source: io::Error) -> MutationFailure {
     MutationFailure::new(CommitStatus::NotApplied, source)
 }

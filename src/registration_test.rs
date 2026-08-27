@@ -50,7 +50,7 @@ fn capacity_preflight_does_not_attempt_identity_assignment()
     let next = AtomicU64::new(u64::MAX);
     let mut owner = PollOwner::unassigned();
 
-    let result = table.check_reservable();
+    let result = table.fresh_permit();
     if result.is_ok() {
         owner.get_or_assign_from(&next)?;
     }
@@ -70,7 +70,7 @@ fn identity_failure_does_not_consume_a_registration_generation()
     let next = AtomicU64::new(u64::MAX);
     let mut owner = PollOwner::unassigned();
 
-    attempted.check_reservable()?;
+    attempted.fresh_permit()?;
     assert!(matches!(
         owner.get_or_assign_from(&next),
         Err(Error::Invariant)

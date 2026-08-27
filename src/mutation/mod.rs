@@ -3,6 +3,7 @@
 mod authority;
 mod driver;
 mod machine;
+mod register;
 
 pub(crate) use authority::registration_state;
 pub(crate) use driver::{DeleteRequest, ModifyRequest, MutationDriver, RegisterRequest};

@@ -5,15 +5,15 @@ producer = "0.0.3-rc.4"
 contract_sha256 = "08db5fe19a0353b6eb150b05b72f0d330d0e5beb2a9e9411d98349dc054bfb41"
 
 [analysis]
-inventory_sha256 = "26e4f4252b60fc84300b91f38ee24656f00edd03c3834dba19e3dbb105f7b2c3"
+inventory_sha256 = "573646d6ed30330bb468663e2367548de9b4a6f045305494f8f18aed887d508b"
 exclusions_sha256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 cargo_lock_sha256 = "c57d02582afe8069129844f4f07aa867b3a1a9391d77b4be4e5ca0013a6d1687"
 packages = 3
-targets = 31
-physical_rust_files = 220
-base_source_contexts = 373
+targets = 32
+physical_rust_files = 222
+base_source_contexts = 376
 derived_source_contexts = 0
-source_facts = 62749
+source_facts = 63980
 projection_queries = 0
 projected_facts = 0
 unresolved_bindings = 0

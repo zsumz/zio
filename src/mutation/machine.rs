@@ -9,7 +9,8 @@ use crate::{
 };
 
 use super::{
-    DeleteRequest, ModifyRequest, MutationDriver, RegisterRequest, authority::require_owner,
+    DeleteRequest, ModifyRequest, MutationDriver, authority::require_owner,
+    register::register_descriptor as apply_registration,
 };
 
 /// Borrowed mutation state with a statically selected driver.
@@ -85,57 +86,20 @@ impl<'state, Driver: MutationDriver> MutationSession<'state, Driver> {
         interest: Interest,
         mode: Mode,
     ) -> Result<Registration, RegisterError> {
-        let permit = self
-            .registrations
-            .check_reservable()
-            .map_err(|error| RegisterError::new(error, None))?;
-        let owner = self
-            .owner
-            .get_or_assign()
-            .map_err(|error| RegisterError::new(error, None))?;
-        let encoded_id = permit.encoded_id();
-        let registration = Registration::new(owner, encoded_id);
-        let driver = &mut *self.driver;
-        let (reservation, result) = permit
-            .reserve_with(
-                descriptor,
-                key,
-                interest,
-                mode,
-                |reserved_descriptor, id| {
-                    driver.register(RegisterRequest {
-                        descriptor: reserved_descriptor,
-                        registration: id,
-                        key,
-                        interest,
-                        mode,
-                    })
-                },
-            )
-            .map_err(|error| RegisterError::new(error, None))?;
-        let Err(failure) = result else {
-            return Ok(reservation.keep(registration));
-        };
-        let commit = failure.commit();
-        let error = mutation_error(Operation::Register, failure);
-        match commit {
-            CommitStatus::NotApplied => {
-                reservation
-                    .retire()
-                    .map_err(|retire| RegisterError::new(retire, None))?;
-                Err(RegisterError::new(error, None))
-            }
-            CommitStatus::Applied => Err(RegisterError::new(
-                error,
-                Some(reservation.keep(registration)),
-            )),
-            CommitStatus::Unknown => {
-                if let Err(state) = reservation.mark_uncertain() {
-                    return Err(RegisterError::new(state, Some(registration)));
-                }
-                Err(RegisterError::new(error, Some(registration)))
-            }
-        }
+        let Self {
+            owner,
+            registrations,
+            driver,
+        } = self;
+        apply_registration(
+            owner,
+            registrations,
+            &mut **driver,
+            descriptor,
+            key,
+            interest,
+            mode,
+        )
     }
 
     pub(crate) fn modify(
