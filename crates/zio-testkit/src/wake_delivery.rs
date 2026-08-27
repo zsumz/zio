@@ -7,7 +7,8 @@ use core::time::Duration;
 use zio::{Key, Wait};
 
 use crate::wake_verify::{
-    events, expect_empty, expect_single_wake, observed, poll, trigger, wait_for, waker,
+    events, expect_empty, expect_single_wake, observed, poll, reject_recovery, trigger, wait_for,
+    waker,
 };
 use crate::{WakeCheck, WakeFailure, WakeScenario};
 
@@ -32,24 +33,27 @@ pub(crate) fn pre_wait_storm(scenario: WakeScenario) -> Result<(), WakeFailure> 
             )
         })?;
     }
-    wait_for(
+    let report = wait_for(
         &mut poll,
         &mut events,
         Wait::For(OBSERVATION_LIMIT),
         scenario,
     )?;
     expect_single_wake(&events, STORM_KEY, scenario)?;
-    wait_for(&mut poll, &mut events, Wait::NoBlock, scenario)?;
+    reject_recovery(report, &events, scenario)?;
+    let report = wait_for(&mut poll, &mut events, Wait::NoBlock, scenario)?;
     expect_empty(&events, scenario)?;
+    reject_recovery(report, &events, scenario)?;
 
     trigger(&waker, scenario)?;
-    wait_for(
+    let report = wait_for(
         &mut poll,
         &mut events,
         Wait::For(OBSERVATION_LIMIT),
         scenario,
     )?;
-    expect_single_wake(&events, STORM_KEY, scenario)
+    expect_single_wake(&events, STORM_KEY, scenario)?;
+    reject_recovery(report, &events, scenario)
 }
 
 pub(crate) fn clone_across_wait(scenario: WakeScenario) -> Result<(), WakeFailure> {
@@ -87,9 +91,10 @@ pub(crate) fn clone_across_wait(scenario: WakeScenario) -> Result<(), WakeFailur
     finish_thread(thread, scenario)?;
     wake_result
         .map_err(|error| observed(scenario, WakeCheck::Trigger, "successful wake", &error))?;
-    wait_result
+    let report = wait_result
         .map_err(|error| observed(scenario, WakeCheck::Wait, "bounded wake wait", &error))?;
-    expect_single_wake(&events, ACROSS_WAIT_KEY, scenario)
+    expect_single_wake(&events, ACROSS_WAIT_KEY, scenario)?;
+    reject_recovery(report, &events, scenario)
 }
 
 fn finish_thread(

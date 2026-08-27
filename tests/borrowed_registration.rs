@@ -11,6 +11,8 @@
     reason = "tests exercise the explicit borrowed-registration safety contract"
 )]
 
+mod support;
+
 use std::{
     io::{Read, Write},
     os::unix::net::UnixStream,
@@ -18,6 +20,8 @@ use std::{
 };
 
 use zio::{ArmState, Error, Event, Interest, Key, Mode, Poll, RegistrationState, Wait};
+
+use support::require_no_recovery;
 
 const WAIT: Wait = Wait::For(Duration::from_secs(1));
 type TestResult = Result<(), Box<dyn std::error::Error>>;
@@ -33,14 +37,16 @@ fn borrowed_registration_supports_the_full_lifecycle() -> TestResult {
     let mut events = poll.events()?;
 
     peer.write_all(b"a")?;
-    poll.wait(&mut events, WAIT)?;
+    let report = poll.wait(&mut events, WAIT)?;
     expect_readable(&events, &[Key::new(1)])?;
+    require_no_recovery(report)?;
     drain_byte(&mut source)?;
 
     poll.modify(&registration, Interest::READABLE, Mode::OneShot)?;
     peer.write_all(b"b")?;
-    poll.wait(&mut events, WAIT)?;
+    let report = poll.wait(&mut events, WAIT)?;
     expect_readable(&events, &[Key::new(1)])?;
+    require_no_recovery(report)?;
     assert_eq!(
         poll.registration_state(&registration)?,
         RegistrationState::Registered {
@@ -116,8 +122,9 @@ fn duplicated_descriptors_have_independent_borrowed_registrations() -> TestResul
 
     peer.write_all(b"a")?;
     let mut events = poll.events()?;
-    poll.wait(&mut events, WAIT)?;
+    let report = poll.wait(&mut events, WAIT)?;
     expect_readable(&events, &[Key::new(6), Key::new(7)])?;
+    require_no_recovery(report)?;
     poll.delete(first)?;
     poll.delete(second)?;
     Ok(())

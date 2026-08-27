@@ -3,26 +3,26 @@
 #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
 use std::os::fd::AsRawFd;
 
-use crate::{Error, Events, Mode, Operation, Poll, Wait};
+use crate::{Error, Events, Mode, Operation, Poll, Wait, WaitReport};
 
 impl Poll {
     /// Replaces `events` with one bounded readiness observation.
     ///
-    /// The destination is cleared on entry. Every error except
-    /// [`Error::Recovery`] leaves it empty. A recovery error retains every
-    /// resource and wake event translated before one-shot recovery failed.
-    pub fn wait(&mut self, events: &mut Events, wait: Wait) -> Result<(), Error> {
+    /// The destination is cleared on entry. An error leaves it empty. A
+    /// successful report can carry post-delivery one-shot recovery trouble;
+    /// process every delivered event before reconciling that report.
+    pub fn wait(&mut self, events: &mut Events, wait: Wait) -> Result<WaitReport, Error> {
         events.clear();
         self.pending.clear();
         let result = self.observe(events, wait);
         self.pending.clear();
-        if result.is_err() && !matches!(&result, Err(Error::Recovery(_))) {
+        if result.is_err() {
             events.clear();
         }
         result
     }
 
-    fn observe(&mut self, events: &mut Events, wait: Wait) -> Result<(), Error> {
+    fn observe(&mut self, events: &mut Events, wait: Wait) -> Result<WaitReport, Error> {
         if events.capacity() < self.event_capacity.get() {
             return Err(Error::EventsTooSmall {
                 required: self.event_capacity.get(),
@@ -37,17 +37,24 @@ impl Poll {
                 source,
             })?;
         #[cfg(target_os = "linux")]
-        self.translate_linux(observed, events)?;
+        {
+            self.translate_linux(observed, events)?;
+            Ok(WaitReport::new(None))
+        }
         #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
-        self.translate_kqueue(observed, events)?;
+        {
+            self.translate_kqueue(observed, events)
+        }
         #[cfg(not(any(
             target_os = "linux",
             target_os = "macos",
             target_os = "freebsd",
             target_os = "netbsd"
         )))]
-        let _ = observed;
-        Ok(())
+        {
+            let _ = observed;
+            Ok(WaitReport::new(None))
+        }
     }
 
     #[cfg(target_os = "linux")]
@@ -68,7 +75,11 @@ impl Poll {
     }
 
     #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
-    fn translate_kqueue(&mut self, observed: usize, events: &mut Events) -> Result<(), Error> {
+    fn translate_kqueue(
+        &mut self,
+        observed: usize,
+        events: &mut Events,
+    ) -> Result<WaitReport, Error> {
         let mut woke = false;
         for index in 0..observed {
             let raw = self

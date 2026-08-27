@@ -9,7 +9,7 @@ use crate::readiness_pending::{
     RESOURCE_KEY, read_eof, read_payload, verify_arm, verify_delivery_state, verify_expected,
     wait_readiness,
 };
-use crate::readiness_verify::{mismatch, observed};
+use crate::readiness_verify::{mismatch, observed, reject_recovery};
 use crate::{ReadinessCheck, ReadinessFailure, ReadinessScenario};
 
 struct SplitObservation<'a, F, C> {
@@ -91,7 +91,7 @@ where
         scenario,
         trigger_close,
     } = observation;
-    let initial = wait_readiness(poll, events, scenario)?;
+    let (initial, report) = wait_readiness(poll, events, scenario)?;
     verify_expected(initial, expected_for(scenario), scenario)?;
     if initial.contains(Readiness::READ_CLOSED) {
         return mismatch(
@@ -101,6 +101,7 @@ where
             initial,
         );
     }
+    reject_recovery(report, events, scenario)?;
     verify_delivery_state(poll, events, registration, scenario)?;
     read_payload(source, payload, scenario)?;
 
@@ -118,8 +119,9 @@ where
     }
     trigger_close()?;
 
-    let closure = wait_readiness(poll, events, scenario)?;
+    let (closure, report) = wait_readiness(poll, events, scenario)?;
     verify_expected(closure, closure_for(scenario), scenario)?;
+    reject_recovery(report, events, scenario)?;
     verify_delivery_state(poll, events, registration, scenario)?;
     read_eof(source, scenario)
 }

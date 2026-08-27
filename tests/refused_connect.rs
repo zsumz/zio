@@ -7,10 +7,14 @@
     target_os = "netbsd"
 ))]
 
+mod support;
+
 use std::{fmt::Debug, io, net::TcpListener, time::Duration};
 
 use socket2::{Domain, Protocol, Socket, Type};
 use zio::{ArmState, Event, Interest, Key, Mode, Readiness, RegistrationState, Wait};
+
+use support::require_no_recovery;
 
 const KEY: Key = Key::new(6_001);
 const DEADLINE: Duration = Duration::from_secs(1);
@@ -42,7 +46,7 @@ fn verify_refused_connect(mode: Mode) -> Result<(), Box<dyn std::error::Error>> 
     let mut poll = zio::Poll::with_capacity(1, 1)?;
     let registration = poll.register(&stream, KEY, Interest::WRITABLE, mode)?;
     let mut events = poll.events()?;
-    poll.wait(&mut events, Wait::For(DEADLINE))?;
+    let report = poll.wait(&mut events, Wait::For(DEADLINE))?;
 
     let readiness = match events.as_slice() {
         [Event::Resource { key, readiness }] if *key == KEY => *readiness,
@@ -59,6 +63,7 @@ fn verify_refused_connect(mode: Mode) -> Result<(), Box<dyn std::error::Error>> 
     if !allowed.contains(readiness) {
         return Err(failure("only documented refused-connect hints", readiness).into());
     }
+    require_no_recovery(report)?;
 
     let arm = if mode == Mode::OneShot {
         ArmState::Disarmed
@@ -71,10 +76,11 @@ fn verify_refused_connect(mode: Mode) -> Result<(), Box<dyn std::error::Error>> 
         "registration state after refused connect",
     )?;
     if mode == Mode::OneShot {
-        poll.wait(&mut events, Wait::NoBlock)?;
+        let report = poll.wait(&mut events, Wait::NoBlock)?;
         if !events.is_empty() {
             return Err(failure("no delivery before explicit rearm", events.as_slice()).into());
         }
+        require_no_recovery(report)?;
     }
 
     match stream.take_error()? {

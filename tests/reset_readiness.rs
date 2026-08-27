@@ -7,6 +7,8 @@
     target_os = "netbsd"
 ))]
 
+mod support;
+
 use std::{
     fmt::Debug,
     io::{self, Read},
@@ -16,6 +18,8 @@ use std::{
 
 use socket2::SockRef;
 use zio::{ArmState, Event, Interest, Key, Mode, Readiness, RegistrationState, Wait};
+
+use support::require_no_recovery;
 
 const KEY: Key = Key::new(6_101);
 const DEADLINE: Duration = Duration::from_secs(1);
@@ -40,7 +44,7 @@ fn verify_abortive_close(mode: Mode) -> Result<(), Box<dyn std::error::Error>> {
 
     SockRef::from(&peer).set_linger(Some(Duration::ZERO))?;
     drop(peer);
-    poll.wait(&mut events, Wait::For(DEADLINE))?;
+    let report = poll.wait(&mut events, Wait::For(DEADLINE))?;
 
     let readiness = match events.as_slice() {
         [Event::Resource { key, readiness }] if *key == KEY => *readiness,
@@ -57,6 +61,7 @@ fn verify_abortive_close(mode: Mode) -> Result<(), Box<dyn std::error::Error>> {
     if !allowed.contains(readiness) {
         return Err(failure("only documented abortive-close hints", readiness).into());
     }
+    require_no_recovery(report)?;
 
     let arm = if mode == Mode::OneShot {
         ArmState::Disarmed
@@ -69,10 +74,11 @@ fn verify_abortive_close(mode: Mode) -> Result<(), Box<dyn std::error::Error>> {
         "registration state after abortive close",
     )?;
     if mode == Mode::OneShot {
-        poll.wait(&mut events, Wait::NoBlock)?;
+        let report = poll.wait(&mut events, Wait::NoBlock)?;
         if !events.is_empty() {
             return Err(failure("no delivery before explicit rearm", events.as_slice()).into());
         }
+        require_no_recovery(report)?;
     }
 
     let mut byte = [0_u8; 1];

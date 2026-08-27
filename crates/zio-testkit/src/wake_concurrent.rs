@@ -14,7 +14,8 @@ use core::time::Duration;
 use zio::{Key, Wait};
 
 use crate::wake_verify::{
-    events, expect_empty, expect_single_wake, observed, poll, trigger, wait_for, waker,
+    events, expect_empty, expect_single_wake, observed, poll, reject_recovery, trigger, wait_for,
+    waker,
 };
 use crate::{WakeCheck, WakeFailure, WakeScenario};
 
@@ -68,24 +69,27 @@ pub(crate) fn multi_producer_storm(scenario: WakeScenario) -> Result<(), WakeFai
     for thread in threads {
         finish_result_thread(thread, scenario, "successful concurrent wake producer")?;
     }
-    wait_for(
+    let report = wait_for(
         &mut poll,
         &mut events,
         Wait::For(OBSERVATION_LIMIT),
         scenario,
     )?;
     expect_single_wake(&events, MULTI_PRODUCER_KEY, scenario)?;
-    wait_for(&mut poll, &mut events, Wait::NoBlock, scenario)?;
+    reject_recovery(report, &events, scenario)?;
+    let report = wait_for(&mut poll, &mut events, Wait::NoBlock, scenario)?;
     expect_empty(&events, scenario)?;
+    reject_recovery(report, &events, scenario)?;
 
     trigger(&waker, scenario)?;
-    wait_for(
+    let report = wait_for(
         &mut poll,
         &mut events,
         Wait::For(OBSERVATION_LIMIT),
         scenario,
     )?;
-    expect_single_wake(&events, MULTI_PRODUCER_KEY, scenario)
+    expect_single_wake(&events, MULTI_PRODUCER_KEY, scenario)?;
+    reject_recovery(report, &events, scenario)
 }
 
 pub(crate) fn repeated_cross_thread(scenario: WakeScenario) -> Result<(), WakeFailure> {
@@ -121,7 +125,7 @@ pub(crate) fn repeated_cross_thread(scenario: WakeScenario) -> Result<(), WakeFa
                 &error,
             )
         })?;
-        wait_for(&mut poll, &mut events, Wait::For(BLOCK_LIMIT), scenario)?;
+        let report = wait_for(&mut poll, &mut events, Wait::For(BLOCK_LIMIT), scenario)?;
         let wake_result = result_receiver
             .recv_timeout(OBSERVATION_LIMIT)
             .map_err(|error| {
@@ -141,8 +145,10 @@ pub(crate) fn repeated_cross_thread(scenario: WakeScenario) -> Result<(), WakeFa
             )
         })?;
         expect_single_wake(&events, REPEATED_CROSS_THREAD_KEY, scenario)?;
-        wait_for(&mut poll, &mut events, Wait::NoBlock, scenario)?;
+        reject_recovery(report, &events, scenario)?;
+        let report = wait_for(&mut poll, &mut events, Wait::NoBlock, scenario)?;
         expect_empty(&events, scenario)?;
+        reject_recovery(report, &events, scenario)?;
     }
     finish_result_thread(thread, scenario, "clean repeated wake helper exit")
 }

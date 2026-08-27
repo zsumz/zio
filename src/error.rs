@@ -65,8 +65,6 @@ pub enum Error {
     },
     /// A backend mutation failed with an exact commit status.
     Mutation(MutationError),
-    /// Wait-time recovery failed with exact per-registration outcomes.
-    Recovery(RecoveryFailure),
     /// The poller wake source already carries another key.
     WakerAlreadyConfigured {
         /// Previously configured key.
@@ -118,7 +116,6 @@ impl fmt::Display for Error {
         match self {
             Self::Io { operation, source } => write!(formatter, "{operation:?} failed: {source}"),
             Self::Mutation(error) => error.fmt(formatter),
-            Self::Recovery(error) => error.fmt(formatter),
             Self::WakerAlreadyConfigured {
                 existing,
                 requested,
@@ -164,7 +161,6 @@ impl std::error::Error for Error {
         match self {
             Self::Io { source, .. } => Some(source),
             Self::Mutation(error) => Some(error),
-            Self::Recovery(error) => Some(error),
             _ => None,
         }
     }

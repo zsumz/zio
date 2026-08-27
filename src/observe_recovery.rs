@@ -6,7 +6,8 @@ use core::borrow::Borrow;
 
 use crate::{
     ArmState, CommitStatus, Error, Event, Events, Mode, Operation, RecoveryFailure,
-    RecoveryOutcome, RegistrationState, pending_kqueue::PendingResource, table::RegistrationTable,
+    RecoveryOutcome, RegistrationState, WaitReport, pending_kqueue::PendingResource,
+    table::RegistrationTable,
 };
 
 #[allow(
@@ -22,7 +23,7 @@ pub(crate) fn finish<I>(
     wake_key: Option<crate::Key>,
     outcomes: I,
     source: Option<std::io::Error>,
-) -> Result<(), Error>
+) -> Result<WaitReport, Error>
 where
     I: IntoIterator,
     I::IntoIter: Clone + ExactSizeIterator,
@@ -65,13 +66,13 @@ where
         }
     }
     if let Some(source) = source {
-        return Err(Error::Recovery(RecoveryFailure::new(
+        return Ok(WaitReport::new(Some(RecoveryFailure::new(
             Operation::Disarm,
             snapshot.ok_or(Error::Invariant)?,
             source,
-        )));
+        ))));
     }
-    Ok(())
+    Ok(WaitReport::new(None))
 }
 
 fn validate<I>(

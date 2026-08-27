@@ -7,6 +7,8 @@
     target_os = "netbsd"
 ))]
 
+mod support;
+
 use std::{
     error::Error,
     io::{self, Write},
@@ -21,6 +23,8 @@ use std::{
 use zio::{
     ArmState, Event, Events, Interest, Key, Mode, Poll, Registration, RegistrationState, Wait,
 };
+
+use support::require_no_recovery;
 
 const ORIGINAL_KEY: Key = Key::new(801);
 const REUSED_KEY: Key = Key::new(802);
@@ -55,14 +59,16 @@ fn numeric_descriptor_reuse_does_not_alias_retained_registration() -> TestResult
 
     let mut events = poll.events()?;
     original_peer.write_all(b"original")?;
-    poll.wait(&mut events, Wait::For(OBSERVATION_LIMIT))?;
+    let report = poll.wait(&mut events, Wait::For(OBSERVATION_LIMIT))?;
     expect_resources(&events, &[ORIGINAL_KEY])?;
+    require_no_recovery(report)?;
     expect_arm(&poll, &original, ArmState::Disarmed)?;
     expect_arm(&poll, &reused, ArmState::Armed)?;
 
     replacement_peer.write_all(b"replacement")?;
-    poll.wait(&mut events, Wait::For(OBSERVATION_LIMIT))?;
+    let report = poll.wait(&mut events, Wait::For(OBSERVATION_LIMIT))?;
     expect_resources(&events, &[REUSED_KEY])?;
+    require_no_recovery(report)?;
     expect_arm(&poll, &original, ArmState::Disarmed)?;
     expect_arm(&poll, &reused, ArmState::Disarmed)?;
 
@@ -95,21 +101,24 @@ fn duplicated_handles_have_independent_registrations() -> TestResult {
 
     peer.write_all(b"shared readiness")?;
     let mut events = poll.events()?;
-    poll.wait(&mut events, Wait::For(OBSERVATION_LIMIT))?;
+    let report = poll.wait(&mut events, Wait::For(OBSERVATION_LIMIT))?;
     expect_resources(&events, &[FIRST_DUP_KEY, SECOND_DUP_KEY])?;
+    require_no_recovery(report)?;
     expect_arm(&poll, &first, ArmState::Disarmed)?;
     expect_arm(&poll, &second, ArmState::Disarmed)?;
 
     poll.modify(&first, Interest::READABLE, Mode::OneShot)?;
-    poll.wait(&mut events, Wait::NoBlock)?;
+    let report = poll.wait(&mut events, Wait::NoBlock)?;
     expect_resources(&events, &[FIRST_DUP_KEY])?;
+    require_no_recovery(report)?;
     expect_arm(&poll, &first, ArmState::Disarmed)?;
     expect_arm(&poll, &second, ArmState::Disarmed)?;
     poll.delete(first)?;
 
     poll.modify(&second, Interest::READABLE, Mode::OneShot)?;
-    poll.wait(&mut events, Wait::NoBlock)?;
+    let report = poll.wait(&mut events, Wait::NoBlock)?;
     expect_resources(&events, &[SECOND_DUP_KEY])?;
+    require_no_recovery(report)?;
     poll.delete(second)?;
     Ok(())
 }
@@ -128,8 +137,9 @@ fn one_handle_can_have_independent_registrations() -> TestResult {
 
     peer.write_all(b"shared handle")?;
     let mut events = poll.events()?;
-    poll.wait(&mut events, Wait::For(OBSERVATION_LIMIT))?;
+    let report = poll.wait(&mut events, Wait::For(OBSERVATION_LIMIT))?;
     expect_resources(&events, &[FIRST_SHARED_KEY, SECOND_SHARED_KEY])?;
+    require_no_recovery(report)?;
 
     poll.delete(first)?;
     poll.delete(second)?;

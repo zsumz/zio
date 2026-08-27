@@ -7,9 +7,13 @@
     target_os = "netbsd"
 ))]
 
+mod support;
+
 use std::{io::Write, os::unix::net::UnixStream, time::Duration};
 
 use zio::{Error, Event, Interest, Key, Mode, Poll, Wait};
+
+use support::require_no_recovery;
 
 #[test]
 fn registration_authority_is_poller_local() -> Result<(), Box<dyn std::error::Error>> {
@@ -38,12 +42,13 @@ fn poll_retains_the_registered_open_file_description() -> Result<(), Box<dyn std
 
     peer.write_all(b"ready")?;
     let mut events = poll.events()?;
-    poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?;
+    let report = poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?;
     assert!(
         events
             .iter()
             .any(|event| { matches!(event, Event::Resource { key, .. } if *key == Key::new(11)) })
     );
+    require_no_recovery(report)?;
 
     poll.delete(registration)?;
     Ok(())

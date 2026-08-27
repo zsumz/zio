@@ -108,7 +108,8 @@ where
         scenario,
         expected,
     } = observation;
-    poll.wait(events, Wait::For(OBSERVATION_LIMIT))
+    let report = poll
+        .wait(events, Wait::For(OBSERVATION_LIMIT))
         .map_err(|error| observed(scenario, ReadinessCheck::Wait, "successful wait", &error))?;
     let readiness = single_readiness(events, scenario)?;
     if !expected.has_required(readiness) {
@@ -127,9 +128,10 @@ where
             readiness,
         );
     }
+    reject_recovery(report, events, scenario)?;
     verify_state(poll, registration, scenario)?;
     if scenario.mode() == Mode::OneShot {
-        poll.wait(events, Wait::NoBlock).map_err(|error| {
+        let report = poll.wait(events, Wait::NoBlock).map_err(|error| {
             observed(
                 scenario,
                 ReadinessCheck::Wait,
@@ -145,8 +147,25 @@ where
                 events.as_slice(),
             );
         }
+        reject_recovery(report, events, scenario)?;
     }
     verify_operation(source)
+}
+
+pub(crate) fn reject_recovery(
+    report: zio::WaitReport,
+    events: &zio::Events,
+    scenario: ReadinessScenario,
+) -> Result<(), ReadinessFailure> {
+    match report.into_recovery() {
+        None => Ok(()),
+        Some(recovery) => mismatch(
+            scenario,
+            ReadinessCheck::Recovery,
+            "valid delivery without post-delivery recovery trouble",
+            format!("{recovery}; delivered events: {:?}", events.as_slice()),
+        ),
+    }
 }
 
 fn single_readiness(

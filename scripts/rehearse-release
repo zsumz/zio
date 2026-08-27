@@ -88,9 +88,12 @@ printf '%s\n' \
   '    let waker = poll.waker(Key::new(91))?;' \
   '    let mut events = poll.events()?;' \
   '    waker.wake()?;' \
-  '    poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?;' \
+  '    let report = poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?;' \
   '    if events.as_slice() != [Event::Wake { key: Key::new(91) }] {' \
   '        return Err(io::Error::other("registry consumer missed wake").into());' \
+  '    }' \
+  '    if let Some(recovery) = report.into_recovery() {' \
+  '        return Err(recovery.into());' \
   '    }' \
   '    Ok(())' \
   '}' \

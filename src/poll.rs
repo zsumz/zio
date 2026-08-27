@@ -9,7 +9,7 @@ use crate::{
     table::RegistrationTable,
 };
 
-/// Default raw event capacity for one poll operation.
+/// Default delivered event capacity for one poll operation.
 pub const DEFAULT_EVENT_CAPACITY: usize = 1_024;
 /// Default number of registrations retained by one poller.
 pub const DEFAULT_REGISTRATION_CAPACITY: usize = 1_024;
@@ -88,7 +88,7 @@ impl Poll {
         Events::new(self.event_capacity)
     }
 
-    /// Returns the fixed raw-event capacity.
+    /// Returns the fixed delivered-event capacity.
     pub const fn event_capacity(&self) -> usize {
         self.event_capacity.get()
     }

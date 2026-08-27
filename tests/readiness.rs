@@ -7,6 +7,8 @@
     target_os = "netbsd"
 ))]
 
+mod support;
+
 use std::{
     io::{self, Write},
     os::unix::net::UnixStream,
@@ -16,6 +18,8 @@ use std::{
 
 use zio::{ArmState, Error, Event, Events, Interest, Key, Mode, Poll, RegistrationState, Wait};
 
+use support::require_no_recovery;
+
 #[test]
 fn one_shot_requires_explicit_rearm() -> Result<(), Box<dyn std::error::Error>> {
     let (source, mut peer) = UnixStream::pair()?;
@@ -24,8 +28,9 @@ fn one_shot_requires_explicit_rearm() -> Result<(), Box<dyn std::error::Error>> 
     peer.write_all(b"still readable")?;
 
     let mut events = poll.events()?;
-    poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?;
+    let report = poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?;
     assert!(has_key(&events, Key::new(41)));
+    require_no_recovery(report)?;
     assert_eq!(
         poll.registration_state(&registration)?,
         RegistrationState::Registered {
@@ -33,8 +38,9 @@ fn one_shot_requires_explicit_rearm() -> Result<(), Box<dyn std::error::Error>> 
         }
     );
 
-    poll.wait(&mut events, Wait::NoBlock)?;
+    let report = poll.wait(&mut events, Wait::NoBlock)?;
     assert!(events.is_empty());
+    require_no_recovery(report)?;
 
     poll.modify(&registration, Interest::READABLE, Mode::OneShot)?;
     assert_eq!(
@@ -43,8 +49,9 @@ fn one_shot_requires_explicit_rearm() -> Result<(), Box<dyn std::error::Error>> 
             arm: ArmState::Armed,
         }
     );
-    poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?;
+    let report = poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?;
     assert!(has_key(&events, Key::new(41)));
+    require_no_recovery(report)?;
 
     poll.delete(registration)?;
     Ok(())
@@ -64,12 +71,13 @@ fn one_shot_coalesces_readable_and_writable_at_capacity_one()
     peer.write_all(b"readable and writable")?;
 
     let mut events = poll.events()?;
-    poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?;
+    let report = poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?;
     let [Event::Resource { key, readiness }] = events.as_slice() else {
         return Err(io::Error::other("expected one coalesced resource event").into());
     };
     assert_eq!(*key, Key::new(42));
     assert!(readiness.contains(zio::Readiness::READABLE.union(zio::Readiness::WRITABLE)));
+    require_no_recovery(report)?;
     assert_eq!(
         poll.registration_state(&registration)?,
         RegistrationState::Registered {
@@ -94,11 +102,12 @@ fn one_shot_coalescing_is_complete_with_competing_registrations()
     first_peer.write_all(b"first readable")?;
 
     let mut events = poll.events()?;
-    poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?;
+    let report = poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?;
     let [Event::Resource { key, readiness }] = events.as_slice() else {
         return Err(io::Error::other("expected one coalesced resource event").into());
     };
     assert!(readiness.contains(zio::Readiness::READABLE.union(zio::Readiness::WRITABLE)));
+    require_no_recovery(report)?;
     let armed = RegistrationState::Registered {
         arm: ArmState::Armed,
     };
@@ -126,11 +135,12 @@ fn wake_before_wait_is_observable() -> Result<(), Box<dyn std::error::Error>> {
     waker.wake()?;
 
     let mut events = poll.events()?;
-    poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?;
+    let report = poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?;
     assert!(matches!(
         events.as_slice(),
         [Event::Wake { key }] if *key == Key::new(99)
     ));
+    require_no_recovery(report)?;
     Ok(())
 }
 
@@ -144,12 +154,13 @@ fn wake_interrupts_a_blocked_wait() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     let mut events = poll.events()?;
-    poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?;
+    let report = poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?;
     let wake_result = thread
         .join()
         .map_err(|_| io::Error::other("wake thread panicked"))?;
     wake_result?;
     assert!(has_wake(&events, Key::new(100)));
+    require_no_recovery(report)?;
     Ok(())
 }
 

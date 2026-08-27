@@ -10,18 +10,17 @@
 //! let listener = TcpListener::bind("127.0.0.1:0")?;
 //! listener.set_nonblocking(true)?;
 //! let mut poll = Poll::new()?;
-//! let registration = poll.register(
-//!     &listener,
-//!     Key::new(7),
-//!     Interest::READABLE,
-//!     Mode::Level,
-//! )?;
+//! let registration =
+//!     poll.register(&listener, Key::new(7), Interest::READABLE, Mode::Level)?;
 //! let mut events = poll.events()?;
-//! poll.wait(&mut events, Wait::For(Duration::from_millis(100)))?;
+//! let report = poll.wait(&mut events, Wait::For(Duration::from_millis(100)))?;
 //! for event in &events {
 //!     if let Event::Resource { key, readiness } = event {
 //!         println!("{key:?}: {readiness:?}");
 //!     }
+//! }
+//! if let Some(recovery) = report.into_recovery() {
+//!     return Err(recovery.into());
 //! }
 //! poll.delete(registration)?;
 //! # Ok(())
@@ -59,6 +58,9 @@ mod sys;
 mod table;
 mod token;
 mod wait;
+mod wait_report;
+#[cfg(test)]
+mod wait_report_test;
 
 #[cfg(feature = "test-support")]
 #[doc(hidden)]
@@ -74,3 +76,4 @@ pub use mode::Mode;
 pub use poll::{DEFAULT_EVENT_CAPACITY, DEFAULT_REGISTRATION_CAPACITY, Poll, Waker};
 pub use registration::{ArmState, Registration, RegistrationId, RegistrationState};
 pub use wait::Wait;
+pub use wait_report::WaitReport;

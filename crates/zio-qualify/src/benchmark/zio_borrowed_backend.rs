@@ -9,6 +9,7 @@ use std::{marker::PhantomData, os::unix::net::UnixStream, time::Duration};
 use zio::{Event, Key, Mode, Poll, Registration, Wait, Waker};
 
 use super::backend::{Backend, Profile, display};
+use super::zio_backend::finish_wait;
 
 pub(crate) struct ZioBorrowedBackend {
     poll: Option<Poll>,
@@ -111,9 +112,7 @@ impl Backend for ZioBorrowedBackend {
             Some(poll) => poll.wait(&mut self.events, Wait::For(timeout)),
             None => return Err("zio borrowed backend was invalidated".to_owned()),
         };
-        if let Err(error) = result {
-            return Err(self.invalidate(error));
-        }
+        let report = result.map_err(|error| self.invalidate(error))?;
         let translated = (|| {
             let mut count = 0_usize;
             for event in &self.events {
@@ -135,7 +134,7 @@ impl Backend for ZioBorrowedBackend {
             }
             Ok(count)
         })();
-        translated.map_err(|error| self.invalidate(error))
+        finish_wait(translated, report).map_err(|error| self.invalidate(error))
     }
 
     fn configure_wake(&mut self) -> Result<(), String> {
@@ -156,16 +155,14 @@ impl Backend for ZioBorrowedBackend {
             Some(poll) => poll.wait(&mut self.events, Wait::For(timeout)),
             None => return Err("zio borrowed backend was invalidated".to_owned()),
         };
-        if let Err(error) = result {
-            return Err(self.invalidate(error));
-        }
-        let observed = match self.events.as_slice() {
+        let report = result.map_err(|error| self.invalidate(error))?;
+        let delivery = match self.events.as_slice() {
             [Event::Wake { key }] if *key == Key::new(u64::MAX) => Ok(1),
             events => Err(format!(
                 "unexpected zio borrowed wake observations: {events:?}"
             )),
         };
-        observed.map_err(|error| self.invalidate(error))
+        finish_wait(delivery, report).map_err(|error| self.invalidate(error))
     }
 }
 

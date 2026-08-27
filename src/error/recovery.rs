@@ -64,12 +64,12 @@ impl RecoveryOutcome {
 /// recovery batch, in observation order. The source is the first native or
 /// receipt-protocol failure in submitted-change order.
 ///
-/// Successful waits do not create this report allocation. Each
-/// [`crate::Error::Recovery`] owns one `Vec` backing allocation containing at
-/// most the smaller of the poller's event and registration capacities.
-/// Retaining several recovery errors retains one independent bounded
-/// allocation per error and does not borrow the poller. Allocation exhaustion
-/// follows Rust's ordinary allocation-error policy.
+/// Successful recovery does not create this report allocation. Each failed
+/// post-delivery recovery owns one `Vec` backing allocation containing at most
+/// the smaller of the poller's event and registration capacities. Retaining
+/// several reports retains one independent bounded allocation per failure and
+/// does not borrow the poller. Allocation exhaustion follows Rust's ordinary
+/// allocation-error policy.
 #[derive(Debug)]
 pub struct RecoveryFailure {
     operation: Operation,

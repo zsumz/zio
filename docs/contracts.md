@@ -92,10 +92,10 @@ postcondition. Each submitted registration gets an exact outcome:
 | `NotApplied` | Armed |
 | `Unknown` | Uncertain |
 
-On recovery failure, `Poll::wait` returns `Error::Recovery` without discarding
-translated resource or wake events. The error owns every batch outcome,
-including successful peers, after the poller is reused. Other wait errors leave
-`Events` empty.
+`Poll::wait` returns `Ok(WaitReport)` after valid delivery. Process the retained
+resource and wake events first, then inspect `WaitReport::recovery`. A recovery
+failure owns every batch outcome, including successful peers, after the poller
+is reused. Returning `Err` means delivery failed and leaves `Events` empty.
 
 ## Allocation contract
 
@@ -103,10 +103,15 @@ Poll construction retains native-event, coalescing, mutation, receipt, and
 ownership scratch. Successful waits reuse it without growing zio-owned heap
 storage. A configured wake trigger and observation also allocate nothing.
 
-`Error::Recovery` alone creates one owned `Vec` snapshot, bounded by the smaller
-configured event and registration limit. Allocation exhaustion follows Rust's
-normal policy. Formatting, `std::io::Error`, allocator, and operating-system
-internals are outside this guarantee.
+Kqueue retains observation space for both filters of every registration plus
+the wake filter so a delivered registration receives its complete split-filter
+snapshot. One-shot recovery plans and receipts are bounded separately by the
+smaller configured event and registration limit.
+
+A failed post-delivery recovery alone creates one owned `Vec` snapshot, bounded
+by the smaller configured event and registration limit. Allocation exhaustion
+follows Rust's normal policy. Formatting, `std::io::Error`, allocator, and
+operating-system internals are outside this guarantee.
 
 ## Wait behavior
 

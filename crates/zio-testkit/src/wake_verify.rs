@@ -46,9 +46,25 @@ pub(crate) fn wait_for(
     events: &mut Events,
     wait: Wait,
     scenario: WakeScenario,
-) -> Result<(), WakeFailure> {
+) -> Result<zio::WaitReport, WakeFailure> {
     poll.wait(events, wait)
         .map_err(|error| observed(scenario, WakeCheck::Wait, "successful wait", &error))
+}
+
+pub(crate) fn reject_recovery(
+    report: zio::WaitReport,
+    events: &Events,
+    scenario: WakeScenario,
+) -> Result<(), WakeFailure> {
+    match report.into_recovery() {
+        None => Ok(()),
+        Some(recovery) => mismatch(
+            scenario,
+            WakeCheck::Recovery,
+            "valid delivery without post-delivery recovery trouble",
+            format!("{recovery}; delivered events: {:?}", events.as_slice()),
+        ),
+    }
 }
 
 pub(crate) fn expect_single_wake(

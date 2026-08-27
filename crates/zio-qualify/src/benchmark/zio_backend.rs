@@ -63,28 +63,32 @@ impl Backend for ZioBackend {
         observe: &mut dyn FnMut(usize) -> Result<(), String>,
     ) -> Result<usize, String> {
         self.events.clear();
-        self.poll
+        let report = self
+            .poll
             .wait(&mut self.events, Wait::For(timeout))
             .map_err(display)?;
-        let mut count = 0_usize;
-        for event in &self.events {
-            match *event {
-                Event::Resource { key, readiness } if readiness.is_readable() => {
-                    observe(usize::try_from(key.get()).map_err(display)?)?;
-                    count = count.saturating_add(1);
-                }
-                Event::Resource { key, readiness } => {
-                    return Err(format!(
-                        "zio key {} was not readable: {readiness:?}",
-                        key.get()
-                    ));
-                }
-                Event::Wake { key } => {
-                    return Err(format!("unexpected zio wake key {}", key.get()));
+        let delivery = (|| {
+            let mut count = 0_usize;
+            for event in &self.events {
+                match *event {
+                    Event::Resource { key, readiness } if readiness.is_readable() => {
+                        observe(usize::try_from(key.get()).map_err(display)?)?;
+                        count = count.saturating_add(1);
+                    }
+                    Event::Resource { key, readiness } => {
+                        return Err(format!(
+                            "zio key {} was not readable: {readiness:?}",
+                            key.get()
+                        ));
+                    }
+                    Event::Wake { key } => {
+                        return Err(format!("unexpected zio wake key {}", key.get()));
+                    }
                 }
             }
-        }
-        Ok(count)
+            Ok(count)
+        })();
+        finish_wait(delivery, report)
     }
 
     fn configure_wake(&mut self) -> Result<(), String> {
@@ -100,13 +104,28 @@ impl Backend for ZioBackend {
 
     fn wait_for_wake(&mut self, timeout: Duration) -> Result<u64, String> {
         self.events.clear();
-        self.poll
+        let report = self
+            .poll
             .wait(&mut self.events, Wait::For(timeout))
             .map_err(display)?;
-        match self.events.as_slice() {
+        let delivery = match self.events.as_slice() {
             [Event::Wake { key }] if *key == Key::new(u64::MAX) => Ok(1),
             events => Err(format!("unexpected zio wake observations: {events:?}")),
+        };
+        finish_wait(delivery, report)
+    }
+}
+
+pub(super) fn finish_wait<T>(
+    delivery: Result<T, String>,
+    report: zio::WaitReport,
+) -> Result<T, String> {
+    match (delivery, report.into_recovery()) {
+        (Err(error), _) => Err(error),
+        (Ok(_), Some(recovery)) => {
+            Err(format!("unexpected zio post-delivery recovery: {recovery}"))
         }
+        (Ok(delivery), None) => Ok(delivery),
     }
 }
 

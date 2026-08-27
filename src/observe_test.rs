@@ -8,7 +8,8 @@ use std::{
 
 use crate::{
     ArmState, CommitStatus, Error, Event, Events, Interest, Key, Mode, Readiness, RecoveryFailure,
-    RegistrationId, RegistrationState, pending_kqueue::PendingResource, table::RegistrationTable,
+    RegistrationId, RegistrationState, WaitReport, pending_kqueue::PendingResource,
+    table::RegistrationTable,
 };
 
 const ARMED: RegistrationState = RegistrationState::Registered {
@@ -89,7 +90,7 @@ fn recovery_failure_preserves_translated_resource_and_wake_events() -> Result<()
 }
 
 #[test]
-fn retained_recovery_errors_survive_poll_state_reuse() -> Result<(), Box<dyn StdError>> {
+fn retained_recovery_reports_survive_poll_state_reuse() -> Result<(), Box<dyn StdError>> {
     let mut registrations = table(1)?;
     let (source, _peer) = UnixStream::pair()?;
     let registration = reserve(&mut registrations, &source, Key::new(41))?;
@@ -219,21 +220,13 @@ fn finish_round(
             readiness: Readiness::READABLE,
         }]
     );
-    match result {
-        Ok(()) => Ok(None),
-        Err(Error::Recovery(failure)) => Ok(Some(failure)),
-        Err(other) => Err(Box::new(other)),
-    }
+    Ok(result?.into_recovery())
 }
 
-fn recovery(result: Result<(), Error>) -> Result<RecoveryFailure, Box<dyn StdError>> {
-    match result {
-        Err(Error::Recovery(failure)) => Ok(failure),
-        Err(other) => Err(Box::new(other)),
-        Ok(()) => Err(Box::new(io::Error::other(
-            "recovery unexpectedly succeeded",
-        ))),
-    }
+fn recovery(result: Result<WaitReport, Error>) -> Result<RecoveryFailure, Box<dyn StdError>> {
+    result?
+        .into_recovery()
+        .ok_or_else(|| Box::new(io::Error::other("recovery unexpectedly succeeded")) as _)
 }
 
 fn table(capacity: usize) -> Result<RegistrationTable, Error> {

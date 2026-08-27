@@ -92,7 +92,7 @@ fn finish(
     pending: &[PendingResource],
     outcomes: &[RecoveryOutcome],
 ) -> Result<(), Error> {
-    crate::observe_recovery::finish(
+    let report = crate::observe_recovery::finish(
         registrations,
         events,
         pending,
@@ -101,7 +101,11 @@ fn finish(
         None,
         outcomes,
         None,
-    )
+    )?;
+    if report.recovery().is_some() {
+        return Err(Error::Invariant);
+    }
+    Ok(())
 }
 
 fn table(capacity: usize) -> Result<RegistrationTable, Error> {

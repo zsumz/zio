@@ -68,6 +68,11 @@ impl RawBatch {
     ) -> impl Clone + ExactSizeIterator<Item = RecoveryOutcome> + '_ {
         self.disarms.outcomes()
     }
+
+    #[cfg(test)]
+    pub(crate) const fn native_event_capacity(&self) -> usize {
+        self.raw.arena.event_capacity()
+    }
 }
 
 pub(super) fn from_kqueue_event(event: super::kqueue_change::RawKevent) -> Readiness {

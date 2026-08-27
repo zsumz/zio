@@ -15,6 +15,8 @@ pub enum WakeCheck {
     Trigger,
     /// A bounded or nonblocking wait failed.
     Wait,
+    /// A valid delivery unexpectedly carried post-delivery recovery trouble.
+    Recovery,
     /// Delivered events differed from the expected logical batch.
     Events,
     /// A wake remained observable after it should have drained.

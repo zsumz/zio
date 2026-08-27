@@ -8,6 +8,7 @@ use crate::{
     ConfiguredDelivery, DeliveryProfile, Interest, Observation, ProfileSupport,
     candidate::{Candidate, CandidateResult, CandidateSession, EventBatch},
     model::RegistrationSpec,
+    zio_candidate::finish_wait,
 };
 
 pub(crate) struct ZioBorrowedCandidate;
@@ -67,24 +68,28 @@ pub(crate) struct ZioBorrowedSession<'source> {
 impl CandidateSession for ZioBorrowedSession<'_> {
     fn wait(&mut self, timeout: Duration) -> CandidateResult<EventBatch> {
         self.events.clear();
-        self.poll
+        let report = self
+            .poll
             .wait(&mut self.events, Wait::For(timeout))
             .map_err(display)?;
-        let mut observation = Observation::EMPTY;
-        let mut matched_events = 0_usize;
-        for event in &self.events {
-            match *event {
-                Event::Resource { key, readiness } if key == Key::new(self.spec.key as u64) => {
-                    observation = observation | translate(readiness);
-                    matched_events = matched_events.saturating_add(1);
+        let delivery = (|| {
+            let mut observation = Observation::EMPTY;
+            let mut matched_events = 0_usize;
+            for event in &self.events {
+                match *event {
+                    Event::Resource { key, readiness } if key == Key::new(self.spec.key as u64) => {
+                        observation = observation | translate(readiness);
+                        matched_events = matched_events.saturating_add(1);
+                    }
+                    _ => return Err(format!("unexpected zio borrowed event: {event:?}")),
                 }
-                _ => return Err(format!("unexpected zio borrowed event: {event:?}")),
             }
-        }
-        Ok(EventBatch {
-            matched_events,
-            observation,
-        })
+            Ok(EventBatch {
+                matched_events,
+                observation,
+            })
+        })();
+        finish_wait(delivery, report)
     }
 
     fn rearm(&mut self) -> CandidateResult<()> {

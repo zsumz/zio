@@ -34,7 +34,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         poll.register(&listener, Key::new(7), Interest::READABLE, Mode::Level)?;
 
     let mut events = poll.events()?;
-    poll.wait(&mut events, Wait::NoBlock)?;
+    let report = poll.wait(&mut events, Wait::NoBlock)?;
+    for event in events.iter() {
+        println!("{event:?}");
+    }
+    if let Some(failure) = report.into_recovery() {
+        return Err(failure.into());
+    }
     poll.delete(registration)?;
     Ok(())
 }

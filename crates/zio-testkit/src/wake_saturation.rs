@@ -5,7 +5,7 @@ use core::time::Duration;
 use zio::{ArmState, Event, Interest, Key, Mode, RegistrationState, Wait};
 
 use crate::wake_verify::{
-    events, expect_empty, mismatch, observed, poll, trigger, wait_for, waker,
+    events, expect_empty, mismatch, observed, poll, reject_recovery, trigger, wait_for, waker,
 };
 use crate::{WakeCheck, WakeFailure, WakeScenario};
 
@@ -46,7 +46,7 @@ pub(crate) fn capacity_one(scenario: WakeScenario) -> Result<(), WakeFailure> {
             } else {
                 Wait::NoBlock
             };
-            wait_for(&mut poll, &mut events, request, scenario)?;
+            let report = wait_for(&mut poll, &mut events, request, scenario)?;
             if events.len() > 1 {
                 return mismatch(
                     scenario,
@@ -58,6 +58,7 @@ pub(crate) fn capacity_one(scenario: WakeScenario) -> Result<(), WakeFailure> {
             if let Some(event) = events.get(0).copied() {
                 observe_event(event, &mut saw_resource, &mut saw_wake, scenario)?;
             }
+            reject_recovery(report, &events, scenario)?;
             if saw_resource && saw_wake {
                 break;
             }
@@ -86,8 +87,9 @@ pub(crate) fn capacity_one(scenario: WakeScenario) -> Result<(), WakeFailure> {
                 );
             }
         }
-        wait_for(&mut poll, &mut events, Wait::NoBlock, scenario)?;
+        let report = wait_for(&mut poll, &mut events, Wait::NoBlock, scenario)?;
         expect_empty(&events, scenario)?;
+        reject_recovery(report, &events, scenario)?;
         poll.delete(registration)
             .map_err(|error| observed(scenario, WakeCheck::Cleanup, "deleted registration", &error))
     }

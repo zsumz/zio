@@ -27,9 +27,17 @@ impl RawBatch {
         }
         #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
         {
-            let capacity = registrations.checked_mul(2)?.checked_add(1)?;
-            let disarms = events.min(registrations);
-            super::kqueue_group::Backend::raw_batch(capacity, disarms).map(|kqueue| Self { kqueue })
+            // Each registration can contribute separate read and write
+            // observations, plus one user-filter wake. Retaining the complete
+            // native batch lets translation fully union split observations.
+            let complete_observation_capacity = registrations.checked_mul(2)?.checked_add(1)?;
+            // Only delivered logical events can require one-shot recovery.
+            let recovery_capacity = events.min(registrations);
+            super::kqueue_group::Backend::raw_batch(
+                complete_observation_capacity,
+                recovery_capacity,
+            )
+            .map(|kqueue| Self { kqueue })
         }
         #[cfg(not(any(
             target_os = "linux",
@@ -103,5 +111,13 @@ impl RawBatch {
         &self,
     ) -> impl Clone + ExactSizeIterator<Item = crate::RecoveryOutcome> + '_ {
         self.kqueue.disarm_outcomes()
+    }
+
+    #[cfg(all(
+        test,
+        any(target_os = "macos", target_os = "freebsd", target_os = "netbsd")
+    ))]
+    pub(super) const fn native_event_capacity(&self) -> usize {
+        self.kqueue.native_event_capacity()
     }
 }

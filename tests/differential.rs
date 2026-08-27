@@ -7,6 +7,8 @@
     target_os = "netbsd"
 ))]
 
+mod support;
+
 use std::{
     io::Write,
     os::{fd::AsRawFd, unix::net::UnixStream},
@@ -15,6 +17,8 @@ use std::{
 
 use mio::{Events as MioEvents, Interest as MioInterest, Poll as MioPoll, Token, unix::SourceFd};
 use zio::{Event, Interest, Key, Mode, Poll, Wait};
+
+use support::require_no_recovery;
 
 #[test]
 fn native_readiness_agrees_with_mio() -> Result<(), Box<dyn std::error::Error>> {
@@ -33,7 +37,7 @@ fn native_readiness_agrees_with_mio() -> Result<(), Box<dyn std::error::Error>> 
 
     peer.write_all(b"ready")?;
     let mut events = poll.events()?;
-    poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?;
+    let report = poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?;
     let mut oracle_events = MioEvents::with_capacity(8);
     oracle.poll(&mut oracle_events, Some(Duration::from_secs(1)))?;
 
@@ -46,6 +50,7 @@ fn native_readiness_agrees_with_mio() -> Result<(), Box<dyn std::error::Error>> 
             .iter()
             .any(|event| event.token() == Token(17) && event.is_readable())
     );
+    require_no_recovery(report)?;
 
     poll.delete(registration)?;
     Ok(())

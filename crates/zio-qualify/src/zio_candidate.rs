@@ -60,24 +60,28 @@ pub(crate) struct ZioSession<'source> {
 impl CandidateSession for ZioSession<'_> {
     fn wait(&mut self, timeout: Duration) -> CandidateResult<EventBatch> {
         self.events.clear();
-        self.poll
+        let report = self
+            .poll
             .wait(&mut self.events, Wait::For(timeout))
             .map_err(display)?;
-        let mut observation = Observation::EMPTY;
-        let mut matched_events = 0_usize;
-        for event in &self.events {
-            match *event {
-                Event::Resource { key, readiness } if key == Key::new(self.spec.key as u64) => {
-                    observation = observation | translate(readiness);
-                    matched_events = matched_events.saturating_add(1);
+        let delivery = (|| {
+            let mut observation = Observation::EMPTY;
+            let mut matched_events = 0_usize;
+            for event in &self.events {
+                match *event {
+                    Event::Resource { key, readiness } if key == Key::new(self.spec.key as u64) => {
+                        observation = observation | translate(readiness);
+                        matched_events = matched_events.saturating_add(1);
+                    }
+                    _ => return Err(format!("unexpected zio event: {event:?}")),
                 }
-                _ => return Err(format!("unexpected zio event: {event:?}")),
             }
-        }
-        Ok(EventBatch {
-            matched_events,
-            observation,
-        })
+            Ok(EventBatch {
+                matched_events,
+                observation,
+            })
+        })();
+        finish_wait(delivery, report)
     }
 
     fn rearm(&mut self) -> CandidateResult<()> {
@@ -92,6 +96,19 @@ impl CandidateSession for ZioSession<'_> {
 
     fn delete(mut self) -> CandidateResult<()> {
         self.poll.delete(self.registration).map_err(display)
+    }
+}
+
+pub(crate) fn finish_wait<T>(
+    delivery: CandidateResult<T>,
+    report: zio::WaitReport,
+) -> CandidateResult<T> {
+    match (delivery, report.into_recovery()) {
+        (Err(error), _) => Err(error),
+        (Ok(_), Some(recovery)) => {
+            Err(format!("unexpected zio post-delivery recovery: {recovery}"))
+        }
+        (Ok(delivery), None) => Ok(delivery),
     }
 }
 

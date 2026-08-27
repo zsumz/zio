@@ -11,6 +11,8 @@ pub enum ReadinessCheck {
     Setup,
     /// A bounded or nonblocking wait failed.
     Wait,
+    /// A valid delivery unexpectedly carried post-delivery recovery trouble.
+    Recovery,
     /// The logical event batch had another shape or key.
     Events,
     /// A portable required readiness hint was absent.

@@ -49,12 +49,10 @@ fn recovery_retains_exactly_one_bounded_allocation() -> Result<(), Box<dyn StdEr
         ));
     });
 
-    let failure = match result {
-        Some(Err(Error::Recovery(failure))) => failure,
-        Some(Err(other)) => return Err(Box::new(other)),
-        Some(Ok(())) => return Err(io::Error::other("recovery unexpectedly succeeded").into()),
-        None => return Err(io::Error::other("measured call did not complete").into()),
-    };
+    let report = result.ok_or_else(|| io::Error::other("measured call did not complete"))??;
+    let failure = report
+        .into_recovery()
+        .ok_or_else(|| io::Error::other("recovery unexpectedly succeeded"))?;
     let snapshot_bytes = u64::try_from(size_of::<RecoveryOutcome>() * outcomes.len())?;
     assert_eq!(allocations.count_total, 1);
     assert_eq!(allocations.count_current, 1);

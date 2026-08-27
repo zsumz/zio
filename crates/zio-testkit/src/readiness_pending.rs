@@ -5,7 +5,7 @@ use std::{io::Read, os::fd::AsFd, time::Duration};
 use zio::{ArmState, Event, Key, Mode, Readiness, Registration, RegistrationState, Wait};
 
 use crate::readiness_expectation::{ExpectedReadiness, closure_for, expected_for};
-use crate::readiness_verify::{mismatch, observed};
+use crate::readiness_verify::{mismatch, observed, reject_recovery};
 use crate::{ReadinessCheck, ReadinessFailure, ReadinessScenario};
 
 pub(crate) const RESOURCE_KEY: Key = Key::new(5_001);
@@ -68,8 +68,9 @@ fn observe_stages<F: Read>(
     payload: &[u8],
     scenario: ReadinessScenario,
 ) -> Result<(), ReadinessFailure> {
-    let initial = wait_readiness(poll, events, scenario)?;
+    let (initial, report) = wait_readiness(poll, events, scenario)?;
     verify_expected(initial, expected_for(scenario), scenario)?;
+    reject_recovery(report, events, scenario)?;
     verify_delivery_state(poll, events, registration, scenario)?;
     read_payload(source, payload, scenario)?;
 
@@ -86,8 +87,9 @@ fn observe_stages<F: Read>(
                 })?;
             verify_arm(poll, registration, ArmState::Armed, scenario)?;
         }
-        let closure = wait_readiness(poll, events, scenario)?;
+        let (closure, report) = wait_readiness(poll, events, scenario)?;
         verify_expected(closure, closure_for(scenario), scenario)?;
+        reject_recovery(report, events, scenario)?;
         verify_delivery_state(poll, events, registration, scenario)?;
     }
     read_eof(source, scenario)
@@ -97,11 +99,12 @@ pub(crate) fn wait_readiness(
     poll: &mut zio::Poll,
     events: &mut zio::Events,
     scenario: ReadinessScenario,
-) -> Result<Readiness, ReadinessFailure> {
-    poll.wait(events, Wait::For(OBSERVATION_LIMIT))
+) -> Result<(Readiness, zio::WaitReport), ReadinessFailure> {
+    let report = poll
+        .wait(events, Wait::For(OBSERVATION_LIMIT))
         .map_err(|error| observed(scenario, ReadinessCheck::Wait, "successful wait", &error))?;
     match events.as_slice() {
-        [Event::Resource { key, readiness }] if *key == RESOURCE_KEY => Ok(*readiness),
+        [Event::Resource { key, readiness }] if *key == RESOURCE_KEY => Ok((*readiness, report)),
         actual => mismatch(
             scenario,
             ReadinessCheck::Events,
@@ -148,7 +151,7 @@ pub(crate) fn verify_delivery_state(
     };
     verify_arm(poll, registration, arm, scenario)?;
     if scenario.mode() == Mode::OneShot {
-        poll.wait(events, Wait::NoBlock).map_err(|error| {
+        let report = poll.wait(events, Wait::NoBlock).map_err(|error| {
             observed(
                 scenario,
                 ReadinessCheck::Wait,
@@ -164,6 +167,7 @@ pub(crate) fn verify_delivery_state(
                 events.as_slice(),
             );
         }
+        reject_recovery(report, events, scenario)?;
     }
     Ok(())
 }

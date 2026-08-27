@@ -5,7 +5,8 @@ use core::time::Duration;
 use zio::{Error, Key, Wait, Waker};
 
 use crate::wake_verify::{
-    events, expect_empty, expect_single_wake, mismatch, poll, trigger, wait_for, waker,
+    events, expect_empty, expect_single_wake, mismatch, poll, reject_recovery, trigger, wait_for,
+    waker,
 };
 use crate::{WakeCheck, WakeFailure, WakeScenario};
 
@@ -69,8 +70,10 @@ fn wake_and_drain(
     scenario: WakeScenario,
 ) -> Result<(), WakeFailure> {
     trigger(waker, scenario)?;
-    wait_for(poll, events, Wait::For(OBSERVATION_LIMIT), scenario)?;
+    let report = wait_for(poll, events, Wait::For(OBSERVATION_LIMIT), scenario)?;
     expect_single_wake(events, key, scenario)?;
-    wait_for(poll, events, Wait::NoBlock, scenario)?;
-    expect_empty(events, scenario)
+    reject_recovery(report, events, scenario)?;
+    let report = wait_for(poll, events, Wait::NoBlock, scenario)?;
+    expect_empty(events, scenario)?;
+    reject_recovery(report, events, scenario)
 }
