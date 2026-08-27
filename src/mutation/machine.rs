@@ -93,8 +93,8 @@ impl<'state, Driver: MutationDriver> MutationSession<'state, Driver> {
             .owner
             .get_or_assign()
             .map_err(|error| RegisterError::new(error, None))?;
-        let id = permit.id();
-        let registration = Registration::new(owner, id);
+        let encoded_id = permit.encoded_id();
+        let registration = Registration::new(owner, encoded_id);
         let driver = &mut *self.driver;
         let (reservation, result) = permit
             .reserve_with(
@@ -190,7 +190,7 @@ impl<'state, Driver: MutationDriver> MutationSession<'state, Driver> {
         let id = registration.id();
         let prepared = self
             .registrations
-            .prepare_retire(id, true)
+            .prepare_registration_retire(registration.encoded_id(), true)
             .map_err(|error| DeleteError::new(error, registration))?;
         let binding = prepared
             .binding()

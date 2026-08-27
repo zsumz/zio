@@ -48,5 +48,6 @@ fn add_coalesce_and_clear_are_allocation_free() -> Result<(), Error> {
 
 fn registration(slot: u32, generation: u32) -> Result<crate::RegistrationId, Error> {
     let generation = NonZeroU32::new(generation).ok_or(Error::Invariant)?;
-    encode(slot, generation).ok_or(Error::Invariant)
+    let encoded = encode(slot, generation).ok_or(Error::Invariant)?;
+    Ok(encoded.id())
 }

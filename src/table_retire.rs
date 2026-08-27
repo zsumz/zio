@@ -3,8 +3,11 @@
 use crate::{
     Error, RegistrationId, RegistrationState,
     binding::Binding,
-    token::{MAX_GENERATION, decode},
+    token::{EncodedRegistrationId, MAX_GENERATION},
 };
+
+#[cfg(test)]
+use crate::token::decode;
 
 use super::{RegistrationTable, slot::Slot};
 
@@ -105,6 +108,19 @@ impl PreparedRetire<'_> {
 
 impl RegistrationTable {
     #[inline]
+    pub(crate) fn prepare_registration_retire(
+        &mut self,
+        encoded: EncodedRegistrationId,
+        allow_uncertain: bool,
+    ) -> Result<PreparedRetire<'_>, Error> {
+        let id = encoded.id();
+        let (free_index, generation) = encoded.parts();
+        let index = usize::try_from(free_index).map_err(|_| Error::Invariant)?;
+        self.prepare_retire_at(id, index, free_index, generation, allow_uncertain)
+    }
+
+    #[cfg(test)]
+    #[inline]
     pub(crate) fn prepare_retire(
         &mut self,
         id: RegistrationId,
@@ -112,6 +128,18 @@ impl RegistrationTable {
     ) -> Result<PreparedRetire<'_>, Error> {
         let (index, generation) = decode(id)?;
         let free_index = u32::try_from(index).map_err(|_| Error::Invariant)?;
+        self.prepare_retire_at(id, index, free_index, generation.get(), allow_uncertain)
+    }
+
+    #[inline]
+    fn prepare_retire_at(
+        &mut self,
+        id: RegistrationId,
+        index: usize,
+        free_index: u32,
+        generation: u32,
+        allow_uncertain: bool,
+    ) -> Result<PreparedRetire<'_>, Error> {
         let Self {
             slots,
             free_head,
@@ -121,7 +149,7 @@ impl RegistrationTable {
         let slot = slots
             .get_mut(index)
             .ok_or(Error::Stale { registration: id })?;
-        if slot.generation != generation.get() {
+        if slot.generation != generation {
             return Err(Error::Stale { registration: id });
         }
         let entry = slot

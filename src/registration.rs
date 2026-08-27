@@ -2,7 +2,7 @@
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use crate::Error;
+use crate::{Error, token::EncodedRegistrationId};
 
 static NEXT_POLL_ID: AtomicU64 = AtomicU64::new(1);
 
@@ -90,11 +90,11 @@ impl PollOwner {
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct Registration {
     owner: PollId,
-    id: RegistrationId,
+    id: EncodedRegistrationId,
 }
 
 impl Registration {
-    pub(crate) const fn new(owner: PollId, id: RegistrationId) -> Self {
+    pub(crate) const fn new(owner: PollId, id: EncodedRegistrationId) -> Self {
         Self { owner, id }
     }
 
@@ -102,9 +102,13 @@ impl Registration {
         self.owner
     }
 
+    pub(crate) const fn encoded_id(&self) -> EncodedRegistrationId {
+        self.id
+    }
+
     /// Returns this handle's exact registration identity.
     pub const fn id(&self) -> RegistrationId {
-        self.id
+        self.id.id()
     }
 }
 

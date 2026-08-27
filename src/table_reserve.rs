@@ -5,7 +5,7 @@ use std::{num::NonZeroU32, os::fd::BorrowedFd};
 use crate::{
     Error, Interest, Key, Mode, RegistrationId,
     descriptor::Descriptor,
-    token::{MAX_GENERATION, encode},
+    token::{EncodedRegistrationId, MAX_GENERATION, encode},
 };
 
 use super::{
@@ -17,7 +17,7 @@ use super::{
 /// Capacity proof retaining direct access to one exact vacant slot.
 pub(crate) struct ReservePermit<'table> {
     slot: ReserveSlot<'table>,
-    id: RegistrationId,
+    id: EncodedRegistrationId,
 }
 
 enum ReserveSlot<'table> {
@@ -39,7 +39,12 @@ enum ReserveSlot<'table> {
 }
 
 impl<'table> ReservePermit<'table> {
+    #[cfg(test)]
     pub(crate) const fn id(&self) -> RegistrationId {
+        self.id.id()
+    }
+
+    pub(crate) const fn encoded_id(&self) -> EncodedRegistrationId {
         self.id
     }
 
@@ -56,7 +61,7 @@ impl<'table> ReservePermit<'table> {
         mode: Mode,
         apply: impl for<'descriptor> FnOnce(BorrowedFd<'descriptor>, RegistrationId) -> Output,
     ) -> Result<(Reservation<'table>, Output), Error> {
-        let id = self.id;
+        let id = self.id.id();
         match self.slot {
             ReserveSlot::Fresh {
                 slots,
@@ -88,12 +93,12 @@ impl<'table> ReservePermit<'table> {
                 next_free,
                 next_generation,
             } => {
+                let entry = occupy(
+                    &mut slot.entry,
+                    Entry::registered(descriptor, key, interest, mode),
+                )?;
                 *free_head = next_free;
-                slot.next_free = FREE_END;
                 slot.generation = next_generation;
-                let entry = slot
-                    .entry
-                    .insert(Entry::registered(descriptor, key, interest, mode));
                 let output = apply(entry.descriptor.as_fd(), id);
                 let lease = SlotLease::new(slot, free_head, exhausted, free_index);
                 Ok((Reservation { lease }, output))
@@ -203,5 +208,13 @@ impl RegistrationTable {
             },
             id,
         })
+    }
+}
+
+#[inline]
+fn occupy(vacancy: &mut Option<Entry>, entry: Entry) -> Result<&mut Entry, Error> {
+    match vacancy {
+        Some(_) => Err(Error::Invariant),
+        None => Ok(vacancy.insert(entry)),
     }
 }

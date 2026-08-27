@@ -1,17 +1,46 @@
 //! Nonzero native tokens for exact slot generations.
 
-use core::num::NonZeroU32;
+use core::{fmt, num::NonZeroU32};
 
 use crate::{Error, RegistrationId};
 
 pub(crate) const MAX_REGISTRATIONS: usize = u32::MAX as usize;
 pub(crate) const MAX_GENERATION: u32 = u32::MAX;
 
-pub(crate) fn encode(index: u32, generation: NonZeroU32) -> Option<RegistrationId> {
-    let slot = u64::from(index).checked_add(1)?;
-    Some(RegistrationId::new(
-        (u64::from(generation.get()) << u32::BITS) | slot,
-    ))
+/// Internally proven encoding retained only by library-created registrations.
+#[repr(transparent)]
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub(crate) struct EncodedRegistrationId(RegistrationId);
+
+impl EncodedRegistrationId {
+    pub(crate) const fn id(self) -> RegistrationId {
+        self.0
+    }
+
+    #[inline]
+    #[allow(
+        clippy::cast_possible_truncation,
+        reason = "the private constructor packs one u32 into each exact token half"
+    )]
+    pub(crate) const fn parts(self) -> (u32, u32) {
+        let token = self.0.get();
+        let slot = token as u32;
+        let generation = (token >> u32::BITS) as u32;
+        (slot.wrapping_sub(1), generation)
+    }
+}
+
+impl fmt::Debug for EncodedRegistrationId {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&self.0, formatter)
+    }
+}
+
+pub(crate) fn encode(index: u32, generation: NonZeroU32) -> Option<EncodedRegistrationId> {
+    let slot = index.checked_add(1)?;
+    Some(EncodedRegistrationId(RegistrationId::new(
+        (u64::from(generation.get()) << u32::BITS) | u64::from(slot),
+    )))
 }
 
 #[inline]
@@ -30,3 +59,7 @@ pub(crate) fn decode(id: RegistrationId) -> Result<(usize, NonZeroU32), Error> {
         NonZeroU32::new(generation).ok_or(Error::Stale { registration: id })?,
     ))
 }
+
+#[cfg(test)]
+#[path = "token_test.rs"]
+mod tests;

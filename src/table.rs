@@ -151,5 +151,8 @@ impl RegistrationTable {
 }
 
 #[cfg(test)]
+#[path = "table_reserve_test.rs"]
+mod reserve_tests;
+#[cfg(test)]
 #[path = "table_test.rs"]
 mod tests;

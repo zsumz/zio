@@ -10,6 +10,11 @@ use std::{
 use crate::{Error, Interest, Key, Mode, registration::PollOwner, table::RegistrationTable};
 
 #[test]
+fn registration_handle_remains_sixteen_bytes() {
+    assert_eq!(std::mem::size_of::<crate::Registration>(), 16);
+}
+
+#[test]
 fn owner_is_allocated_once() -> Result<(), Error> {
     let next = AtomicU64::new(41);
     let mut owner = PollOwner::unassigned();
