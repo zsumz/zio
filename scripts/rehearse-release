@@ -67,6 +67,9 @@ RUSTDOCFLAGS='-D warnings' cargo +1.97.1 doc \
   --manifest-path "$package_dir/Cargo.toml" \
   --no-deps --all-features --locked --offline
 
+api_contract_dir="$rehearsal_dir/api-contract"
+scripts/check-api-evolution "$package_dir" "$api_contract_dir"
+
 consumer_dir="$rehearsal_dir/consumer"
 mkdir -p "$consumer_dir/src"
 printf '%s\n' \
@@ -135,6 +138,11 @@ cp "$package_dir/Cargo.toml" "$evidence_dir/Cargo.toml"
 cp "$package_dir/Cargo.lock" "$evidence_dir/Cargo.lock"
 cp "$listing" "$evidence_dir/package-files.txt"
 cp "$tree_file" "$evidence_dir/normal-tree.txt"
+cp "$api_contract_dir/error-without-wildcard-1.88.0.stderr" "$evidence_dir/"
+cp "$api_contract_dir/error-without-wildcard-1.97.1.stderr" "$evidence_dir/"
+cp "$api_contract_dir/operation-without-wildcard-1.88.0.stderr" "$evidence_dir/"
+cp "$api_contract_dir/operation-without-wildcard-1.97.1.stderr" "$evidence_dir/"
+cp "$api_contract_dir/public-api-contract.json" "$evidence_dir/"
 copied_sha256="$(shasum -a 256 "$evidence_dir/$archive_basename" | awk '{print $1}')"
 test "$copied_sha256" = "$archive_sha256"
 jq -n \
@@ -142,7 +150,7 @@ jq -n \
   --arg version "$version" \
   --arg archive "$archive_basename" \
   --arg archive_sha256 "$archive_sha256" \
-  '{schema:"zio.release-rehearsal.v1", status:"passed", commit:$commit, version:$version, archive:$archive, archive_sha256:$archive_sha256}' \
+  '{schema:"zio.release-rehearsal.v1", status:"passed", commit:$commit, version:$version, archive:$archive, archive_sha256:$archive_sha256, public_api_contract:"public-api-contract.json"}' \
   > "$evidence_dir/receipt.json"
 
 printf 'release rehearsal passed: zio %s (%s)\n' "$version" "$archive_sha256"

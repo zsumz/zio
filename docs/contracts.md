@@ -3,6 +3,13 @@
 This page defines zio's portable behavior. Native readiness is advisory; the
 matching nonblocking operation is always authoritative.
 
+## API evolution
+
+`Error` and `Operation` are open diagnostic vocabularies. Downstream matches
+must include a fallback arm. `Event`, `CommitStatus`, `Mode`, `Wait`,
+`ArmState`, and `RegistrationState` are intentionally closed domains; changing
+their cases is a breaking contract change.
+
 ## Registration ownership
 
 `Poll::register` is the safe default. Each successful call retains a distinct

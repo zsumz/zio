@@ -111,9 +111,15 @@ run = [
 tools = ["cargo"]
 resources = ["cargo-target"]
 
+[tasks.api-evolution]
+description = "Prove downstream matching contracts on the MSRV and current toolchains."
+run = ["scripts/check-api-evolution", ".", "target/api-evolution"]
+tools = ["bash", "cargo", "jq", "shasum"]
+resources = ["cargo-target"]
+
 [tasks.rust-test]
 description = "Validate behavior on the MSRV and repository toolchains."
-needs = ["test-msrv", "test-current", "doctest"]
+needs = ["test-msrv", "test-current", "doctest", "api-evolution"]
 
 [tasks.package]
 description = "Build and verify the publishable zio crate archive."

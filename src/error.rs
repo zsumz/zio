@@ -14,6 +14,10 @@ pub use details::{DeleteError, MutationError, RegisterError};
 pub use recovery::{RecoveryFailure, RecoveryOutcome};
 
 /// Poller or backend operation associated with a failure.
+///
+/// This diagnostic vocabulary may grow as Zio gains backend operations.
+/// Downstream matches must include a fallback arm.
+#[non_exhaustive]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum Operation {
     /// Create the platform selector.
@@ -54,6 +58,10 @@ pub enum CommitStatus {
 }
 
 /// Portable poller failure.
+///
+/// New diagnostic variants may be added without changing successful poller
+/// behavior. Downstream matches must include a fallback arm.
+#[non_exhaustive]
 #[derive(Debug)]
 pub enum Error {
     /// A non-mutation backend I/O operation failed.

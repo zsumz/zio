@@ -81,6 +81,7 @@ inputs = [
     "docs/contracts.md",
     "docs/performance.md",
     "docs/qualification.md",
+    "scripts/check-api-evolution",
     "scripts/rehearse-release",
 ]
 kind = "local"
@@ -175,6 +176,7 @@ inputs = [
     "docs/performance.md",
     "docs/qualification.md",
     "rust-toolchain.toml",
+    "scripts/check-api-evolution",
     "scripts/rehearse-release",
     "zcheck.toml",
     "zio-logo.svg",
@@ -184,6 +186,19 @@ name = "release"
 path = ".github/workflows/release-rehearsal.yml"
 reason = "Hosted release qualification executes the reviewed clean-checkout rehearsal and retains its receipt."
 requires = ["check"]
+
+[[invariant]]
+document = "docs/contracts.md#api-evolution"
+evidence = [
+    "rust-test:tests/api_evolution.rs::open_diagnostics_support_forward_compatible_fallbacks",
+    "rust-test:tests/api_evolution.rs::closed_delivery_and_state_domains_remain_exhaustive",
+    "gate:check",
+    "gate:ci",
+    "gate:release",
+]
+id = "API-01"
+status = "enforced"
+title = "Diagnostics stay extensible while semantic domains stay closed"
 
 [[invariant]]
 document = "docs/contracts.md#registration-ownership"

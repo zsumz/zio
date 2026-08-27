@@ -1,0 +1,219 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+export LC_ALL=C
+
+if [[ "$#" -ne 2 ]]; then
+  echo "usage: scripts/check-api-evolution <crate-dir> <evidence-dir>" >&2
+  exit 2
+fi
+
+crate_dir="$(cd "$1" && pwd)"
+evidence_dir="$2"
+mkdir -p "$evidence_dir"
+evidence_dir="$(cd "$evidence_dir" && pwd)"
+
+version="$(
+  cargo metadata \
+    --manifest-path "$crate_dir/Cargo.toml" \
+    --no-deps --format-version 1 --locked --offline \
+    | jq -er '.packages[] | select(.name == "zio") | .version'
+)"
+contract_dir="$(mktemp -d "${TMPDIR:-/tmp}/zio-api-contract.XXXXXX")"
+cleanup() {
+  case "$contract_dir" in
+    "${TMPDIR:-/tmp}"/zio-api-contract.*) rm -rf -- "$contract_dir" ;;
+    *) echo "refusing to remove unexpected API contract path" >&2 ;;
+  esac
+}
+trap cleanup EXIT
+
+consumer_dir="$contract_dir/consumer"
+receipt_dir="$contract_dir/receipts"
+mkdir -p "$consumer_dir/src" "$consumer_dir/examples" "$receipt_dir"
+printf '%s\n' \
+  '[package]' \
+  'name = "zio-api-contract"' \
+  'version = "0.0.0"' \
+  'edition = "2024"' \
+  'rust-version = "1.88"' \
+  '' \
+  '[dependencies]' \
+  "zio = { path = \"$crate_dir\", version = \"=$version\", default-features = false }" \
+  > "$consumer_dir/Cargo.toml"
+
+printf '%s\n' \
+  'use zio::{ArmState, CommitStatus, Error, Event, Key, Mode, Operation, RegistrationState, Wait};' \
+  '' \
+  'fn main() {' \
+  '    assert_eq!(classify_error(&Error::Invariant), 1);' \
+  '    assert_eq!(classify_operation(Operation::Wait), 1);' \
+  '    assert_eq!(classify_event(Event::Wake { key: Key::ZERO }), 1);' \
+  '    assert_eq!(classify_commit(CommitStatus::Unknown), 2);' \
+  '    assert_eq!(classify_mode(Mode::OneShot), 1);' \
+  '    assert_eq!(classify_wait(Wait::Forever), 2);' \
+  '    assert_eq!(classify_arm(ArmState::Disarmed), 1);' \
+  '    assert_eq!(classify_state(RegistrationState::Uncertain), 2);' \
+  '}' \
+  '' \
+  'fn classify_error(error: &Error) -> u8 {' \
+  '    match error {' \
+  '        Error::Invariant => 1,' \
+  '        _ => 0,' \
+  '    }' \
+  '}' \
+  '' \
+  'fn classify_operation(operation: Operation) -> u8 {' \
+  '    match operation {' \
+  '        Operation::Wait => 1,' \
+  '        _ => 0,' \
+  '    }' \
+  '}' \
+  '' \
+  'fn classify_event(event: Event) -> u8 {' \
+  '    match event {' \
+  '        Event::Resource { .. } => 0,' \
+  '        Event::Wake { .. } => 1,' \
+  '    }' \
+  '}' \
+  '' \
+  'fn classify_commit(commit: CommitStatus) -> u8 {' \
+  '    match commit {' \
+  '        CommitStatus::NotApplied => 0,' \
+  '        CommitStatus::Applied => 1,' \
+  '        CommitStatus::Unknown => 2,' \
+  '    }' \
+  '}' \
+  '' \
+  'fn classify_mode(mode: Mode) -> u8 {' \
+  '    match mode {' \
+  '        Mode::Level => 0,' \
+  '        Mode::OneShot => 1,' \
+  '    }' \
+  '}' \
+  '' \
+  'fn classify_wait(wait: Wait) -> u8 {' \
+  '    match wait {' \
+  '        Wait::NoBlock => 0,' \
+  '        Wait::For(_) => 1,' \
+  '        Wait::Forever => 2,' \
+  '    }' \
+  '}' \
+  '' \
+  'fn classify_arm(arm: ArmState) -> u8 {' \
+  '    match arm {' \
+  '        ArmState::Armed => 0,' \
+  '        ArmState::Disarmed => 1,' \
+  '    }' \
+  '}' \
+  '' \
+  'fn classify_state(state: RegistrationState) -> u8 {' \
+  '    match state {' \
+  '        RegistrationState::Registered { arm } => classify_arm(arm),' \
+  '        RegistrationState::Uncertain => 2,' \
+  '    }' \
+  '}' \
+  > "$consumer_dir/src/main.rs"
+
+printf '%s\n' \
+  'use zio::Error;' \
+  '' \
+  'fn main() {' \
+  '    let _ = classify(Error::Invariant);' \
+  '}' \
+  '' \
+  'fn classify(error: Error) -> u8 {' \
+  '    match error {' \
+  '        Error::Io { .. } => 0,' \
+  '        Error::Mutation(_) => 1,' \
+  '        Error::WakerAlreadyConfigured { .. } => 2,' \
+  '        Error::WrongPoller { .. } => 3,' \
+  '        Error::InvalidInterest => 4,' \
+  '        Error::Stale { .. } => 5,' \
+  '        Error::Uncertain { .. } => 6,' \
+  '        Error::Capacity { .. } => 7,' \
+  '        Error::RegistrationSpaceExhausted => 8,' \
+  '        Error::EventsTooSmall { .. } => 9,' \
+  '        Error::BackendOverflow => 10,' \
+  '        Error::Invariant => 11,' \
+  '        Error::UnsupportedPlatform => 12,' \
+  '    }' \
+  '}' \
+  > "$consumer_dir/examples/error-without-wildcard.rs"
+
+printf '%s\n' \
+  'use zio::Operation;' \
+  '' \
+  'fn main() {' \
+  '    let _ = classify(Operation::Wait);' \
+  '}' \
+  '' \
+  'fn classify(operation: Operation) -> u8 {' \
+  '    match operation {' \
+  '        Operation::CreatePoller => 0,' \
+  '        Operation::CreateWaker => 1,' \
+  '        Operation::RegisterWaker => 2,' \
+  '        Operation::Register => 3,' \
+  '        Operation::Modify => 4,' \
+  '        Operation::Delete => 5,' \
+  '        Operation::Wait => 6,' \
+  '        Operation::TriggerWake => 7,' \
+  '        Operation::AcknowledgeWake => 8,' \
+  '        Operation::Disarm => 9,' \
+  '        Operation::Recover => 10,' \
+  '        Operation::UnsupportedPlatform => 11,' \
+  '    }' \
+  '}' \
+  > "$consumer_dir/examples/operation-without-wildcard.rs"
+
+cargo +1.88.0 generate-lockfile \
+  --manifest-path "$consumer_dir/Cargo.toml" --offline
+cargo +1.88.0 run \
+  --manifest-path "$consumer_dir/Cargo.toml" --locked --offline
+cargo +1.97.1 run \
+  --manifest-path "$consumer_dir/Cargo.toml" --locked --offline
+
+assert_non_exhaustive_match() {
+  local toolchain="$1"
+  local example="$2"
+  local receipt_name="$3"
+  local diagnostic_name="$4"
+  local stderr_file="$receipt_dir/$example-$toolchain.stderr"
+
+  if CARGO_TERM_COLOR=never cargo "+$toolchain" check \
+    --manifest-path "$consumer_dir/Cargo.toml" \
+    --example "$example" --locked --offline \
+    > /dev/null 2> "$stderr_file"; then
+    echo "$receipt_name unexpectedly allowed an exhaustive downstream match" >&2
+    exit 1
+  fi
+
+  test "$(grep -Ec '^error\[E[0-9]+\]:' "$stderr_file")" -eq 1
+  grep -Fq "error[E0004]: non-exhaustive patterns: \`_\` not covered" "$stderr_file"
+  grep -Fq "\`$diagnostic_name\` is marked as non-exhaustive, so a wildcard \`_\` is necessary" \
+    "$stderr_file"
+}
+
+for toolchain in 1.88.0 1.97.1; do
+  assert_non_exhaustive_match "$toolchain" error-without-wildcard Error zio::Error
+  assert_non_exhaustive_match "$toolchain" operation-without-wildcard Operation Operation
+done
+
+for receipt in "$receipt_dir"/*.stderr; do
+  cp "$receipt" "$evidence_dir/"
+done
+
+error_msrv_sha256="$(shasum -a 256 "$receipt_dir/error-without-wildcard-1.88.0.stderr" | awk '{print $1}')"
+error_current_sha256="$(shasum -a 256 "$receipt_dir/error-without-wildcard-1.97.1.stderr" | awk '{print $1}')"
+operation_msrv_sha256="$(shasum -a 256 "$receipt_dir/operation-without-wildcard-1.88.0.stderr" | awk '{print $1}')"
+operation_current_sha256="$(shasum -a 256 "$receipt_dir/operation-without-wildcard-1.97.1.stderr" | awk '{print $1}')"
+jq -n \
+  --arg version "$version" \
+  --arg error_msrv_sha256 "$error_msrv_sha256" \
+  --arg error_current_sha256 "$error_current_sha256" \
+  --arg operation_msrv_sha256 "$operation_msrv_sha256" \
+  --arg operation_current_sha256 "$operation_current_sha256" \
+  '{schema:"zio.public-api-contract.v1", status:"passed", version:$version, toolchains:["1.88.0","1.97.1"], open_enums:["Error","Operation"], closed_enums:["Event","CommitStatus","Mode","Wait","ArmState","RegistrationState"], diagnostics:{error_msrv:$error_msrv_sha256,error_current:$error_current_sha256,operation_msrv:$operation_msrv_sha256,operation_current:$operation_current_sha256}}' \
+  > "$evidence_dir/public-api-contract.json"
+
+printf 'API evolution contract passed: zio %s\n' "$version"

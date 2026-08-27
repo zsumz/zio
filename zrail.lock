@@ -2,18 +2,18 @@
 schema = 2
 semantics = 3
 producer = "0.0.3-rc.4"
-contract_sha256 = "fc123f5370db571279ed40d4801fc37bbe8c2c1c5a7dd04f1aea165fa34c007d"
+contract_sha256 = "03e3fbba47efadd3d16dba10012d3cae2905a4d4742063d2f024cceb2c68eba8"
 
 [analysis]
-inventory_sha256 = "5552d23abfdb6aa38c3baccd00e453268299f7471c5bb29122b38fd00004a68b"
+inventory_sha256 = "c4e0132a518563dc3c38418dd008052ad7fad6c540e238d4c71035abda5932f5"
 exclusions_sha256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 cargo_lock_sha256 = "c57d02582afe8069129844f4f07aa867b3a1a9391d77b4be4e5ca0013a6d1687"
 packages = 3
-targets = 32
-physical_rust_files = 225
-base_source_contexts = 387
+targets = 33
+physical_rust_files = 226
+base_source_contexts = 388
 derived_source_contexts = 0
-source_facts = 64601
+source_facts = 64858
 projection_queries = 0
 projected_facts = 0
 unresolved_bindings = 0
@@ -21,7 +21,7 @@ analyzer_semantics = 3
 
 [[analysis.contract_source]]
 path = "zrail.toml"
-sha256 = "1adea99cabbacd429dc427330482117548dd3e619143eb41c291668f7c092652"
+sha256 = "5958b451fb46d604cf96d7d859f40ad8945334f1aca9809874e912d99b8b2318"
 
 [[package]]
 name = "zio"
@@ -184,7 +184,7 @@ requirement = "=0.0.1-dev.1"
 [[gate]]
 name = "check"
 path = "zcheck.toml"
-sha256 = "2d137e974c99864359e34b6b6c758c5884b31a6a1e6af11e28f48df7533b32c9"
+sha256 = "a418684cdd8a772f02ddc2aa187e2e5f9365dcc5a744ba2a26fcda1b3e6b4385"
 
 [[gate.input]]
 path = ".editorconfig"
@@ -240,7 +240,7 @@ sha256 = "2a4b286bea1a4a7ccba09cfcdc7855595f2a7092f519d440f745e4e7f97ef067"
 
 [[gate.input]]
 path = "docs/contracts.md"
-sha256 = "5df4a4b86c7225129763d1f21afa15a77d986fc9e6785848cbcfd2389cc93d04"
+sha256 = "3aacdfe831011c0237fe3dc3dc7dbe5768f86a1f8e70e372dbe785e045abf28d"
 
 [[gate.input]]
 path = "docs/performance.md"
@@ -259,8 +259,12 @@ path = "rustfmt.toml"
 sha256 = "45e07033c8cd89ed400ee4e96ec608e338e89822233abd6e56c85040ece66520"
 
 [[gate.input]]
+path = "scripts/check-api-evolution"
+sha256 = "844b03037b48fcb02b31e1bf8c6839c0ec7f429fd727c76268a407fee37c7d8e"
+
+[[gate.input]]
 path = "scripts/rehearse-release"
-sha256 = "ea67aeaaeb96ca30b2ee5f1fd14567eab7dbf894cd08fea36ad7d985006da303"
+sha256 = "7d860ab1ad13fdde1447d584e5040dc3e32e6c8fbbee76a960263afd1b4db40d"
 
 [[gate.input]]
 path = "zio-logo.svg"
@@ -277,7 +281,7 @@ sha256 = "279d77167cec5426fa80f457cd066dc74a360fbe4e2816f4f3fa01487a918fdc"
 
 [[gate.input]]
 path = "zcheck.toml"
-sha256 = "2d137e974c99864359e34b6b6c758c5884b31a6a1e6af11e28f48df7533b32c9"
+sha256 = "a418684cdd8a772f02ddc2aa187e2e5f9365dcc5a744ba2a26fcda1b3e6b4385"
 
 [[gate]]
 name = "performance"
@@ -535,7 +539,7 @@ sha256 = "d97828d194c4b4b9e047aac6ffced804e50ca7140713964f69e870e59247875f"
 
 [[gate.input]]
 path = "docs/contracts.md"
-sha256 = "5df4a4b86c7225129763d1f21afa15a77d986fc9e6785848cbcfd2389cc93d04"
+sha256 = "3aacdfe831011c0237fe3dc3dc7dbe5768f86a1f8e70e372dbe785e045abf28d"
 
 [[gate.input]]
 path = "docs/performance.md"
@@ -550,12 +554,16 @@ path = "rust-toolchain.toml"
 sha256 = "279d77167cec5426fa80f457cd066dc74a360fbe4e2816f4f3fa01487a918fdc"
 
 [[gate.input]]
+path = "scripts/check-api-evolution"
+sha256 = "844b03037b48fcb02b31e1bf8c6839c0ec7f429fd727c76268a407fee37c7d8e"
+
+[[gate.input]]
 path = "scripts/rehearse-release"
-sha256 = "ea67aeaaeb96ca30b2ee5f1fd14567eab7dbf894cd08fea36ad7d985006da303"
+sha256 = "7d860ab1ad13fdde1447d584e5040dc3e32e6c8fbbee76a960263afd1b4db40d"
 
 [[gate.input]]
 path = "zcheck.toml"
-sha256 = "2d137e974c99864359e34b6b6c758c5884b31a6a1e6af11e28f48df7533b32c9"
+sha256 = "a418684cdd8a772f02ddc2aa187e2e5f9365dcc5a744ba2a26fcda1b3e6b4385"
 
 [[gate.input]]
 path = "zio-logo.svg"
