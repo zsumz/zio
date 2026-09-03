@@ -173,7 +173,7 @@ impl AsRef<Error> for DeleteError {
 /// Fail-fast bulk-deletion failure.
 ///
 /// A registration identifies the first deletion that returned an error. No
-/// handle means snapshot construction failed before deletion began.
+/// handle means retained-registration validation failed.
 #[derive(Debug)]
 pub struct DeleteAllError {
     error: Error,
@@ -181,7 +181,7 @@ pub struct DeleteAllError {
 }
 
 impl DeleteAllError {
-    pub(crate) const fn snapshot(error: Error) -> Self {
+    pub(crate) const fn preflight(error: Error) -> Self {
         Self {
             error,
             registration: None,

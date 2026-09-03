@@ -118,15 +118,10 @@ impl Poll {
 
     /// Deletes retained registrations until one deletion fails.
     ///
-    /// A bounded snapshot is taken before deletion begins. On failure, earlier
-    /// deletions may have succeeded and later snapshot entries are untouched.
+    /// The retained set is validated before deletion begins. On failure,
+    /// earlier deletions may have succeeded and later entries are untouched.
     pub fn delete_all(&mut self) -> Result<(), DeleteAllError> {
-        let registrations = self.registrations().map_err(DeleteAllError::snapshot)?;
-        for registration in registrations {
-            self.delete(registration)
-                .map_err(DeleteAllError::deletion)?;
-        }
-        Ok(())
+        self.mutations().delete_all()
     }
 
     /// Returns whether this poller retains the exact registration.

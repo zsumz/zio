@@ -111,3 +111,31 @@ fn registration_iteration_allocates_nothing() -> Result<(), Box<dyn std::error::
     poll.delete(registration)?;
     Ok(())
 }
+
+#[test]
+fn successful_bulk_deletion_allocates_nothing() -> Result<(), Box<dyn std::error::Error>> {
+    let (first, _first_peer) = UnixStream::pair()?;
+    let (second, _second_peer) = UnixStream::pair()?;
+    let mut poll = Poll::with_capacity(2, 2)?;
+    let first_registration =
+        poll.register(&first, Key::new(84), Interest::READABLE, Mode::Level)?;
+    let second_registration =
+        poll.register(&second, Key::new(85), Interest::WRITABLE, Mode::OneShot)?;
+    let mut result = None;
+
+    let allocations = allocation_counter::measure(|| {
+        result = Some(poll.delete_all());
+    });
+
+    result.ok_or_else(|| io::Error::other("measured bulk deletion did not complete"))??;
+    assert_eq!(allocations.count_total, 0);
+    assert_eq!(allocations.count_current, 0);
+    assert_eq!(allocations.count_max, 0);
+    assert_eq!(allocations.bytes_total, 0);
+    assert_eq!(allocations.bytes_current, 0);
+    assert_eq!(allocations.bytes_max, 0);
+    assert!(poll.is_empty());
+    assert!(!poll.contains(&first_registration));
+    assert!(!poll.contains(&second_registration));
+    Ok(())
+}

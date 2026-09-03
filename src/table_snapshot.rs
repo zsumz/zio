@@ -75,6 +75,24 @@ impl RegistrationTable {
         }
         Ok(registrations)
     }
+
+    pub(crate) fn registration_from(
+        &self,
+        owner: PollId,
+        start: usize,
+    ) -> Result<Option<(usize, Registration)>, Error> {
+        let tail = self.slots.get(start..).ok_or(Error::Invariant)?;
+        for (offset, slot) in tail.iter().enumerate() {
+            if slot.entry.is_none() {
+                continue;
+            }
+            let index = start.checked_add(offset).ok_or(Error::Invariant)?;
+            validate_registration(index, slot)?;
+            let next = index.checked_add(1).ok_or(Error::Invariant)?;
+            return Ok(Some((next, validated_registration(owner, index, slot))));
+        }
+        Ok(None)
+    }
 }
 
 impl Iterator for RegistrationIter<'_> {

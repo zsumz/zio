@@ -138,12 +138,7 @@ impl ScriptedPoll {
 
     /// Deletes registrations through scripted steps until one fails.
     pub fn delete_all(&mut self) -> Result<(), DeleteAllError> {
-        let registrations = self.registrations().map_err(DeleteAllError::snapshot)?;
-        for registration in registrations {
-            self.delete(registration)
-                .map_err(DeleteAllError::deletion)?;
-        }
-        Ok(())
+        self.mutations().delete_all()
     }
 
     /// Returns authoritative portable state for an owned registration.

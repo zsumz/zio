@@ -3,8 +3,8 @@
 use std::os::fd::OwnedFd;
 
 use crate::{
-    CommitStatus, DeleteError, DeleteOwnedError, DescriptorOwnership, Error, Operation,
-    Registration, descriptor::Descriptor,
+    CommitStatus, DeleteAllError, DeleteError, DeleteOwnedError, DescriptorOwnership, Error,
+    Operation, Registration, descriptor::Descriptor,
 };
 
 use super::{
@@ -88,6 +88,36 @@ impl<Driver: MutationDriver> MutationSession<'_, Driver> {
         self.delete_preflighted(registration)
             .map(owned_descriptor)
             .map_err(owned_failure)
+    }
+
+    pub(crate) fn delete_all(&mut self) -> Result<(), DeleteAllError> {
+        let retained = self
+            .registrations
+            .registration_iter(self.owner.current())
+            .map_err(DeleteAllError::preflight)?
+            .len();
+        if retained == 0 {
+            return Ok(());
+        }
+        let owner = self
+            .owner
+            .current()
+            .ok_or(Error::Invariant)
+            .map_err(DeleteAllError::preflight)?;
+        let mut cursor = 0;
+        for _ in 0..retained {
+            let next = self
+                .registrations
+                .registration_from(owner, cursor)
+                .map_err(DeleteAllError::preflight)?;
+            let (next_cursor, registration) = next
+                .ok_or(Error::Invariant)
+                .map_err(DeleteAllError::preflight)?;
+            cursor = next_cursor;
+            self.delete(registration)
+                .map_err(DeleteAllError::deletion)?;
+        }
+        Ok(())
     }
 
     fn require_owned(&self, registration: &Registration) -> Result<(), Error> {
