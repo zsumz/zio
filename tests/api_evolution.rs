@@ -206,6 +206,7 @@ fn poll_borrows_retained_registration_descriptors() {
 #[test]
 fn poll_snapshots_retained_registration_handles() {
     let _ = Poll::registrations as fn(&Poll) -> Result<Vec<Registration>, Error>;
+    let _ = assert_registration_iterator as fn(&Poll) -> Result<(), Error>;
 }
 
 #[test]

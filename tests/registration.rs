@@ -125,6 +125,42 @@ fn registration_capacity_is_fixed() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
+fn retained_registrations_iterate_in_place() -> Result<(), Box<dyn std::error::Error>> {
+    let (first_source, _first_peer) = UnixStream::pair()?;
+    let (second_source, _second_peer) = UnixStream::pair()?;
+    let (third_source, _third_peer) = UnixStream::pair()?;
+    let mut poll = Poll::with_capacity(3, 3)?;
+    assert_eq!(poll.iter_registrations()?.len(), 0);
+    let first = poll.register(&first_source, Key::new(14), Interest::READABLE, Mode::Level)?;
+    let second = poll.register(
+        &second_source,
+        Key::new(15),
+        Interest::WRITABLE,
+        Mode::OneShot,
+    )?;
+    let third = poll.register(&third_source, Key::new(16), Interest::READABLE, Mode::Level)?;
+    poll.delete(second)?;
+
+    let mut registrations = poll.iter_registrations()?;
+    assert_eq!(registrations.len(), 2);
+    assert_eq!(registrations.size_hint(), (2, Some(2)));
+    let front = registrations.next().ok_or("missing front registration")?;
+    let back = registrations
+        .next_back()
+        .ok_or("missing back registration")?;
+    assert_ne!(front, back);
+    assert!([first, third].contains(&front));
+    assert!([first, third].contains(&back));
+    assert_eq!(registrations.len(), 0);
+    assert!(registrations.next().is_none());
+    assert!(registrations.next_back().is_none());
+    drop(registrations);
+
+    poll.delete_all()?;
+    Ok(())
+}
+
+#[test]
 fn delete_all_retires_every_registration() -> Result<(), Box<dyn std::error::Error>> {
     let (first, _first_peer) = UnixStream::pair()?;
     let (second, _second_peer) = UnixStream::pair()?;

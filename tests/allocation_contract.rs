@@ -86,3 +86,28 @@ fn successful_wake_roundtrip_allocates_nothing() -> Result<(), Box<dyn std::erro
     require_no_recovery(report)?;
     Ok(())
 }
+
+#[test]
+fn registration_iteration_allocates_nothing() -> Result<(), Box<dyn std::error::Error>> {
+    let (source, _peer) = UnixStream::pair()?;
+    let mut poll = Poll::with_capacity(1, 1)?;
+    let registration = poll.register(&source, Key::new(83), Interest::READABLE, Mode::Level)?;
+    let mut observed = None;
+    let mut failed = false;
+
+    let allocations = allocation_counter::measure(|| match poll.iter_registrations() {
+        Ok(mut registrations) => observed = registrations.next(),
+        Err(_) => failed = true,
+    });
+
+    assert!(!failed);
+    assert_eq!(observed, Some(registration));
+    assert_eq!(allocations.count_total, 0);
+    assert_eq!(allocations.count_current, 0);
+    assert_eq!(allocations.count_max, 0);
+    assert_eq!(allocations.bytes_total, 0);
+    assert_eq!(allocations.bytes_current, 0);
+    assert_eq!(allocations.bytes_max, 0);
+    poll.delete(registration)?;
+    Ok(())
+}

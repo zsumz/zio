@@ -25,6 +25,7 @@ mod snapshot;
 use slot::{Entry, FREE_END, Slot};
 
 pub(crate) use permit::Reservation;
+pub(crate) use snapshot::RegistrationIter;
 
 /// Owner-local fixed slot table.
 #[derive(Debug)]

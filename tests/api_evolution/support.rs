@@ -149,6 +149,11 @@ pub(super) fn assert_recovery_iterator(failure: &RecoveryFailure) {
     let _: Option<&RecoveryOutcome> = failure.into_iter().next();
 }
 
+pub(super) fn assert_registration_iterator(poll: &zio::Poll) -> Result<(), Error> {
+    assert_iterator(poll.iter_registrations()?);
+    Ok(())
+}
+
 fn assert_iterator<I: DoubleEndedIterator + ExactSizeIterator + FusedIterator>(_: I) {}
 
 pub(super) fn assert_set_operators<T>()

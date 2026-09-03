@@ -27,6 +27,7 @@ fn uncertain_register_retains_requested_configuration() -> Result<(), Box<dyn st
 
     assert!(poll.contains(&registration));
     assert!(!poll.is_empty());
+    assert_eq!(poll.iter_registrations()?.next(), Some(registration));
     assert_eq!(poll.registration_count(), 1);
     assert_eq!(poll.registrations()?, vec![registration]);
     assert!(poll.registration_fd(&registration).is_ok());

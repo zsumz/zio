@@ -1,13 +1,16 @@
 //! Public registration operations over the static mutation state machine.
 
-use std::os::fd::{AsFd, BorrowedFd, OwnedFd};
+use std::{
+    iter::FusedIterator,
+    os::fd::{AsFd, BorrowedFd, OwnedFd},
+};
 
 use crate::{
     DeleteAllError, DeleteError, DeleteOwnedError, Error, Interest, Key, Mode, Poll, RegisterError,
     RegisterOwnedError, Registration, RegistrationInfo, RegistrationState,
     mutation::{
-        MutationSession, registration_fd, registration_info, registration_state, registrations,
-        set_registration_key,
+        MutationSession, registration_fd, registration_info, registration_iter, registration_state,
+        registrations, set_registration_key,
     },
 };
 
@@ -171,6 +174,18 @@ impl Poll {
     /// [`Self::registration_capacity`]. Its order is unspecified.
     pub fn registrations(&self) -> Result<Vec<Registration>, Error> {
         registrations(self.owner.current(), &self.registrations)
+    }
+
+    /// Iterates retained registration handles without allocating.
+    ///
+    /// Uncertain registrations are included and order is unspecified.
+    pub fn iter_registrations(
+        &self,
+    ) -> Result<
+        impl DoubleEndedIterator<Item = Registration> + ExactSizeIterator + FusedIterator + '_,
+        Error,
+    > {
+        registration_iter(self.owner.current(), &self.registrations)
     }
 
     /// Changes the key used by future events without backend work.

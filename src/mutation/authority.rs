@@ -3,8 +3,9 @@
 use std::os::fd::BorrowedFd;
 
 use crate::{
-    Error, Key, Registration, RegistrationInfo, RegistrationState, registration::PollId,
-    table::RegistrationTable,
+    Error, Key, Registration, RegistrationInfo, RegistrationState,
+    registration::PollId,
+    table::{RegistrationIter, RegistrationTable},
 };
 
 pub(crate) fn registration_fd<'poll>(
@@ -27,6 +28,13 @@ pub(crate) fn registrations(
         None if registrations.len() == 0 => Ok(Vec::new()),
         None => Err(Error::Invariant),
     }
+}
+
+pub(crate) fn registration_iter(
+    owner: Option<PollId>,
+    registrations: &RegistrationTable,
+) -> Result<RegistrationIter<'_>, Error> {
+    registrations.registration_iter(owner)
 }
 
 pub(crate) fn set_registration_key(

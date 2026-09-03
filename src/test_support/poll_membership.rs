@@ -1,6 +1,8 @@
-//! Scripted retained-registration membership.
+//! Scripted retained-registration inspection.
 
-use crate::Registration;
+use std::iter::FusedIterator;
+
+use crate::{Error, Registration, mutation::registration_iter};
 
 use super::ScriptedPoll;
 
@@ -13,5 +15,15 @@ impl ScriptedPoll {
     /// Returns whether this poller retains no registrations.
     pub const fn is_empty(&self) -> bool {
         self.registration_count() == 0
+    }
+
+    /// Iterates retained registration handles without allocating.
+    pub fn iter_registrations(
+        &self,
+    ) -> Result<
+        impl DoubleEndedIterator<Item = Registration> + ExactSizeIterator + FusedIterator + '_,
+        Error,
+    > {
+        registration_iter(self.owner.current(), &self.registrations)
     }
 }
