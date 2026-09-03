@@ -136,7 +136,7 @@ impl Poll {
         Self::with_capacity(DEFAULT_EVENT_CAPACITY, DEFAULT_REGISTRATION_CAPACITY)
     }
 
-    /// Creates a poller with fixed delivered-event and registration capacities.
+    /// Creates a poller with fixed non-zero event and registration capacities.
     pub fn with_capacity(
         event_capacity: usize,
         registration_capacity: usize,

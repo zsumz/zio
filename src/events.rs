@@ -13,7 +13,7 @@ pub struct Events {
 }
 
 impl Events {
-    /// Allocates an empty event destination with the supplied capacity.
+    /// Allocates an empty event destination with the supplied non-zero capacity.
     pub fn with_capacity(capacity: usize) -> Result<Self, Error> {
         let capacity = NonZeroUsize::new(capacity).ok_or(Error::Capacity {
             kind: CapacityKind::Event,
