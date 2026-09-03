@@ -6,9 +6,9 @@ use core::{
 };
 
 use zio::{
-    ArmState, CommitStatus, DeleteError, Error, Event, Events, Key, Mode, MutationError, Operation,
-    Poll, Readiness, RecoveryOutcome, RegisterError, Registration, RegistrationInfo,
-    RegistrationState, Wait, Waker,
+    ArmState, CommitStatus, DeleteError, DescriptorOwnership, Error, Event, Events, Key, Mode,
+    MutationError, Operation, Poll, Readiness, RecoveryOutcome, RegisterError, Registration,
+    RegistrationInfo, RegistrationState, Wait, Waker,
 };
 
 #[test]
@@ -33,6 +33,7 @@ fn closed_delivery_and_state_domains_remain_exhaustive() {
     assert_eq!(commit_class(CommitStatus::Unknown), "unknown");
     assert_eq!(arm_class(ArmState::Disarmed), "disarmed");
     assert_eq!(state_class(RegistrationState::Uncertain), "uncertain");
+    assert_eq!(ownership_class(DescriptorOwnership::Borrowed), "borrowed");
     let _ = RegistrationState::is_registered as fn(RegistrationState) -> bool;
     let _ = RegistrationState::is_uncertain as fn(RegistrationState) -> bool;
     let _ = RegistrationState::arm as fn(RegistrationState) -> Option<ArmState>;
@@ -113,6 +114,7 @@ fn poll_exposes_authoritative_registration_info() {
     let _ = RegistrationInfo::interest as fn(&RegistrationInfo) -> zio::Interest;
     let _ = RegistrationInfo::mode as fn(&RegistrationInfo) -> Mode;
     let _ = RegistrationInfo::state as fn(&RegistrationInfo) -> RegistrationState;
+    let _ = RegistrationInfo::descriptor_ownership as fn(&RegistrationInfo) -> DescriptorOwnership;
     let _ = Poll::set_key as fn(&mut Poll, &Registration, Key) -> Result<(), Error>;
 }
 
@@ -223,6 +225,13 @@ fn state_class(state: RegistrationState) -> &'static str {
     match state {
         RegistrationState::Registered { arm } => arm_class(arm),
         RegistrationState::Uncertain => "uncertain",
+    }
+}
+
+fn ownership_class(ownership: DescriptorOwnership) -> &'static str {
+    match ownership {
+        DescriptorOwnership::Owned => "owned",
+        DescriptorOwnership::Borrowed => "borrowed",
     }
 }
 

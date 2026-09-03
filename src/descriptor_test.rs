@@ -12,6 +12,7 @@ use std::{
 };
 
 use super::Descriptor;
+use crate::DescriptorOwnership;
 
 #[test]
 fn representation_remains_one_raw_descriptor() {
@@ -27,6 +28,7 @@ fn borrowed_descriptor_preserves_caller_ownership() -> Result<(), std::io::Error
     let retained = unsafe { Descriptor::borrowed(source.as_fd()) };
     assert_eq!(retained.as_raw_fd(), expected);
     assert_eq!(retained.as_fd().as_raw_fd(), expected);
+    assert_eq!(retained.ownership(), DescriptorOwnership::Borrowed);
     drop(retained);
 
     assert_eq!(source.metadata()?.len(), 0);
@@ -43,5 +45,6 @@ fn owned_descriptor_preserves_identity() -> Result<(), std::io::Error> {
     assert_eq!(retained.as_raw_fd(), expected);
     assert_eq!(retained.as_fd().as_raw_fd(), expected);
     assert!(retained.is_owned());
+    assert_eq!(retained.ownership(), DescriptorOwnership::Owned);
     Ok(())
 }

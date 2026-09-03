@@ -8,7 +8,7 @@ use std::{
     },
 };
 
-use crate::{ArmState, Error, Interest, Key, Mode, Poll, RegistrationState};
+use crate::{ArmState, DescriptorOwnership, Error, Interest, Key, Mode, Poll, RegistrationState};
 
 #[test]
 fn registration_info_tracks_committed_configuration() -> Result<(), Box<dyn StdError>> {
@@ -20,6 +20,7 @@ fn registration_info_tracks_committed_configuration() -> Result<(), Box<dyn StdE
     assert_eq!(initial.key(), Key::new(7));
     assert_eq!(initial.interest(), Interest::READABLE);
     assert_eq!(initial.mode(), Mode::Level);
+    assert_eq!(initial.descriptor_ownership(), DescriptorOwnership::Owned);
     assert_eq!(
         initial.state(),
         RegistrationState::Registered {

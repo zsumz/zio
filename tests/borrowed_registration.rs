@@ -19,7 +19,9 @@ use std::{
     time::Duration,
 };
 
-use zio::{ArmState, Error, Event, Interest, Key, Mode, Poll, RegistrationState, Wait};
+use zio::{
+    ArmState, DescriptorOwnership, Error, Event, Interest, Key, Mode, Poll, RegistrationState, Wait,
+};
 
 use support::require_no_recovery;
 
@@ -34,6 +36,11 @@ fn borrowed_registration_supports_the_full_lifecycle() -> TestResult {
     // SAFETY: `source` remains open and unchanged through successful deletion.
     let registration =
         unsafe { poll.register_borrowed(&source, Key::new(1), Interest::READABLE, Mode::Level)? };
+    assert_eq!(
+        poll.registration_info(&registration)?
+            .descriptor_ownership(),
+        DescriptorOwnership::Borrowed
+    );
     let mut events = poll.events()?;
 
     peer.write_all(b"a")?;

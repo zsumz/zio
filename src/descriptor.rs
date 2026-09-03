@@ -10,6 +10,8 @@ use std::{
     os::fd::{AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd},
 };
 
+use crate::DescriptorOwnership;
+
 const BORROWED_TAG: RawFd = RawFd::MIN;
 const DESCRIPTOR_BITS: RawFd = RawFd::MAX;
 
@@ -46,6 +48,14 @@ impl Descriptor {
 
     const fn is_owned(&self) -> bool {
         self.0 >= 0
+    }
+
+    pub(crate) const fn ownership(&self) -> DescriptorOwnership {
+        if self.is_owned() {
+            DescriptorOwnership::Owned
+        } else {
+            DescriptorOwnership::Borrowed
+        }
     }
 }
 

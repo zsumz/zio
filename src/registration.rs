@@ -149,6 +149,15 @@ pub enum RegistrationState {
     Uncertain,
 }
 
+/// Ownership of the descriptor retained for a registration.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum DescriptorOwnership {
+    /// The poller owns and closes its retained descriptor.
+    Owned,
+    /// The caller owns the retained descriptor and its lifetime obligation.
+    Borrowed,
+}
+
 impl RegistrationState {
     /// Returns whether backend state is known to remain registered.
     pub const fn is_registered(self) -> bool {
@@ -178,6 +187,7 @@ pub struct RegistrationInfo {
     interest: Interest,
     mode: Mode,
     state: RegistrationState,
+    descriptor_ownership: DescriptorOwnership,
 }
 
 impl RegistrationInfo {
@@ -186,12 +196,14 @@ impl RegistrationInfo {
         interest: Interest,
         mode: Mode,
         state: RegistrationState,
+        descriptor_ownership: DescriptorOwnership,
     ) -> Self {
         Self {
             key,
             interest,
             mode,
             state,
+            descriptor_ownership,
         }
     }
 
@@ -213,6 +225,11 @@ impl RegistrationInfo {
     /// Returns the authoritative registration state.
     pub const fn state(&self) -> RegistrationState {
         self.state
+    }
+
+    /// Returns ownership of the retained descriptor.
+    pub const fn descriptor_ownership(&self) -> DescriptorOwnership {
+        self.descriptor_ownership
     }
 }
 

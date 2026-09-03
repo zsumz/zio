@@ -126,6 +126,7 @@ impl RegistrationTable {
             entry.interest,
             entry.mode,
             entry.state,
+            entry.descriptor.ownership(),
         ))
     }
 

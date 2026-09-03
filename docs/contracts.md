@@ -6,10 +6,10 @@ matching nonblocking operation is always authoritative.
 ## API evolution
 
 `Error` and `Operation` are open diagnostic vocabularies. Downstream matches
-must include a fallback arm. `Event`, `CommitStatus`, `Mode`, `Wait`,
-`ArmState`, and `RegistrationState` are intentionally closed domains; changing
-their cases is a breaking contract change. Event fields may grow; match with
-`..`.
+must include a fallback arm. `Event`, `CommitStatus`, `DescriptorOwnership`,
+`Mode`, `Wait`, `ArmState`, and `RegistrationState` are intentionally closed
+domains; changing their cases is a breaking contract change. Event fields may
+grow; match with `..`.
 
 Use `Error` accessors for operation, commit status, and typed I/O details.
 
@@ -27,6 +27,7 @@ handle-bearing failure retains it; every other failure closes it.
 `Poll::registration_fd` safely borrows any retained resource descriptor,
 including one in uncertain backend state.
 `Poll::registrations` returns a bounded owned snapshot for audit or cleanup.
+`RegistrationInfo::descriptor_ownership` reports who owns the retained descriptor.
 
 `Poll::set_key` changes only future resource-event routing and does no backend work.
 `RegistrationState::arm` returns `None` when backend state is uncertain.
