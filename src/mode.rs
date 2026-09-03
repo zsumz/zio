@@ -10,6 +10,15 @@ pub enum Mode {
 }
 
 impl Mode {
+    #[cfg_attr(
+        not(any(
+            target_os = "linux",
+            target_os = "macos",
+            target_os = "freebsd",
+            target_os = "netbsd"
+        )),
+        allow(dead_code, reason = "only native backends classify delivery modes")
+    )]
     pub(crate) const fn is_one_shot(self) -> bool {
         matches!(self, Self::OneShot)
     }

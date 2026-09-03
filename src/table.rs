@@ -154,6 +154,15 @@ impl RegistrationTable {
         Ok(())
     }
 
+    #[cfg_attr(
+        not(any(
+            target_os = "linux",
+            target_os = "macos",
+            target_os = "freebsd",
+            target_os = "netbsd"
+        )),
+        allow(dead_code, reason = "only native backends disarm registrations")
+    )]
     pub(crate) fn apply_disarm(
         &mut self,
         id: RegistrationId,
