@@ -13,7 +13,7 @@ targets = 34
 physical_rust_files = 246
 base_source_contexts = 417
 derived_source_contexts = 0
-source_facts = 71518
+source_facts = 71504
 projection_queries = 0
 projected_facts = 0
 unresolved_bindings = 0
@@ -506,7 +506,7 @@ sha256 = "b385c70043b6f897e774dc3bfaa5da72da98f7cd3bf02e7c7de23c8838795cf0"
 
 [[gate.input]]
 path = "crates/zio-qualify/src/zio_borrowed_candidate.rs"
-sha256 = "34f5ba4813e7e681525c662d3f8230ff387dcf668ad5026e28ed9b1124599b2c"
+sha256 = "13cca2c9d4e7c7e32d5592b5f55030f3448df53f84e7477f4bb659dcd531c48b"
 
 [[gate.input]]
 path = "docs/performance.md"
