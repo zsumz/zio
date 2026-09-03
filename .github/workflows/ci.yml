@@ -50,12 +50,12 @@ jobs:
       - name: Fetch the locked dependency graph
         run: cargo +1.88.0 fetch --locked
 
-      - name: Compile 32-bit Linux API
+      - name: Check and lint 32-bit Linux API
         run: |
           cargo +1.88.0 check --target i686-unknown-linux-gnu \
             --workspace --all-targets --all-features --locked --offline
-          cargo +1.97.1 check --target i686-unknown-linux-gnu \
-            --workspace --all-targets --all-features --locked --offline
+          cargo +1.97.1 clippy --target i686-unknown-linux-gnu \
+            --workspace --all-targets --all-features --locked --offline -- -D warnings
 
       - name: Run canonical qualification
         env:
