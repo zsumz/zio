@@ -3,8 +3,8 @@
 use core::ops::{BitOr, BitOrAssign};
 
 use zio::{
-    ArmState, CommitStatus, DeleteError, Error, Event, Key, Mode, Operation, Poll, Readiness,
-    RecoveryOutcome, RegisterError, Registration, RegistrationState, Wait,
+    ArmState, CommitStatus, DeleteError, Error, Event, Key, Mode, MutationError, Operation, Poll,
+    Readiness, RecoveryOutcome, RegisterError, Registration, RegistrationState, Wait,
 };
 
 #[test]
@@ -34,6 +34,12 @@ fn errors_return_registration_handles() {
     let _ = RegisterError::registration as fn(&RegisterError) -> Option<Registration>;
     let _ = DeleteError::registration as fn(&DeleteError) -> Registration;
     let _ = rejected_registration as fn(&Error) -> Option<Registration>;
+}
+
+#[test]
+fn mutation_errors_return_every_owned_detail() {
+    let _ =
+        MutationError::into_parts as fn(MutationError) -> (Operation, CommitStatus, std::io::Error);
 }
 
 #[test]

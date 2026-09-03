@@ -43,7 +43,7 @@ printf '%s\n' \
   > "$consumer_dir/Cargo.toml"
 
 printf '%s\n' \
-  'use zio::{ArmState, CommitStatus, DeleteError, Error, Event, Mode, Operation, Poll, RecoveryOutcome, RegisterError, Registration, RegistrationState, Wait};' \
+  'use zio::{ArmState, CommitStatus, DeleteError, Error, Event, Mode, MutationError, Operation, Poll, RecoveryOutcome, RegisterError, Registration, RegistrationState, Wait};' \
   '' \
   'fn main() {' \
   '    assert_eq!(classify_error(&Error::Invariant), 1);' \
@@ -57,6 +57,7 @@ printf '%s\n' \
   '    let _ = RecoveryOutcome::registration as fn(&RecoveryOutcome) -> Registration;' \
   '    let _ = RegisterError::registration as fn(&RegisterError) -> Option<Registration>;' \
   '    let _ = DeleteError::registration as fn(&DeleteError) -> Registration;' \
+  '    let _ = MutationError::into_parts as fn(MutationError) -> (Operation, CommitStatus, std::io::Error);' \
   '    let _ = rejected_registration as fn(&Error) -> Option<Registration>;' \
   '    let _ = Poll::rearm as fn(&mut Poll, &Registration) -> Result<(), Error>;' \
   '    let _ = Poll::event_capacity as fn(&Poll) -> usize;' \

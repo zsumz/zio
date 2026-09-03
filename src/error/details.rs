@@ -42,6 +42,11 @@ impl MutationError {
     pub fn into_source(self) -> io::Error {
         self.source
     }
+
+    /// Splits this failure into its operation, commit status, and source.
+    pub fn into_parts(self) -> (Operation, CommitStatus, io::Error) {
+        (self.operation, self.commit, self.source)
+    }
 }
 
 impl fmt::Display for MutationError {

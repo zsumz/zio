@@ -1,6 +1,8 @@
 //! Portable setup, mutation, wait, wake, and recovery failures.
 
 mod details;
+#[cfg(test)]
+mod details_test;
 mod recovery;
 
 #[cfg(test)]
