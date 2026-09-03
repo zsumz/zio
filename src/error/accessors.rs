@@ -95,4 +95,17 @@ impl Error {
             _ => None,
         }
     }
+
+    /// Returns whether a backend wait ended with an interruption.
+    ///
+    /// Interrupted mutations are not classified as waits.
+    pub fn is_wait_interrupted(&self) -> bool {
+        matches!(
+            self,
+            Self::Io {
+                operation: Operation::Wait,
+                source,
+            } if source.kind() == io::ErrorKind::Interrupted
+        )
+    }
 }

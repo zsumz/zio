@@ -175,7 +175,8 @@ may round up to its supported resolution, and scheduling may delay return. Linux
 rounds up to milliseconds. Kqueue uses nanosecond fields. Large limits are
 clamped to the backend integer range. `Poll::wait_until` computes a monotonic
 remaining duration at entry; a reached deadline is nonblocking. An interrupted
-wait returns `Error::Io`.
+wait returns `Error::Io`. `Error::is_wait_interrupted` classifies only that
+non-mutation case.
 
 Use nonblocking descriptors and perform I/O until it would block.
 

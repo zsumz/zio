@@ -33,6 +33,7 @@ fn errors_expose_common_diagnostics_without_matching() {
     let _ = Error::capacity_reason as fn(&Error) -> Option<CapacityReason>;
     let _ = Error::event_capacity_mismatch as fn(&Error) -> Option<(usize, usize)>;
     let _ = Error::io_error as fn(&Error) -> Option<&std::io::Error>;
+    let _ = Error::is_wait_interrupted as fn(&Error) -> bool;
 }
 
 #[test]

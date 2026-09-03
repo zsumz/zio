@@ -190,3 +190,29 @@ fn top_level_accessors_expose_embedded_diagnostics() {
         Some((11, 7))
     );
 }
+
+#[test]
+fn wait_interruption_does_not_classify_mutations() {
+    let interrupted_wait = Error::Io {
+        operation: Operation::Wait,
+        source: io::Error::from(io::ErrorKind::Interrupted),
+    };
+    let interrupted_wake = Error::Io {
+        operation: Operation::TriggerWake,
+        source: io::Error::from(io::ErrorKind::Interrupted),
+    };
+    let interrupted_mutation = Error::Mutation(MutationError::new(
+        Operation::Delete,
+        CommitStatus::Unknown,
+        io::Error::from(io::ErrorKind::Interrupted),
+    ));
+    let failed_wait = Error::Io {
+        operation: Operation::Wait,
+        source: io::Error::from(io::ErrorKind::Other),
+    };
+
+    assert!(interrupted_wait.is_wait_interrupted());
+    assert!(!interrupted_wake.is_wait_interrupted());
+    assert!(!interrupted_mutation.is_wait_interrupted());
+    assert!(!failed_wait.is_wait_interrupted());
+}
