@@ -1,6 +1,6 @@
 //! Event, readiness, key, and wait contracts.
 
-use zio::{Error, Event, Events, Key, Poll, Readiness, Wait, WaitReport};
+use zio::{Event, Events, Key, Readiness, Wait};
 
 use super::support::*;
 
@@ -24,8 +24,6 @@ fn flag_sets_support_standard_set_operators() {
 fn event_and_wait_values_are_hashable() {
     assert_hash::<Event>();
     assert_hash::<Wait>();
-    let _ = Poll::wait_until
-        as fn(&mut Poll, &mut Events, std::time::Instant) -> Result<WaitReport, Error>;
     assert_from::<Wait, core::time::Duration>();
     assert_from::<Wait, Option<core::time::Duration>>();
 }

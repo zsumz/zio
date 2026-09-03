@@ -1,11 +1,24 @@
 //! Poller construction, mutation, and inspection contracts.
 
 use zio::{
-    DeleteAllError, DeleteOwnedError, DescriptorOwnership, Error, Key, Mode, Poll, PollBuilder,
-    RegisterError, RegisterOwnedError, Registration, RegistrationInfo, RegistrationState,
+    DeleteAllError, DeleteOwnedError, DescriptorOwnership, Error, Events, Key, Mode, Poll,
+    PollBuilder, RegisterError, RegisterOwnedError, Registration, RegistrationInfo,
+    RegistrationState, Wait, WaitReport, Waker,
 };
 
 use super::support::*;
+
+#[test]
+fn poll_exposes_construction_and_observation() {
+    let _ = Poll::new as fn() -> Result<Poll, Error>;
+    let _ = Poll::with_capacity as fn(usize, usize) -> Result<Poll, Error>;
+    let _ = Poll::events as fn(&Poll) -> Result<Events, Error>;
+    let _ = Poll::waker as fn(&mut Poll, Key) -> Result<Waker, Error>;
+    let _ = Poll::wait as fn(&mut Poll, &mut Events, Wait) -> Result<WaitReport, Error>;
+    let _ = Poll::wait_until
+        as fn(&mut Poll, &mut Events, std::time::Instant) -> Result<WaitReport, Error>;
+    let _ = Waker::wake as fn(&Waker) -> Result<(), Error>;
+}
 
 #[test]
 fn poll_exposes_stored_configuration_rearm() {
