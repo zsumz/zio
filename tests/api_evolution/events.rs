@@ -6,11 +6,30 @@ use super::support::*;
 
 #[test]
 fn flag_sets_support_standard_set_operators() {
+    let _ = zio::Interest::is_empty as fn(zio::Interest) -> bool;
+    let _ = zio::Interest::contains as fn(zio::Interest, zio::Interest) -> bool;
+    let _ = zio::Interest::intersects as fn(zio::Interest, zio::Interest) -> bool;
+    let _ = zio::Interest::union as fn(zio::Interest, zio::Interest) -> zio::Interest;
+    let _ = zio::Interest::intersection as fn(zio::Interest, zio::Interest) -> zio::Interest;
+    let _ = zio::Interest::difference as fn(zio::Interest, zio::Interest) -> zio::Interest;
     let _ =
         zio::Interest::symmetric_difference as fn(zio::Interest, zio::Interest) -> zio::Interest;
-    let _ = Readiness::symmetric_difference as fn(Readiness, Readiness) -> Readiness;
     let _ = zio::Interest::complement as fn(zio::Interest) -> zio::Interest;
+    let _ = zio::Interest::is_readable as fn(zio::Interest) -> bool;
+    let _ = zio::Interest::is_writable as fn(zio::Interest) -> bool;
+    let _ = Readiness::is_empty as fn(Readiness) -> bool;
+    let _ = Readiness::contains as fn(Readiness, Readiness) -> bool;
+    let _ = Readiness::intersects as fn(Readiness, Readiness) -> bool;
+    let _ = Readiness::union as fn(Readiness, Readiness) -> Readiness;
+    let _ = Readiness::intersection as fn(Readiness, Readiness) -> Readiness;
+    let _ = Readiness::difference as fn(Readiness, Readiness) -> Readiness;
+    let _ = Readiness::symmetric_difference as fn(Readiness, Readiness) -> Readiness;
     let _ = Readiness::complement as fn(Readiness) -> Readiness;
+    let _ = Readiness::is_readable as fn(Readiness) -> bool;
+    let _ = Readiness::is_writable as fn(Readiness) -> bool;
+    let _ = Readiness::is_read_closed as fn(Readiness) -> bool;
+    let _ = Readiness::is_write_closed as fn(Readiness) -> bool;
+    let _ = Readiness::is_error as fn(Readiness) -> bool;
     assert_eq!(
         zio::Interest::ALL,
         zio::Interest::READABLE | zio::Interest::WRITABLE
