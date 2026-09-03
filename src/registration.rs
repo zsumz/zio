@@ -137,7 +137,7 @@ impl Registration {
     }
 }
 
-/// Whether a registered one-shot resource is eligible for delivery.
+/// Whether a registered resource is eligible for delivery.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum ArmState {
     /// The resource is eligible for readiness delivery.

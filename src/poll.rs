@@ -59,7 +59,8 @@ impl Waker {
 
 /// Owner-local portable readiness poller.
 ///
-/// A poller can move between threads. Operations require exclusive access.
+/// Pollers move between threads; operations require exclusive access. Zio does
+/// not change descriptor blocking modes.
 pub struct Poll {
     pub(crate) owner: PollOwner,
     pub(crate) backend: Backend,
