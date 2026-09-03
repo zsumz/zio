@@ -50,10 +50,14 @@ fn owned_registration_retains_the_transferred_descriptor() -> Result<(), Box<dyn
 
     let registration =
         poll.register_owned(descriptor, Key::new(8), Interest::READABLE, Mode::Level)?;
-    let retained = poll.registrations.binding(registration.id(), false)?;
+    let retained = poll.registration_fd(&registration)?;
 
-    assert_eq!(retained.descriptor.as_raw_fd(), raw);
+    assert_eq!(retained.as_raw_fd(), raw);
     poll.delete(registration)?;
+    assert!(matches!(
+        poll.registration_fd(&registration),
+        Err(Error::Stale { registration: stale }) if stale == registration.id()
+    ));
     Ok(())
 }
 
@@ -81,6 +85,10 @@ fn wrong_poller_check_does_not_assign_stranger() -> Result<(), Box<dyn StdError>
     let result = stranger.registration_state(&registration);
 
     assert!(matches!(result, Err(Error::WrongPoller { .. })));
+    assert!(matches!(
+        stranger.registration_fd(&registration),
+        Err(Error::WrongPoller { registration: rejected }) if rejected == registration
+    ));
     assert!(matches!(
         stranger.set_key(&registration, Key::new(3)),
         Err(Error::WrongPoller { registration: rejected }) if rejected == registration

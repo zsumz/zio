@@ -2,13 +2,16 @@
 
 use std::{
     num::NonZeroUsize,
-    os::fd::{AsFd, AsRawFd, OwnedFd},
+    os::fd::{AsFd, AsRawFd, BorrowedFd, OwnedFd},
 };
 
 use crate::{
     CommitStatus, DeleteError, Error, Interest, Key, Mode, RegisterError, Registration,
     RegistrationId, RegistrationInfo, RegistrationState,
-    mutation::{MutationSession, registration_info, registration_state, set_registration_key},
+    mutation::{
+        MutationSession, registration_fd, registration_info, registration_state,
+        set_registration_key,
+    },
     poll::DEFAULT_REGISTRATION_CAPACITY,
     registration::PollOwner,
     table::RegistrationTable,
@@ -133,6 +136,14 @@ impl ScriptedPoll {
         registration: &Registration,
     ) -> Result<RegistrationInfo, Error> {
         registration_info(self.owner.current(), &self.registrations, registration)
+    }
+
+    /// Borrows the descriptor retained for this registration.
+    pub fn registration_fd<'poll>(
+        &'poll self,
+        registration: &Registration,
+    ) -> Result<BorrowedFd<'poll>, Error> {
+        registration_fd(self.owner.current(), &self.registrations, registration)
     }
 
     /// Changes the key retained for future modeled observations.

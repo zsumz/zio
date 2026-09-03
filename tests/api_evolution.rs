@@ -82,6 +82,15 @@ fn poll_accepts_owned_descriptors_without_duplication() {
 }
 
 #[test]
+fn poll_borrows_retained_registration_descriptors() {
+    let _ = Poll::registration_fd
+        as for<'poll, 'registration> fn(
+            &'poll Poll,
+            &'registration Registration,
+        ) -> Result<std::os::fd::BorrowedFd<'poll>, Error>;
+}
+
+#[test]
 fn poll_exposes_capacity_and_retained_count() {
     let _ = Poll::event_capacity as fn(&Poll) -> usize;
     let _ = Poll::registration_capacity as fn(&Poll) -> usize;

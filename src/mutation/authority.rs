@@ -1,9 +1,22 @@
 //! Poll ownership checks shared by query and mutation paths.
 
+use std::os::fd::BorrowedFd;
+
 use crate::{
     Error, Key, Registration, RegistrationInfo, RegistrationState, registration::PollId,
     table::RegistrationTable,
 };
+
+pub(crate) fn registration_fd<'poll>(
+    owner: Option<PollId>,
+    registrations: &'poll RegistrationTable,
+    registration: &Registration,
+) -> Result<BorrowedFd<'poll>, Error> {
+    require_owner(owner, registration)?;
+    registrations
+        .binding(registration.id(), true)
+        .map(|binding| binding.descriptor)
+}
 
 pub(crate) fn set_registration_key(
     owner: Option<PollId>,

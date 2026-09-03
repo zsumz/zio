@@ -67,6 +67,7 @@ printf '%s\n' \
   '    let _ = Waker::key as fn(&Waker) -> Key;' \
   '    let _ = Poll::rearm as fn(&mut Poll, &Registration) -> Result<(), Error>;' \
   '    let _ = Poll::register_owned as fn(&mut Poll, std::os::fd::OwnedFd, Key, zio::Interest, Mode) -> Result<Registration, RegisterError>;' \
+  '    let _ = Poll::registration_fd as for<'\''poll, '\''registration> fn(&'\''poll Poll, &'\''registration Registration) -> Result<std::os::fd::BorrowedFd<'\''poll>, Error>;' \
   '    let _ = Poll::event_capacity as fn(&Poll) -> usize;' \
   '    let _ = Poll::registration_capacity as fn(&Poll) -> usize;' \
   '    let _ = Poll::registration_count as fn(&Poll) -> usize;' \

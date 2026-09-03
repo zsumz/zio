@@ -24,6 +24,8 @@ registration handle.
 
 `Poll::register_owned` transfers an `OwnedFd` without duplication. A
 handle-bearing failure retains it; every other failure closes it.
+`Poll::registration_fd` safely borrows any retained resource descriptor,
+including one in uncertain backend state.
 
 `Poll::set_key` changes only future resource-event routing and does no backend work.
 

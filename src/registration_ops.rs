@@ -1,11 +1,14 @@
 //! Public registration operations over the static mutation state machine.
 
-use std::os::fd::{AsFd, OwnedFd};
+use std::os::fd::{AsFd, BorrowedFd, OwnedFd};
 
 use crate::{
     DeleteError, Error, Interest, Key, Mode, Poll, RegisterError, Registration, RegistrationInfo,
     RegistrationState,
-    mutation::{MutationSession, registration_info, registration_state, set_registration_key},
+    mutation::{
+        MutationSession, registration_fd, registration_info, registration_state,
+        set_registration_key,
+    },
 };
 
 impl Poll {
@@ -113,6 +116,16 @@ impl Poll {
         registration: &Registration,
     ) -> Result<RegistrationInfo, Error> {
         registration_info(self.owner.current(), &self.registrations, registration)
+    }
+
+    /// Borrows the descriptor retained for this registration.
+    ///
+    /// Uncertain backend state does not invalidate the descriptor.
+    pub fn registration_fd<'poll>(
+        &'poll self,
+        registration: &Registration,
+    ) -> Result<BorrowedFd<'poll>, Error> {
+        registration_fd(self.owner.current(), &self.registrations, registration)
     }
 
     /// Changes the key used by future events without backend work.
