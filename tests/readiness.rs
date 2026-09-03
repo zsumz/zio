@@ -226,6 +226,18 @@ fn wait_rejects_an_undersized_destination() -> Result<(), Box<dyn std::error::Er
 }
 
 #[test]
+fn zero_event_capacity_is_reported_as_capacity_failure() {
+    assert!(matches!(
+        Events::with_capacity(0),
+        Err(Error::Capacity {
+            kind: CapacityKind::Event,
+            limit: 0,
+            ..
+        })
+    ));
+}
+
+#[test]
 fn oversized_event_capacity_is_reported_without_panicking() {
     assert!(matches!(
         Events::with_capacity(usize::MAX),

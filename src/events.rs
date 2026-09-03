@@ -15,9 +15,9 @@ pub struct Events {
 impl Events {
     /// Allocates an empty event destination with the supplied capacity.
     pub fn with_capacity(capacity: usize) -> Result<Self, Error> {
-        let capacity = NonZeroUsize::new(capacity).ok_or(Error::EventsTooSmall {
-            required: 1,
-            actual: 0,
+        let capacity = NonZeroUsize::new(capacity).ok_or(Error::Capacity {
+            kind: CapacityKind::Event,
+            limit: capacity,
         })?;
         Self::new(capacity)
     }
