@@ -17,7 +17,7 @@ type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
 fn registration_handle_traits_are_stable() -> TestResult {
-    fn assert_traits<T: Clone + Copy + Eq + Hash + Send + Sync>() {}
+    fn assert_traits<T: Clone + Copy + Eq + Hash + Ord + Send + Sync>() {}
 
     assert_traits::<Registration>();
     ensure(

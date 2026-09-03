@@ -28,7 +28,7 @@ impl RegistrationId {
 }
 
 #[repr(transparent)]
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub(crate) struct PollId(NonZeroU64);
 
 impl PollId {
@@ -92,8 +92,9 @@ impl PollOwner {
 /// while the caller retains the descriptor for
 /// [`Poll::register_borrowed`](crate::Poll::register_borrowed), until deletion
 /// retires the generation or the poller itself is dropped.
+/// Ordering supports ordered containers; it does not express registration age.
 #[must_use = "retain a registration handle for explicit early deletion"]
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Registration {
     owner: PollId,
     id: EncodedRegistrationId,

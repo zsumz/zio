@@ -42,10 +42,12 @@ any residual knotes.
 
 ## Registration lifetime
 
-`Registration` is `Copy`, `Clone`, `Eq`, `Hash`, `Send`, and `Sync`. Every copy
-names the same poller and exact generation; copying creates no backend
-registration. Dropping any or all copies does not delete it. Retain a copy
-outside cancellable work when early cleanup matters.
+`Registration` is `Copy`, `Clone`, `Eq`, `Ord`, `Hash`, `Send`, and `Sync`.
+Every copy names the same poller and exact generation; copying creates no
+backend registration. Dropping any or all copies does not delete it. Retain a
+copy outside cancellable work when early cleanup matters.
+
+Ordering supports ordered containers; it does not express registration age.
 
 Successful deletion retires the generation and makes every copy stale. An
 `Applied` delete failure does the same; `NotApplied` preserves every copy's

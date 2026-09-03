@@ -41,6 +41,11 @@ fn errors_return_registration_handles() {
 }
 
 #[test]
+fn registration_handles_support_ordered_collections() {
+    assert_ordered::<Registration>();
+}
+
+#[test]
 fn mutation_errors_return_every_owned_detail() {
     let _ =
         MutationError::into_parts as fn(MutationError) -> (Operation, CommitStatus, std::io::Error);
@@ -81,6 +86,8 @@ fn event_batches_support_immutable_slice_interop() {
 }
 
 fn assert_event_slice<T: AsRef<[Event]>>() {}
+
+fn assert_ordered<T: Ord>() {}
 
 fn assert_event_iterators(events: &mut Events) {
     assert_iterator(events.iter());
