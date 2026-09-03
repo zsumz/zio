@@ -514,7 +514,7 @@ printf '%s\n' \
   > "$consumer_dir/examples/poll-is-not-sync.rs"
 
 printf '%s\n' \
-  'use zio::{Mode, MutationError, PollBuilder, RegistrationId};' \
+  'use zio::{DeleteAllError, DeleteError, DeleteOwnedError, Error, Mode, MutationError, PollBuilder, RegisterError, RegisterOwnedError, RegistrationId};' \
   '' \
   'fn main() {}' \
   '' \
@@ -525,6 +525,17 @@ printf '%s\n' \
   '    let _ = id.get();' \
   '    let _ = PollBuilder::new().build_with_events();' \
   '}' \
+  '' \
+  '#[allow(dead_code)]' \
+  'fn discard_register(error: RegisterError) -> Error { error.into() }' \
+  '#[allow(dead_code)]' \
+  'fn discard_owned_register(error: RegisterOwnedError) -> Error { error.into() }' \
+  '#[allow(dead_code)]' \
+  'fn discard_delete(error: DeleteError) -> Error { error.into() }' \
+  '#[allow(dead_code)]' \
+  'fn discard_owned_delete(error: DeleteOwnedError) -> Error { error.into() }' \
+  '#[allow(dead_code)]' \
+  'fn discard_delete_all(error: DeleteAllError) -> Error { error.into() }' \
   > "$consumer_dir/examples/intentional-omissions.rs"
 
 cargo +1.88.0 generate-lockfile \
@@ -625,7 +636,8 @@ assert_intentional_omissions() {
     exit 1
   fi
 
-  test "$(grep -Ec '^error\[E[0-9]+\]:' "$stderr_file")" -eq 4
+  test "$(grep -Ec '^error\[E[0-9]+\]:' "$stderr_file")" -eq 9
+  test "$(grep -Fc 'error[E0277]:' "$stderr_file")" -eq 5
   test "$(grep -Fc 'error[E0599]:' "$stderr_file")" -eq 2
   test "$(grep -Fc 'error[E0624]:' "$stderr_file")" -eq 2
   grep -Fq 'no method named `into_source`' "$stderr_file"
@@ -690,7 +702,7 @@ jq -n \
   --arg poll_not_sync_current_sha256 "$poll_not_sync_current_sha256" \
   --arg omissions_msrv_sha256 "$omissions_msrv_sha256" \
   --arg omissions_current_sha256 "$omissions_current_sha256" \
-  '{schema:"zio.public-api-contract.v1", status:"passed", version:$version, toolchains:["1.88.0","1.97.1"], open_enums:["Error","Operation","CapacityKind","CapacityReason"], closed_enums:["Event","CommitStatus","DescriptorOwnership","Mode","Wait","ArmState","RegistrationState","RegisterOwnedError","DeleteOwnedError"], field_extensible_variants:["Error::Capacity"], receive_only_variants:["Event::Resource","Event::Wake"], intentional_omissions:["MutationError::into_source","Mode::is_one_shot","RegistrationId::get","PollBuilder::build_with_events"], auto_traits:{poll_not_sync_msrv:$poll_not_sync_msrv_sha256,poll_not_sync_current:$poll_not_sync_current_sha256}, diagnostics:{error_msrv:$error_msrv_sha256,error_current:$error_current_sha256,operation_msrv:$operation_msrv_sha256,operation_current:$operation_current_sha256,capacity_kind_msrv:$capacity_kind_msrv_sha256,capacity_kind_current:$capacity_kind_current_sha256,capacity_reason_msrv:$capacity_reason_msrv_sha256,capacity_reason_current:$capacity_reason_current_sha256,capacity_msrv:$capacity_msrv_sha256,capacity_current:$capacity_current_sha256,resource_msrv:$resource_msrv_sha256,resource_current:$resource_current_sha256,wake_msrv:$wake_msrv_sha256,wake_current:$wake_current_sha256,omissions_msrv:$omissions_msrv_sha256,omissions_current:$omissions_current_sha256}}' \
+  '{schema:"zio.public-api-contract.v1", status:"passed", version:$version, toolchains:["1.88.0","1.97.1"], open_enums:["Error","Operation","CapacityKind","CapacityReason"], closed_enums:["Event","CommitStatus","DescriptorOwnership","Mode","Wait","ArmState","RegistrationState","RegisterOwnedError","DeleteOwnedError"], field_extensible_variants:["Error::Capacity"], receive_only_variants:["Event::Resource","Event::Wake"], intentional_omissions:["MutationError::into_source","Mode::is_one_shot","RegistrationId::get","PollBuilder::build_with_events"], non_discarding_errors:["RegisterError","RegisterOwnedError","DeleteError","DeleteOwnedError","DeleteAllError"], auto_traits:{poll_not_sync_msrv:$poll_not_sync_msrv_sha256,poll_not_sync_current:$poll_not_sync_current_sha256}, diagnostics:{error_msrv:$error_msrv_sha256,error_current:$error_current_sha256,operation_msrv:$operation_msrv_sha256,operation_current:$operation_current_sha256,capacity_kind_msrv:$capacity_kind_msrv_sha256,capacity_kind_current:$capacity_kind_current_sha256,capacity_reason_msrv:$capacity_reason_msrv_sha256,capacity_reason_current:$capacity_reason_current_sha256,capacity_msrv:$capacity_msrv_sha256,capacity_current:$capacity_current_sha256,resource_msrv:$resource_msrv_sha256,resource_current:$resource_current_sha256,wake_msrv:$wake_msrv_sha256,wake_current:$wake_current_sha256,omissions_msrv:$omissions_msrv_sha256,omissions_current:$omissions_current_sha256}}' \
   > "$evidence_dir/public-api-contract.json"
 
 printf 'API evolution contract passed: zio %s\n' "$version"
