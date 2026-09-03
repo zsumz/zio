@@ -76,6 +76,7 @@ printf '%s\n' \
   '    let _ = MutationError::into_parts as fn(MutationError) -> (Operation, CommitStatus, std::io::Error);' \
   '    let _ = rejected_registration as fn(&Error) -> Option<Registration>;' \
   '    assert_ordered::<Registration>();' \
+  '    assert_send::<Poll>();' \
   '    assert_send_sync::<Waker>();' \
   '    let _ = Waker::key as fn(&Waker) -> Key;' \
   '    let _ = Poll::waker_key as fn(&Poll) -> Option<Key>;' \
@@ -110,6 +111,8 @@ printf '%s\n' \
   '}' \
   '' \
   'fn assert_ordered<T: Ord>() {}' \
+  '' \
+  'fn assert_send<T: Send>() {}' \
   '' \
   'fn assert_send_sync<T: Send + Sync>() {}' \
   '' \

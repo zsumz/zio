@@ -9,7 +9,7 @@
 
 mod support;
 
-use std::{io::Write, os::unix::net::UnixStream, time::Duration};
+use std::{io::Write, os::unix::net::UnixStream, thread, time::Duration};
 
 use zio::{Error, Event, Interest, Key, Mode, Poll, Wait};
 
@@ -112,5 +112,25 @@ fn registration_capacity_is_fixed() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(poll.registration_count(), 0);
     assert_eq!(poll.remaining_registration_capacity(), 1);
     assert!(poll.registrations()?.is_empty());
+    Ok(())
+}
+
+#[test]
+fn poll_can_move_to_its_owning_thread() -> Result<(), Box<dyn std::error::Error>> {
+    let (source, _peer) = UnixStream::pair()?;
+    let poll = Poll::with_capacity(1, 1)?;
+    let remaining = thread::spawn(move || {
+        let mut poll = poll;
+        let registration = poll
+            .register(&source, Key::new(3), Interest::READABLE, Mode::Level)
+            .map_err(|error| error.to_string())?;
+        poll.delete(registration)
+            .map_err(|error| error.to_string())?;
+        Ok::<_, String>(poll.remaining_registration_capacity())
+    })
+    .join()
+    .map_err(|_| "poll thread panicked")??;
+
+    assert_eq!(remaining, 1);
     Ok(())
 }

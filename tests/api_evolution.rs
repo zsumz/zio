@@ -61,6 +61,7 @@ fn registration_handles_support_ordered_collections() {
 fn wakers_expose_keys_and_cross_thread_traits() {
     let _ = Waker::key as fn(&Waker) -> Key;
     let _ = Poll::waker_key as fn(&Poll) -> Option<Key>;
+    assert_send::<Poll>();
     assert_send_sync::<Waker>();
 }
 
@@ -153,6 +154,8 @@ fn keys_support_lossless_standard_conversions() {
 fn assert_event_slice<T: AsRef<[Event]>>() {}
 
 fn assert_ordered<T: Ord>() {}
+
+fn assert_send<T: Send>() {}
 
 fn assert_send_sync<T: Send + Sync>() {}
 
