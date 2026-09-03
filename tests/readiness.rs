@@ -114,10 +114,14 @@ fn one_shot_coalesces_readable_and_writable_at_capacity_one()
     peer.write_all(b"readable and writable")?;
 
     let mut events = poll.events()?;
+    assert!(!events.is_full());
+    assert_eq!(events.remaining_capacity(), 1);
     let report = poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?;
     let [Event::Resource { key, readiness, .. }] = events.as_slice() else {
         return Err(io::Error::other("expected one coalesced resource event").into());
     };
+    assert!(events.is_full());
+    assert_eq!(events.remaining_capacity(), 0);
     assert_eq!(*key, Key::new(42));
     assert!(readiness.contains(zio::Readiness::READABLE.union(zio::Readiness::WRITABLE)));
     require_no_recovery(report)?;
@@ -127,6 +131,10 @@ fn one_shot_coalesces_readable_and_writable_at_capacity_one()
             arm: ArmState::Disarmed,
         }
     );
+
+    events.clear();
+    assert!(!events.is_full());
+    assert_eq!(events.remaining_capacity(), 1);
 
     poll.delete(registration)?;
     Ok(())

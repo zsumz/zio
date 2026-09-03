@@ -144,6 +144,8 @@ is reused. It borrows as the ordered outcome slice and iterates by reference.
 `WaitReport::is_complete` means no reconciliation is needed.
 After processing events, `WaitReport::into_result` supports direct propagation.
 Returning `Err` means delivery failed and leaves `Events` empty.
+`Events::is_full` describes the delivered batch; it does not prove more
+readiness is pending.
 
 ## Allocation contract
 

@@ -257,6 +257,8 @@ fn event_and_wait_values_are_hashable() {
 #[test]
 fn event_batches_support_standard_iteration() {
     assert_slice::<Events, Event>();
+    let _ = Events::remaining_capacity as fn(&Events) -> usize;
+    let _ = Events::is_full as fn(&Events) -> bool;
     let _ = assert_event_iterators as fn(&mut Events);
     let _ = assert_owned_event_iterator as fn(Events);
 }
