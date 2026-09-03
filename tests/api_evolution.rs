@@ -2,7 +2,7 @@
 
 use core::{
     iter::FusedIterator,
-    ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Sub, SubAssign},
+    ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign},
 };
 
 use zio::{
@@ -128,6 +128,9 @@ fn poll_exposes_authoritative_registration_info() {
 
 #[test]
 fn flag_sets_support_standard_set_operators() {
+    let _ =
+        zio::Interest::symmetric_difference as fn(zio::Interest, zio::Interest) -> zio::Interest;
+    let _ = Readiness::symmetric_difference as fn(Readiness, Readiness) -> Readiness;
     assert_eq!(
         zio::Interest::ALL,
         zio::Interest::READABLE | zio::Interest::WRITABLE
@@ -188,6 +191,8 @@ where
         + BitOrAssign
         + BitAnd<Output = T>
         + BitAndAssign
+        + BitXor<Output = T>
+        + BitXorAssign
         + Sub<Output = T>
         + SubAssign,
 {

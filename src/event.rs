@@ -1,12 +1,12 @@
 //! Caller keys and portable readiness observations.
-use core::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Sub, SubAssign};
-
 use crate::Registration;
 
 #[path = "event_predicates.rs"]
 mod predicates;
 #[path = "readiness_debug.rs"]
 mod readiness_debug;
+#[path = "readiness_ops.rs"]
+mod readiness_ops;
 
 /// Caller-selected value delivered with an observed event.
 #[repr(transparent)]
@@ -117,6 +117,12 @@ impl Readiness {
         Self(self.0 & !other.0)
     }
 
+    /// Returns readiness hints present in exactly one set.
+    #[must_use]
+    pub const fn symmetric_difference(self, other: Self) -> Self {
+        Self(self.0 ^ other.0)
+    }
+
     /// Returns whether readable readiness is present.
     pub const fn is_readable(self) -> bool {
         self.contains(Self::READABLE)
@@ -140,48 +146,6 @@ impl Readiness {
     /// Returns whether an error hint is present.
     pub const fn is_error(self) -> bool {
         self.contains(Self::ERROR)
-    }
-}
-
-impl BitOr for Readiness {
-    type Output = Self;
-
-    fn bitor(self, rhs: Self) -> Self::Output {
-        self.union(rhs)
-    }
-}
-
-impl BitOrAssign for Readiness {
-    fn bitor_assign(&mut self, rhs: Self) {
-        *self = self.union(rhs);
-    }
-}
-
-impl BitAnd for Readiness {
-    type Output = Self;
-
-    fn bitand(self, rhs: Self) -> Self::Output {
-        self.intersection(rhs)
-    }
-}
-
-impl BitAndAssign for Readiness {
-    fn bitand_assign(&mut self, rhs: Self) {
-        *self = self.intersection(rhs);
-    }
-}
-
-impl Sub for Readiness {
-    type Output = Self;
-
-    fn sub(self, rhs: Self) -> Self::Output {
-        self.difference(rhs)
-    }
-}
-
-impl SubAssign for Readiness {
-    fn sub_assign(&mut self, rhs: Self) {
-        *self = self.difference(rhs);
     }
 }
 

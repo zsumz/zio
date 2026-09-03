@@ -5,15 +5,15 @@ producer = "0.0.3-rc.4"
 contract_sha256 = "03e3fbba47efadd3d16dba10012d3cae2905a4d4742063d2f024cceb2c68eba8"
 
 [analysis]
-inventory_sha256 = "fa897c6036ee0abe73a34d7fb05ce215b52afb71ef07ea738aa3a43940d3f223"
+inventory_sha256 = "f6f009dd050809e0e62bc10b7fecb2638fd6e3853d81aed61c830e0605811a4e"
 exclusions_sha256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 cargo_lock_sha256 = "c57d02582afe8069129844f4f07aa867b3a1a9391d77b4be4e5ca0013a6d1687"
 packages = 3
 targets = 34
-physical_rust_files = 237
-base_source_contexts = 403
+physical_rust_files = 238
+base_source_contexts = 405
 derived_source_contexts = 0
-source_facts = 70073
+source_facts = 70228
 projection_queries = 0
 projected_facts = 0
 unresolved_bindings = 0
@@ -260,7 +260,7 @@ sha256 = "45e07033c8cd89ed400ee4e96ec608e338e89822233abd6e56c85040ece66520"
 
 [[gate.input]]
 path = "scripts/check-api-evolution"
-sha256 = "6079efee1900787fa5dc9343c52b7ac10397295c67e8c2010a62ba5ec44a957c"
+sha256 = "25b750cbcb89a3785a2e1f40ccae6d91da67309ceefa13b2e7500c024431ad5c"
 
 [[gate.input]]
 path = "scripts/rehearse-release"
@@ -555,7 +555,7 @@ sha256 = "279d77167cec5426fa80f457cd066dc74a360fbe4e2816f4f3fa01487a918fdc"
 
 [[gate.input]]
 path = "scripts/check-api-evolution"
-sha256 = "6079efee1900787fa5dc9343c52b7ac10397295c67e8c2010a62ba5ec44a957c"
+sha256 = "25b750cbcb89a3785a2e1f40ccae6d91da67309ceefa13b2e7500c024431ad5c"
 
 [[gate.input]]
 path = "scripts/rehearse-release"

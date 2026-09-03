@@ -2,7 +2,7 @@
 
 use core::{
     fmt,
-    ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Sub, SubAssign},
+    ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign},
 };
 
 /// Backend-neutral readiness interests for one registration.
@@ -53,6 +53,12 @@ impl Interest {
         Self(self.0 & !other.0)
     }
 
+    /// Returns interests present in exactly one set.
+    #[must_use]
+    pub const fn symmetric_difference(self, other: Self) -> Self {
+        Self(self.0 ^ other.0)
+    }
+
     /// Returns whether readable interest is present.
     pub const fn is_readable(self) -> bool {
         self.contains(Self::READABLE)
@@ -89,6 +95,20 @@ impl BitAnd for Interest {
 impl BitAndAssign for Interest {
     fn bitand_assign(&mut self, rhs: Self) {
         *self = self.intersection(rhs);
+    }
+}
+
+impl BitXor for Interest {
+    type Output = Self;
+
+    fn bitxor(self, rhs: Self) -> Self::Output {
+        self.symmetric_difference(rhs)
+    }
+}
+
+impl BitXorAssign for Interest {
+    fn bitxor_assign(&mut self, rhs: Self) {
+        *self = self.symmetric_difference(rhs);
     }
 }
 
