@@ -124,21 +124,25 @@ impl Poll {
         Self::with_capacity(DEFAULT_EVENT_CAPACITY, DEFAULT_REGISTRATION_CAPACITY)
     }
 
-    /// Creates a poller with fixed event and registration capacities.
-    pub fn with_capacity(events: usize, registrations: usize) -> Result<Self, Error> {
+    /// Creates a poller with fixed delivered-event and registration capacities.
+    pub fn with_capacity(
+        event_capacity: usize,
+        registration_capacity: usize,
+    ) -> Result<Self, Error> {
         if !Self::has_native_backend() {
             return Err(Error::UnsupportedPlatform);
         }
-        let event_capacity = NonZeroUsize::new(events).ok_or(Error::Capacity {
+        let event_capacity = NonZeroUsize::new(event_capacity).ok_or(Error::Capacity {
             kind: CapacityKind::Event,
-            limit: events,
+            limit: event_capacity,
             reason: CapacityReason::Zero,
         })?;
-        let registration_capacity = NonZeroUsize::new(registrations).ok_or(Error::Capacity {
-            kind: CapacityKind::Registration,
-            limit: registrations,
-            reason: CapacityReason::Zero,
-        })?;
+        let registration_capacity =
+            NonZeroUsize::new(registration_capacity).ok_or(Error::Capacity {
+                kind: CapacityKind::Registration,
+                limit: registration_capacity,
+                reason: CapacityReason::Zero,
+            })?;
         RegistrationTable::validate_capacity(registration_capacity)?;
         let raw_events = Backend::raw_batch(event_capacity.get(), registration_capacity.get())?;
         let registrations = RegistrationTable::new(registration_capacity)?;
