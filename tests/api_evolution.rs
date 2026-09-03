@@ -143,6 +143,12 @@ fn flag_sets_support_standard_set_operators() {
 }
 
 #[test]
+fn event_and_wait_values_are_hashable() {
+    assert_hash::<Event>();
+    assert_hash::<Wait>();
+}
+
+#[test]
 fn event_batches_support_standard_iteration() {
     assert_event_slice::<Events>();
     let _ = assert_event_iterators as fn(&mut Events);
@@ -169,6 +175,8 @@ fn keys_support_lossless_standard_conversions() {
 fn assert_event_slice<T: AsRef<[Event]>>() {}
 
 fn assert_ordered<T: Ord>() {}
+
+fn assert_hash<T: core::hash::Hash>() {}
 
 fn assert_send<T: Send>() {}
 

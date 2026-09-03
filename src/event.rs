@@ -159,7 +159,7 @@ impl Readiness {
 ///
 /// A wait coalesces split native hints for one registration into one resource
 /// event. Distinct registrations remain distinct even when their keys match.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum Event {
     /// Readiness observed for a registered resource.
     #[non_exhaustive]
