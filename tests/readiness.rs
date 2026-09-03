@@ -226,7 +226,7 @@ fn wait_rejects_an_undersized_destination() -> Result<(), Box<dyn std::error::Er
 fn oversized_event_capacity_is_reported_without_panicking() {
     assert!(matches!(
         Events::with_capacity(usize::MAX),
-        Err(Error::Capacity { limit }) if limit == usize::MAX
+        Err(Error::Capacity { limit, .. }) if limit == usize::MAX
     ));
 }
 

@@ -48,5 +48,5 @@ fn script_reports_remaining_steps() -> Result<(), Box<dyn std::error::Error>> {
 #[test]
 fn scripted_poll_rejects_zero_capacity() {
     let result = ScriptedPoll::with_capacity(0, std::iter::empty::<MutationStep>());
-    assert!(matches!(result, Err(Error::Capacity { limit: 0 })));
+    assert!(matches!(result, Err(Error::Capacity { limit: 0, .. })));
 }

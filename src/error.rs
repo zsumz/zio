@@ -124,6 +124,7 @@ pub enum Error {
         registration: RegistrationId,
     },
     /// A requested fixed capacity is zero, exhausted, or unavailable.
+    #[non_exhaustive]
     Capacity {
         /// Configured capacity.
         limit: usize,

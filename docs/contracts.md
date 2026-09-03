@@ -13,8 +13,8 @@ grow; match with `..`.
 
 `Operation` names only failures a current backend can report.
 
-Use `Error` accessors for operation, commit status, rejected handles,
-registration IDs, wake-key conflicts, capacity details, and typed I/O errors.
+Use `Error` accessors for structured details. Match `Error::Capacity` with `..`;
+its diagnostic fields may grow.
 
 ## Registration ownership
 

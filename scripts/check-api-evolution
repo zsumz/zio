@@ -289,6 +289,21 @@ printf '%s\n' \
   > "$consumer_dir/examples/operation-without-wildcard.rs"
 
 printf '%s\n' \
+  'use zio::Error;' \
+  '' \
+  'fn main() {' \
+  '    let _ = capacity as fn(&Error) -> Option<usize>;' \
+  '}' \
+  '' \
+  'fn capacity(error: &Error) -> Option<usize> {' \
+  '    match error {' \
+  '        Error::Capacity { limit } => Some(*limit),' \
+  '        _ => None,' \
+  '    }' \
+  '}' \
+  > "$consumer_dir/examples/capacity-without-rest.rs"
+
+printf '%s\n' \
   'use zio::{Event, Key};' \
   '' \
   'fn main() {' \
@@ -356,9 +371,26 @@ assert_receive_only_variant() {
   grep -Fq "Event::$variant" "$stderr_file"
 }
 
+assert_non_exhaustive_fields() {
+  local toolchain="$1"
+  local stderr_file="$receipt_dir/capacity-without-rest-$toolchain.stderr"
+
+  if CARGO_TERM_COLOR=never cargo "+$toolchain" check \
+    --manifest-path "$consumer_dir/Cargo.toml" \
+    --example capacity-without-rest --locked --offline \
+    > /dev/null 2> "$stderr_file"; then
+    echo 'Error::Capacity unexpectedly allowed a closed field match' >&2
+    exit 1
+  fi
+
+  test "$(grep -Ec '^error\[E[0-9]+\]:' "$stderr_file")" -eq 1
+  grep -Fq 'error[E0638]: `..` required with variant marked as non-exhaustive' "$stderr_file"
+}
+
 for toolchain in 1.88.0 1.97.1; do
   assert_non_exhaustive_match "$toolchain" error-without-wildcard Error zio::Error
   assert_non_exhaustive_match "$toolchain" operation-without-wildcard Operation Operation
+  assert_non_exhaustive_fields "$toolchain"
   assert_receive_only_variant "$toolchain" construct-resource Resource
   assert_receive_only_variant "$toolchain" construct-wake Wake
 done
@@ -371,6 +403,8 @@ error_msrv_sha256="$(shasum -a 256 "$receipt_dir/error-without-wildcard-1.88.0.s
 error_current_sha256="$(shasum -a 256 "$receipt_dir/error-without-wildcard-1.97.1.stderr" | awk '{print $1}')"
 operation_msrv_sha256="$(shasum -a 256 "$receipt_dir/operation-without-wildcard-1.88.0.stderr" | awk '{print $1}')"
 operation_current_sha256="$(shasum -a 256 "$receipt_dir/operation-without-wildcard-1.97.1.stderr" | awk '{print $1}')"
+capacity_msrv_sha256="$(shasum -a 256 "$receipt_dir/capacity-without-rest-1.88.0.stderr" | awk '{print $1}')"
+capacity_current_sha256="$(shasum -a 256 "$receipt_dir/capacity-without-rest-1.97.1.stderr" | awk '{print $1}')"
 resource_msrv_sha256="$(shasum -a 256 "$receipt_dir/construct-resource-1.88.0.stderr" | awk '{print $1}')"
 resource_current_sha256="$(shasum -a 256 "$receipt_dir/construct-resource-1.97.1.stderr" | awk '{print $1}')"
 wake_msrv_sha256="$(shasum -a 256 "$receipt_dir/construct-wake-1.88.0.stderr" | awk '{print $1}')"
@@ -381,11 +415,13 @@ jq -n \
   --arg error_current_sha256 "$error_current_sha256" \
   --arg operation_msrv_sha256 "$operation_msrv_sha256" \
   --arg operation_current_sha256 "$operation_current_sha256" \
+  --arg capacity_msrv_sha256 "$capacity_msrv_sha256" \
+  --arg capacity_current_sha256 "$capacity_current_sha256" \
   --arg resource_msrv_sha256 "$resource_msrv_sha256" \
   --arg resource_current_sha256 "$resource_current_sha256" \
   --arg wake_msrv_sha256 "$wake_msrv_sha256" \
   --arg wake_current_sha256 "$wake_current_sha256" \
-  '{schema:"zio.public-api-contract.v1", status:"passed", version:$version, toolchains:["1.88.0","1.97.1"], open_enums:["Error","Operation"], closed_enums:["Event","CommitStatus","Mode","Wait","ArmState","RegistrationState"], receive_only_variants:["Event::Resource","Event::Wake"], diagnostics:{error_msrv:$error_msrv_sha256,error_current:$error_current_sha256,operation_msrv:$operation_msrv_sha256,operation_current:$operation_current_sha256,resource_msrv:$resource_msrv_sha256,resource_current:$resource_current_sha256,wake_msrv:$wake_msrv_sha256,wake_current:$wake_current_sha256}}' \
+  '{schema:"zio.public-api-contract.v1", status:"passed", version:$version, toolchains:["1.88.0","1.97.1"], open_enums:["Error","Operation"], closed_enums:["Event","CommitStatus","Mode","Wait","ArmState","RegistrationState"], field_extensible_variants:["Error::Capacity"], receive_only_variants:["Event::Resource","Event::Wake"], diagnostics:{error_msrv:$error_msrv_sha256,error_current:$error_current_sha256,operation_msrv:$operation_msrv_sha256,operation_current:$operation_current_sha256,capacity_msrv:$capacity_msrv_sha256,capacity_current:$capacity_current_sha256,resource_msrv:$resource_msrv_sha256,resource_current:$resource_current_sha256,wake_msrv:$wake_msrv_sha256,wake_current:$wake_current_sha256}}' \
   > "$evidence_dir/public-api-contract.json"
 
 printf 'API evolution contract passed: zio %s\n' "$version"

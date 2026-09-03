@@ -153,7 +153,7 @@ pub(crate) fn expect_retained_capacity(
         );
     }
     match error {
-        Error::Capacity { limit: 1 } => Ok(()),
+        Error::Capacity { limit: 1, .. } => Ok(()),
         actual => mismatch(
             scenario,
             ConformanceCheck::CapacityRetention,
