@@ -7,9 +7,9 @@ matching nonblocking operation is always authoritative.
 
 `Error`, `Operation`, `CapacityKind`, and `CapacityReason` are open diagnostic vocabularies.
 Downstream matches must include a fallback arm. `Event`, `CommitStatus`,
-`DescriptorOwnership`, `Mode`, `Wait`, `ArmState`, `RegistrationState`, and
-`RegisterOwnedError` are closed domains; case changes are breaking. Event fields
-may grow; match with `..`.
+`DescriptorOwnership`, `Mode`, `Wait`, `ArmState`, `RegistrationState`,
+`RegisterOwnedError`, and `DeleteOwnedError` are closed domains; case changes are
+breaking. Event fields may grow; match with `..`.
 
 `Operation` names only failures a current backend can report.
 
@@ -32,6 +32,9 @@ registration handle.
 `Poll::register_owned` transfers an `OwnedFd` without duplication. Rejected and
 `NotApplied` calls return it; `Applied` and `Unknown` failures return the
 retained registration.
+`Poll::delete_owned` retires an owned registration and returns its exact
+descriptor. Borrowed registrations are rejected before backend work. An
+`Applied` failure returns the descriptor; other failures retain the handle.
 `Poll::registration_fd` safely borrows any retained resource descriptor,
 including one in uncertain backend state.
 `Poll::registrations` returns a bounded snapshot with unspecified order.
