@@ -85,6 +85,7 @@ printf '%s\n' \
   '    let _ = Poll::event_capacity as fn(&Poll) -> usize;' \
   '    let _ = Poll::registration_capacity as fn(&Poll) -> usize;' \
   '    let _ = Poll::registration_count as fn(&Poll) -> usize;' \
+  '    let _ = Poll::remaining_registration_capacity as fn(&Poll) -> usize;' \
   '    let _ = Poll::registration_info as fn(&Poll, &Registration) -> Result<RegistrationInfo, Error>;' \
   '    let _ = Poll::set_key as fn(&mut Poll, &Registration, Key) -> Result<(), Error>;' \
   '    let _ = RegistrationInfo::key as fn(&RegistrationInfo) -> Key;' \

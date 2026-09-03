@@ -56,6 +56,7 @@ fn count_overflow_rejects_reservation_before_mutation() -> Result<(), Box<dyn St
     assert!(table.slots.is_empty());
     assert_eq!(table.free_head, FREE_END);
     assert_eq!(table.live, usize::MAX);
+    assert_eq!(table.remaining(), 0);
     Ok(())
 }
 

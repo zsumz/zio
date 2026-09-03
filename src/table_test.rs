@@ -193,6 +193,7 @@ fn permanent_exhaustion_is_distinct_from_live_capacity() -> Result<(), Box<dyn S
         Err(Error::RegistrationSpaceExhausted)
     ));
     assert_eq!(table.exhausted, 2);
+    assert_eq!(table.remaining(), 0);
     Ok(())
 }
 
@@ -205,6 +206,8 @@ fn virgin_capacity_remains_after_an_initialized_slot_exhausts() -> Result<(), Bo
     table.slots[0].generation = MAX_GENERATION - 1;
     let exhausted = reserve(&mut table, &source, Key::new(2))?;
     table.retire(exhausted)?;
+
+    assert_eq!(table.remaining(), 1);
 
     let registration = reserve(&mut table, &source, Key::new(3))?;
     let (index, generation) = decode(registration)?;

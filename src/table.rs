@@ -58,6 +58,13 @@ impl RegistrationTable {
         self.live
     }
 
+    pub(crate) const fn remaining(&self) -> usize {
+        self.limit
+            .get()
+            .saturating_sub(self.live)
+            .saturating_sub(self.exhausted)
+    }
+
     pub(crate) fn snapshot(&self, owner: PollId) -> Result<Vec<Registration>, Error> {
         let occupied = self
             .slots

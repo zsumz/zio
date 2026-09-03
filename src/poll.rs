@@ -109,6 +109,11 @@ impl Poll {
         self.registrations.len()
     }
 
+    /// Returns the number of registration slots currently reservable.
+    pub const fn remaining_registration_capacity(&self) -> usize {
+        self.registrations.remaining()
+    }
+
     /// Returns the configured wake key, when one is bound.
     pub const fn waker_key(&self) -> Option<Key> {
         self.wake_key

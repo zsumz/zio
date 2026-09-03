@@ -28,6 +28,7 @@ handle-bearing failure retains it; every other failure closes it.
 including one in uncertain backend state.
 `Poll::registrations` returns a bounded owned snapshot for audit or cleanup.
 `RegistrationInfo::descriptor_ownership` reports who owns the retained descriptor.
+Remaining capacity excludes live and generation-exhausted slots.
 
 `Poll::set_key` changes only future resource-event routing and does no backend work.
 `RegistrationState::arm` returns `None` when backend state is uncertain.

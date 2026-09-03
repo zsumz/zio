@@ -74,6 +74,10 @@ fn failed_register_count_follows_commit_status() -> Result<(), Box<dyn std::erro
                 .is_err()
         );
         assert_eq!(poll.registration_count(), retained);
+        assert_eq!(
+            poll.remaining_registration_capacity(),
+            poll.registration_capacity() - retained
+        );
     }
     Ok(())
 }
@@ -94,6 +98,10 @@ fn failed_delete_count_follows_commit_status() -> Result<(), Box<dyn std::error:
 
         assert!(poll.delete(registration).is_err());
         assert_eq!(poll.registration_count(), retained);
+        assert_eq!(
+            poll.remaining_registration_capacity(),
+            poll.registration_capacity() - retained
+        );
     }
     Ok(())
 }

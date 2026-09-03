@@ -171,6 +171,11 @@ impl ScriptedPoll {
         self.registrations.len()
     }
 
+    /// Returns the number of registration slots currently reservable.
+    pub const fn remaining_registration_capacity(&self) -> usize {
+        self.registrations.remaining()
+    }
+
     /// Establishes a delivered, disarmed one-shot state in both models.
     pub fn establish_disarmed(&mut self, registration: &Registration) -> Result<(), Error> {
         registration_state(self.owner.current(), &self.registrations, registration)?;
