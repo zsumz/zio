@@ -50,8 +50,15 @@ fn capacity_diagnostics_are_open() {
 #[test]
 fn recovery_outcomes_return_registration_handles() {
     let _ = RecoveryOutcome::registration as fn(&RecoveryOutcome) -> Registration;
+    let _ = RecoveryOutcome::commit as fn(&RecoveryOutcome) -> CommitStatus;
+    let _ = RecoveryOutcome::state as fn(&RecoveryOutcome) -> zio::RegistrationState;
+    let _ = RecoveryFailure::operation as fn(&RecoveryFailure) -> Operation;
+    let _ = RecoveryFailure::outcomes as fn(&RecoveryFailure) -> &[RecoveryOutcome];
     let _ = RecoveryFailure::len as fn(&RecoveryFailure) -> usize;
     let _ = RecoveryFailure::is_empty as fn(&RecoveryFailure) -> bool;
+    let _ = RecoveryFailure::source as fn(&RecoveryFailure) -> &std::io::Error;
+    let _ = RecoveryFailure::into_parts
+        as fn(RecoveryFailure) -> (Operation, Vec<RecoveryOutcome>, std::io::Error);
     assert_slice::<RecoveryFailure, RecoveryOutcome>();
     let _ = assert_recovery_iterator as fn(&RecoveryFailure);
 }
@@ -59,6 +66,8 @@ fn recovery_outcomes_return_registration_handles() {
 #[test]
 fn wait_reports_expose_completion() {
     let _ = WaitReport::is_complete as fn(&WaitReport) -> bool;
+    let _ = WaitReport::recovery as fn(&WaitReport) -> Option<&RecoveryFailure>;
+    let _ = WaitReport::into_recovery as fn(WaitReport) -> Option<RecoveryFailure>;
     let _ = WaitReport::into_result as fn(WaitReport) -> Result<(), RecoveryFailure>;
 }
 
