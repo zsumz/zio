@@ -3,8 +3,9 @@
 use std::os::fd::AsFd;
 
 use crate::{
-    DeleteError, Error, Interest, Key, Mode, Poll, RegisterError, Registration, RegistrationState,
-    mutation::{MutationSession, registration_state},
+    DeleteError, Error, Interest, Key, Mode, Poll, RegisterError, Registration, RegistrationInfo,
+    RegistrationState,
+    mutation::{MutationSession, registration_info, registration_state},
 };
 
 impl Poll {
@@ -89,6 +90,14 @@ impl Poll {
         registration: &Registration,
     ) -> Result<RegistrationState, Error> {
         registration_state(self.owner.current(), &self.registrations, registration)
+    }
+
+    /// Returns retained configuration and authoritative state.
+    pub fn registration_info(
+        &self,
+        registration: &Registration,
+    ) -> Result<RegistrationInfo, Error> {
+        registration_info(self.owner.current(), &self.registrations, registration)
     }
 
     fn mutations(&mut self) -> MutationSession<'_, crate::sys::Backend> {

@@ -1,8 +1,18 @@
 //! Poll ownership checks shared by query and mutation paths.
 
 use crate::{
-    Error, Registration, RegistrationState, registration::PollId, table::RegistrationTable,
+    Error, Registration, RegistrationInfo, RegistrationState, registration::PollId,
+    table::RegistrationTable,
 };
+
+pub(crate) fn registration_info(
+    owner: Option<PollId>,
+    registrations: &RegistrationTable,
+    registration: &Registration,
+) -> Result<RegistrationInfo, Error> {
+    require_owner(owner, registration)?;
+    registrations.info(registration.id())
+}
 
 pub(crate) fn registration_state(
     owner: Option<PollId>,

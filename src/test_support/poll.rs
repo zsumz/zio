@@ -7,8 +7,8 @@ use std::{
 
 use crate::{
     CommitStatus, DeleteError, Error, Interest, Key, Mode, RegisterError, Registration,
-    RegistrationId, RegistrationState,
-    mutation::{MutationSession, registration_state},
+    RegistrationId, RegistrationInfo, RegistrationState,
+    mutation::{MutationSession, registration_info, registration_state},
     poll::DEFAULT_REGISTRATION_CAPACITY,
     registration::PollOwner,
     table::RegistrationTable,
@@ -114,6 +114,14 @@ impl ScriptedPoll {
         registration: &Registration,
     ) -> Result<RegistrationState, Error> {
         registration_state(self.owner.current(), &self.registrations, registration)
+    }
+
+    /// Returns retained configuration and authoritative state.
+    pub fn registration_info(
+        &self,
+        registration: &Registration,
+    ) -> Result<RegistrationInfo, Error> {
+        registration_info(self.owner.current(), &self.registrations, registration)
     }
 
     /// Returns the fixed registration capacity.

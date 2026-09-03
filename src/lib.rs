@@ -25,7 +25,6 @@
 //! # Ok(())
 //! # }
 //! ```
-
 #![deny(unsafe_code)]
 
 mod binding;
@@ -75,6 +74,7 @@ pub use events::Events;
 pub use interest::Interest;
 pub use mode::Mode;
 pub use poll::{DEFAULT_EVENT_CAPACITY, DEFAULT_REGISTRATION_CAPACITY, Poll, Waker};
+pub use registration::RegistrationInfo;
 pub use registration::{ArmState, Registration, RegistrationId, RegistrationState};
 pub use wait::Wait;
 pub use wait_report::WaitReport;

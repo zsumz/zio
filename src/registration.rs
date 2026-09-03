@@ -5,7 +5,7 @@ use std::{
     sync::atomic::{AtomicU64, Ordering},
 };
 
-use crate::{Error, token::EncodedRegistrationId};
+use crate::{Error, Interest, Key, Mode, token::EncodedRegistrationId};
 
 static NEXT_POLL_ID: AtomicU64 = AtomicU64::new(1);
 
@@ -146,6 +146,53 @@ pub enum RegistrationState {
     },
     /// The backend state cannot be proven after a partial mutation.
     Uncertain,
+}
+
+/// Poller-retained configuration and state for one registration.
+///
+/// An uncertain snapshot is not proof of the backend configuration.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct RegistrationInfo {
+    key: Key,
+    interest: Interest,
+    mode: Mode,
+    state: RegistrationState,
+}
+
+impl RegistrationInfo {
+    pub(crate) const fn new(
+        key: Key,
+        interest: Interest,
+        mode: Mode,
+        state: RegistrationState,
+    ) -> Self {
+        Self {
+            key,
+            interest,
+            mode,
+            state,
+        }
+    }
+
+    /// Returns the caller-selected event key.
+    pub const fn key(&self) -> Key {
+        self.key
+    }
+
+    /// Returns the retained readiness interest.
+    pub const fn interest(&self) -> Interest {
+        self.interest
+    }
+
+    /// Returns the retained delivery mode.
+    pub const fn mode(&self) -> Mode {
+        self.mode
+    }
+
+    /// Returns the authoritative registration state.
+    pub const fn state(&self) -> RegistrationState {
+        self.state
+    }
 }
 
 #[cfg(test)]

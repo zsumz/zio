@@ -43,7 +43,7 @@ printf '%s\n' \
   > "$consumer_dir/Cargo.toml"
 
 printf '%s\n' \
-  'use zio::{ArmState, CommitStatus, DeleteError, Error, Event, Mode, MutationError, Operation, Poll, RecoveryOutcome, RegisterError, Registration, RegistrationState, Wait};' \
+  'use zio::{ArmState, CommitStatus, DeleteError, Error, Event, Key, Mode, MutationError, Operation, Poll, RecoveryOutcome, RegisterError, Registration, RegistrationInfo, RegistrationState, Wait};' \
   '' \
   'fn main() {' \
   '    assert_eq!(classify_error(&Error::Invariant), 1);' \
@@ -62,6 +62,11 @@ printf '%s\n' \
   '    let _ = Poll::rearm as fn(&mut Poll, &Registration) -> Result<(), Error>;' \
   '    let _ = Poll::event_capacity as fn(&Poll) -> usize;' \
   '    let _ = Poll::registration_capacity as fn(&Poll) -> usize;' \
+  '    let _ = Poll::registration_info as fn(&Poll, &Registration) -> Result<RegistrationInfo, Error>;' \
+  '    let _ = RegistrationInfo::key as fn(&RegistrationInfo) -> Key;' \
+  '    let _ = RegistrationInfo::interest as fn(&RegistrationInfo) -> zio::Interest;' \
+  '    let _ = RegistrationInfo::mode as fn(&RegistrationInfo) -> Mode;' \
+  '    let _ = RegistrationInfo::state as fn(&RegistrationInfo) -> RegistrationState;' \
   '    let mut interest = zio::Interest::READABLE;' \
   '    interest |= zio::Interest::WRITABLE;' \
   '    let _ = interest;' \

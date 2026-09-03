@@ -4,7 +4,10 @@ use std::num::NonZeroUsize;
 
 use crate::binding::{Binding, Observation};
 use crate::token::{MAX_REGISTRATIONS, decode};
-use crate::{ArmState, CommitStatus, Error, Interest, Mode, RegistrationId, RegistrationState};
+use crate::{
+    ArmState, CommitStatus, Error, Interest, Mode, RegistrationId, RegistrationInfo,
+    RegistrationState,
+};
 
 #[path = "table_reserve.rs"]
 mod reserve;
@@ -78,6 +81,16 @@ impl RegistrationTable {
 
     pub(crate) fn state(&self, id: RegistrationId) -> Result<RegistrationState, Error> {
         self.entry(id).map(|entry| entry.state)
+    }
+
+    pub(crate) fn info(&self, id: RegistrationId) -> Result<RegistrationInfo, Error> {
+        let entry = self.entry(id)?;
+        Ok(RegistrationInfo::new(
+            entry.key,
+            entry.interest,
+            entry.mode,
+            entry.state,
+        ))
     }
 
     pub(crate) fn commit_modify(

@@ -4,7 +4,8 @@ use core::ops::{BitOr, BitOrAssign};
 
 use zio::{
     ArmState, CommitStatus, DeleteError, Error, Event, Key, Mode, MutationError, Operation, Poll,
-    Readiness, RecoveryOutcome, RegisterError, Registration, RegistrationState, Wait,
+    Readiness, RecoveryOutcome, RegisterError, Registration, RegistrationInfo, RegistrationState,
+    Wait,
 };
 
 #[test]
@@ -51,6 +52,15 @@ fn poll_exposes_stored_configuration_rearm() {
 fn poll_exposes_both_fixed_capacities() {
     let _ = Poll::event_capacity as fn(&Poll) -> usize;
     let _ = Poll::registration_capacity as fn(&Poll) -> usize;
+}
+
+#[test]
+fn poll_exposes_authoritative_registration_info() {
+    let _ = Poll::registration_info as fn(&Poll, &Registration) -> Result<RegistrationInfo, Error>;
+    let _ = RegistrationInfo::key as fn(&RegistrationInfo) -> Key;
+    let _ = RegistrationInfo::interest as fn(&RegistrationInfo) -> zio::Interest;
+    let _ = RegistrationInfo::mode as fn(&RegistrationInfo) -> Mode;
+    let _ = RegistrationInfo::state as fn(&RegistrationInfo) -> RegistrationState;
 }
 
 #[test]

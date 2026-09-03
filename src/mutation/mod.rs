@@ -5,6 +5,6 @@ mod driver;
 mod machine;
 mod register;
 
-pub(crate) use authority::registration_state;
+pub(crate) use authority::{registration_info, registration_state};
 pub(crate) use driver::{DeleteRequest, ModifyRequest, MutationDriver, RegisterRequest};
 pub(crate) use machine::MutationSession;
