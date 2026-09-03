@@ -1,4 +1,4 @@
-//! Bounded, explicit readiness I/O.
+//! Synchronous, fixed-capacity epoll/kqueue I/O with duplicate-by-default descriptors.
 //!
 //! # Quick start
 //!
