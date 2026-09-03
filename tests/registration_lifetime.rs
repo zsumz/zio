@@ -7,7 +7,12 @@
     target_os = "netbsd"
 ))]
 
-use std::{hash::Hash, io, os::unix::net::UnixStream};
+use std::{
+    hash::Hash,
+    io::{self, Read},
+    os::{fd::OwnedFd, unix::net::UnixStream},
+    time::Duration,
+};
 
 use zio::{
     ArmState, DeleteError, DeleteOwnedError, Error, Interest, Key, Mode, Poll, Registration,
@@ -37,6 +42,23 @@ fn reactor_copy_reclaims_after_task_copy_is_abandoned() -> TestResult {
     abandon_task_handle(registered);
     poll.delete(reactor)?;
     Ok(())
+}
+
+#[test]
+fn dropping_poller_closes_a_transferred_descriptor() -> TestResult {
+    let (source, mut peer) = UnixStream::pair()?;
+    peer.set_read_timeout(Some(Duration::from_secs(1)))?;
+    let descriptor: OwnedFd = source.into();
+    let mut poll = Poll::with_capacity(1, 1)?;
+    let _registration =
+        poll.register_owned(descriptor, Key::new(907), Interest::READABLE, Mode::Level)?;
+
+    drop(poll);
+
+    ensure(
+        peer.read(&mut [0_u8])? == 0,
+        "transferred descriptor remained open",
+    )
 }
 
 #[test]
