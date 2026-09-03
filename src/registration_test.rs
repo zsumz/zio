@@ -7,7 +7,25 @@ use std::{
     sync::atomic::{AtomicU64, Ordering},
 };
 
-use crate::{Error, Interest, Key, Mode, registration::PollOwner, table::RegistrationTable};
+use crate::{
+    ArmState, Error, Interest, Key, Mode, RegistrationState, registration::PollOwner,
+    table::RegistrationTable,
+};
+
+#[test]
+fn registration_state_queries_preserve_uncertainty() {
+    let armed = RegistrationState::Registered {
+        arm: ArmState::Armed,
+    };
+    let uncertain = RegistrationState::Uncertain;
+
+    assert!(armed.is_registered());
+    assert!(!armed.is_uncertain());
+    assert_eq!(armed.arm(), Some(ArmState::Armed));
+    assert!(!uncertain.is_registered());
+    assert!(uncertain.is_uncertain());
+    assert_eq!(uncertain.arm(), None);
+}
 
 #[test]
 fn registration_handle_remains_sixteen_bytes() {

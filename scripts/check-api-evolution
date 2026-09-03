@@ -64,6 +64,9 @@ printf '%s\n' \
   '    assert_eq!(classify_wait(Wait::Forever), 2);' \
   '    assert_eq!(classify_arm(ArmState::Disarmed), 1);' \
   '    assert_eq!(classify_state(RegistrationState::Uncertain), 2);' \
+  '    let _ = RegistrationState::is_registered as fn(RegistrationState) -> bool;' \
+  '    let _ = RegistrationState::is_uncertain as fn(RegistrationState) -> bool;' \
+  '    let _ = RegistrationState::arm as fn(RegistrationState) -> Option<ArmState>;' \
   '    let _ = RecoveryOutcome::registration as fn(&RecoveryOutcome) -> Registration;' \
   '    let _ = RegisterError::registration as fn(&RegisterError) -> Option<Registration>;' \
   '    let _ = DeleteError::registration as fn(&DeleteError) -> Registration;' \

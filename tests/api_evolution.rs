@@ -33,6 +33,9 @@ fn closed_delivery_and_state_domains_remain_exhaustive() {
     assert_eq!(commit_class(CommitStatus::Unknown), "unknown");
     assert_eq!(arm_class(ArmState::Disarmed), "disarmed");
     assert_eq!(state_class(RegistrationState::Uncertain), "uncertain");
+    let _ = RegistrationState::is_registered as fn(RegistrationState) -> bool;
+    let _ = RegistrationState::is_uncertain as fn(RegistrationState) -> bool;
+    let _ = RegistrationState::arm as fn(RegistrationState) -> Option<ArmState>;
 }
 
 #[test]

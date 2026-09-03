@@ -29,6 +29,7 @@ including one in uncertain backend state.
 `Poll::registrations` returns a bounded owned snapshot for audit or cleanup.
 
 `Poll::set_key` changes only future resource-event routing and does no backend work.
+`RegistrationState::arm` returns `None` when backend state is uncertain.
 
 ## Borrowed registration
 

@@ -149,6 +149,26 @@ pub enum RegistrationState {
     Uncertain,
 }
 
+impl RegistrationState {
+    /// Returns whether backend state is known to remain registered.
+    pub const fn is_registered(self) -> bool {
+        matches!(self, Self::Registered { .. })
+    }
+
+    /// Returns whether backend state cannot be proven.
+    pub const fn is_uncertain(self) -> bool {
+        matches!(self, Self::Uncertain)
+    }
+
+    /// Returns delivery eligibility when backend state is known.
+    pub const fn arm(self) -> Option<ArmState> {
+        match self {
+            Self::Registered { arm } => Some(arm),
+            Self::Uncertain => None,
+        }
+    }
+}
+
 /// Poller-retained configuration and state for one registration.
 ///
 /// An uncertain snapshot is not proof of the backend configuration.
