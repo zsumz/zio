@@ -58,6 +58,36 @@ fn poll_retains_the_registered_open_file_description() -> Result<(), Box<dyn std
 }
 
 #[test]
+fn key_changes_affect_only_future_events() -> Result<(), Box<dyn std::error::Error>> {
+    let (source, mut peer) = UnixStream::pair()?;
+    let mut poll = Poll::new()?;
+    let old = Key::new(12);
+    let new = Key::new(13);
+    let registration = poll.register(&source, old, Interest::READABLE, Mode::Level)?;
+    peer.write_all(b"ready")?;
+
+    let mut events = poll.events()?;
+    let report = poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?;
+    require_no_recovery(report)?;
+    assert!(events.iter().any(|event| event.key() == old));
+
+    poll.set_key(&registration, new)?;
+    assert!(events.iter().any(|event| event.key() == old));
+    assert_eq!(poll.registration_info(&registration)?.key(), new);
+
+    let report = poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?;
+    require_no_recovery(report)?;
+    assert!(events.iter().any(|event| event.key() == new));
+
+    poll.delete(registration)?;
+    assert!(matches!(
+        poll.set_key(&registration, old),
+        Err(Error::Stale { registration: stale }) if stale == registration.id()
+    ));
+    Ok(())
+}
+
+#[test]
 fn registration_capacity_is_fixed() -> Result<(), Box<dyn std::error::Error>> {
     let (first, _first_peer) = UnixStream::pair()?;
     let (second, _second_peer) = UnixStream::pair()?;

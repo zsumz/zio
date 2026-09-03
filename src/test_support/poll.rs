@@ -8,7 +8,7 @@ use std::{
 use crate::{
     CommitStatus, DeleteError, Error, Interest, Key, Mode, RegisterError, Registration,
     RegistrationId, RegistrationInfo, RegistrationState,
-    mutation::{MutationSession, registration_info, registration_state},
+    mutation::{MutationSession, registration_info, registration_state, set_registration_key},
     poll::DEFAULT_REGISTRATION_CAPACITY,
     registration::PollOwner,
     table::RegistrationTable,
@@ -122,6 +122,16 @@ impl ScriptedPoll {
         registration: &Registration,
     ) -> Result<RegistrationInfo, Error> {
         registration_info(self.owner.current(), &self.registrations, registration)
+    }
+
+    /// Changes the key retained for future modeled observations.
+    pub fn set_key(&mut self, registration: &Registration, key: Key) -> Result<(), Error> {
+        set_registration_key(
+            self.owner.current(),
+            &mut self.registrations,
+            registration,
+            key,
+        )
     }
 
     /// Returns the fixed registration capacity.

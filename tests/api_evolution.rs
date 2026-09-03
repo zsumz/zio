@@ -61,6 +61,7 @@ fn poll_exposes_authoritative_registration_info() {
     let _ = RegistrationInfo::interest as fn(&RegistrationInfo) -> zio::Interest;
     let _ = RegistrationInfo::mode as fn(&RegistrationInfo) -> Mode;
     let _ = RegistrationInfo::state as fn(&RegistrationInfo) -> RegistrationState;
+    let _ = Poll::set_key as fn(&mut Poll, &Registration, Key) -> Result<(), Error>;
 }
 
 #[test]

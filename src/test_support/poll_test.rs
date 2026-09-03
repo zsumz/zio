@@ -23,6 +23,11 @@ fn uncertain_register_retains_requested_configuration() -> Result<(), Box<dyn st
     assert_eq!(info.interest(), Interest::READABLE);
     assert_eq!(info.mode(), Mode::OneShot);
     assert_eq!(info.state(), RegistrationState::Uncertain);
+
+    poll.set_key(&registration, Key::new(7))?;
+    let updated = poll.registration_info(&registration)?;
+    assert_eq!(updated.key(), Key::new(7));
+    assert_eq!(updated.state(), RegistrationState::Uncertain);
     Ok(())
 }
 

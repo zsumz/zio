@@ -20,6 +20,8 @@ cannot redirect later mutations. Handles are poller-scoped; another poller
 rejects them. Keys need not be unique. Each resource event carries its exact
 registration handle.
 
+`Poll::set_key` changes only future resource-event routing and does no backend work.
+
 ## Borrowed registration
 
 `Poll::register_borrowed` skips the duplicate and is unsafe. The exact numeric

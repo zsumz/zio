@@ -5,7 +5,7 @@ use std::num::NonZeroUsize;
 use crate::binding::{Binding, Observation};
 use crate::token::{MAX_REGISTRATIONS, decode};
 use crate::{
-    ArmState, CommitStatus, Error, Interest, Mode, RegistrationId, RegistrationInfo,
+    ArmState, CommitStatus, Error, Interest, Key, Mode, RegistrationId, RegistrationInfo,
     RegistrationState,
 };
 
@@ -91,6 +91,11 @@ impl RegistrationTable {
             entry.mode,
             entry.state,
         ))
+    }
+
+    pub(crate) fn set_key(&mut self, id: RegistrationId, key: Key) -> Result<(), Error> {
+        self.entry_mut(id)?.key = key;
+        Ok(())
     }
 
     pub(crate) fn commit_modify(

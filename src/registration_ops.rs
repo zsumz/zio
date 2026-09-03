@@ -5,7 +5,7 @@ use std::os::fd::AsFd;
 use crate::{
     DeleteError, Error, Interest, Key, Mode, Poll, RegisterError, Registration, RegistrationInfo,
     RegistrationState,
-    mutation::{MutationSession, registration_info, registration_state},
+    mutation::{MutationSession, registration_info, registration_state, set_registration_key},
 };
 
 impl Poll {
@@ -98,6 +98,19 @@ impl Poll {
         registration: &Registration,
     ) -> Result<RegistrationInfo, Error> {
         registration_info(self.owner.current(), &self.registrations, registration)
+    }
+
+    /// Changes the key used by future events without backend work.
+    ///
+    /// Already-delivered events retain their key. Uncertain registrations may
+    /// update this poller-local metadata.
+    pub fn set_key(&mut self, registration: &Registration, key: Key) -> Result<(), Error> {
+        set_registration_key(
+            self.owner.current(),
+            &mut self.registrations,
+            registration,
+            key,
+        )
     }
 
     fn mutations(&mut self) -> MutationSession<'_, crate::sys::Backend> {
