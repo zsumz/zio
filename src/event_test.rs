@@ -14,6 +14,7 @@ fn key_conversions_are_lossless() {
     let key = Key::from(u64::MAX);
 
     assert_eq!(u64::from(key), u64::MAX);
+    assert_eq!(key.to_string(), u64::MAX.to_string());
 }
 
 #[test]

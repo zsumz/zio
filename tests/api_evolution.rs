@@ -170,6 +170,7 @@ fn events_expose_direct_classification_and_readiness() {
 fn keys_support_lossless_standard_conversions() {
     assert_from::<Key, u64>();
     assert_from::<u64, Key>();
+    assert_display::<Key>();
 }
 
 fn assert_event_slice<T: AsRef<[Event]>>() {}
@@ -177,6 +178,8 @@ fn assert_event_slice<T: AsRef<[Event]>>() {}
 fn assert_ordered<T: Ord>() {}
 
 fn assert_hash<T: core::hash::Hash>() {}
+
+fn assert_display<T: core::fmt::Display>() {}
 
 fn assert_send<T: Send>() {}
 

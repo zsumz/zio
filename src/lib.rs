@@ -15,7 +15,7 @@
 //! let report = poll.wait(&mut events, Wait::For(Duration::from_millis(100)))?;
 //! for event in &events {
 //!     if let Event::Resource { key, readiness, .. } = event {
-//!         println!("{key:?}: {readiness:?}");
+//!         println!("{key}: {readiness:?}");
 //!     }
 //! }
 //! if let Some(recovery) = report.into_recovery() {

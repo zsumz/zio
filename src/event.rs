@@ -1,4 +1,6 @@
 //! Caller keys and portable readiness observations.
+use core::fmt;
+
 use crate::Registration;
 
 #[path = "event_predicates.rs"]
@@ -37,6 +39,12 @@ impl From<u64> for Key {
 impl From<Key> for u64 {
     fn from(key: Key) -> Self {
         key.get()
+    }
+}
+
+impl fmt::Display for Key {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(formatter)
     }
 }
 

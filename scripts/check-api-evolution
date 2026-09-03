@@ -48,6 +48,7 @@ printf '%s\n' \
   'fn main() {' \
   '    assert_eq!(classify_error(&Error::Invariant), 1);' \
   '    assert_eq!(u64::from(Key::from(9_u64)), 9);' \
+  '    assert_eq!(Key::new(9).to_string(), "9");' \
   '    assert_eq!(classify_operation(Operation::Wait), 1);' \
   '    let _ = Error::operation as fn(&Error) -> Option<Operation>;' \
   '    let _ = Error::commit as fn(&Error) -> Option<CommitStatus>;' \
@@ -79,6 +80,7 @@ printf '%s\n' \
   '    assert_ordered::<Registration>();' \
   '    assert_hash::<Event>();' \
   '    assert_hash::<Wait>();' \
+  '    assert_display::<Key>();' \
   '    assert_send::<Poll>();' \
   '    assert_send_sync::<Waker>();' \
   '    let _ = Waker::key as fn(&Waker) -> Key;' \
@@ -126,6 +128,8 @@ printf '%s\n' \
   'fn assert_ordered<T: Ord>() {}' \
   '' \
   'fn assert_hash<T: std::hash::Hash>() {}' \
+  '' \
+  'fn assert_display<T: std::fmt::Display>() {}' \
   '' \
   'fn assert_send<T: Send>() {}' \
   '' \
