@@ -2,7 +2,7 @@
 schema = 2
 semantics = 3
 producer = "0.0.3-rc.4"
-contract_sha256 = "fff3b1b743fff4f399079c990d2fee04418097a839799f8c9ee7191d8886a7c2"
+contract_sha256 = "07ff3e40a23f69fc0bcee826d234084d4551cf8b648eb4c5d574db8d821966a2"
 
 [analysis]
 inventory_sha256 = "6d57e95eefd62d2259721d658826e547dfb3b476ba7fc5b1c0e49054b6d49a14"
@@ -21,7 +21,7 @@ analyzer_semantics = 3
 
 [[analysis.contract_source]]
 path = "zrail.toml"
-sha256 = "05112b389fba2d955fa32647c97512d37611d9a2eaeeea1b871f43e782964c7a"
+sha256 = "aa01a015d3c15a49fcffc2ebb0de4030e4fd6d7c9cb2d3b605efdaf67b099043"
 
 [[package]]
 name = "zio"

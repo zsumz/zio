@@ -18,7 +18,8 @@ pub const DEFAULT_EVENT_CAPACITY: usize = 1_024;
 /// Default number of registrations retained by one poller.
 pub const DEFAULT_REGISTRATION_CAPACITY: usize = 1_024;
 
-/// Cloneable cross-thread capability that interrupts its owning poller.
+/// Cloneable cross-thread capability for keyed
+/// [`Event::Wake`](crate::Event::Wake) observations.
 ///
 /// Clones may outlive the poller. They retain its native wake resource, but
 /// later triggers have no observer.
@@ -48,9 +49,10 @@ impl Waker {
         self.key == other.key && self.wake.same_target(&other.wake)
     }
 
-    /// Makes the poller's configured wake key observable.
+    /// Requests the poller's configured wake observation.
     ///
-    /// Multiple triggers may coalesce into one wake event. Wake observations
+    /// Wake delivery is a successful observation, not an interrupted-wait
+    /// error. Multiple triggers may coalesce into one wake event; observations
     /// are notifications rather than a count of calls to this method.
     pub fn wake(&self) -> Result<(), Error> {
         self.wake.wake().map_err(|source| Error::Io {

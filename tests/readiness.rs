@@ -210,7 +210,7 @@ fn wake_before_wait_is_observable() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
-fn wake_interrupts_a_blocked_wait() -> Result<(), Box<dyn std::error::Error>> {
+fn wake_completes_a_blocked_wait() -> Result<(), Box<dyn std::error::Error>> {
     let mut poll = Poll::new()?;
     let waker = poll.waker(Key::new(100))?;
     let thread = thread::spawn(move || {
