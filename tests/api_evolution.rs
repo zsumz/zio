@@ -24,6 +24,8 @@ fn errors_expose_common_diagnostics_without_matching() {
     let _ = Error::operation as fn(&Error) -> Option<Operation>;
     let _ = Error::commit as fn(&Error) -> Option<CommitStatus>;
     let _ = Error::registration_id as fn(&Error) -> Option<zio::RegistrationId>;
+    let _ = Error::capacity_limit as fn(&Error) -> Option<usize>;
+    let _ = Error::event_capacity_mismatch as fn(&Error) -> Option<(usize, usize)>;
     let _ = Error::io_error as fn(&Error) -> Option<&std::io::Error>;
 }
 

@@ -29,6 +29,8 @@ fn top_level_accessors_expose_embedded_diagnostics() {
     assert_eq!(io.operation(), Some(Operation::Wait));
     assert_eq!(io.commit(), None);
     assert_eq!(io.registration_id(), None);
+    assert_eq!(io.capacity_limit(), None);
+    assert_eq!(io.event_capacity_mismatch(), None);
     assert_eq!(io.io_error().and_then(io::Error::raw_os_error), Some(5));
 
     let mutation = Error::Mutation(MutationError::new(
@@ -63,5 +65,14 @@ fn top_level_accessors_expose_embedded_diagnostics() {
     assert_eq!(
         Error::Uncertain { registration: id }.registration_id(),
         Some(id)
+    );
+    assert_eq!(Error::Capacity { limit: 17 }.capacity_limit(), Some(17));
+    assert_eq!(
+        Error::EventsTooSmall {
+            required: 11,
+            actual: 7,
+        }
+        .event_capacity_mismatch(),
+        Some((11, 7))
     );
 }

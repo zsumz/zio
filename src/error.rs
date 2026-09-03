@@ -149,6 +149,22 @@ impl Error {
         }
     }
 
+    /// Returns the fixed capacity associated with a capacity failure.
+    pub const fn capacity_limit(&self) -> Option<usize> {
+        match self {
+            Self::Capacity { limit } => Some(*limit),
+            _ => None,
+        }
+    }
+
+    /// Returns `(required, actual)` for an undersized event destination.
+    pub const fn event_capacity_mismatch(&self) -> Option<(usize, usize)> {
+        match self {
+            Self::EventsTooSmall { required, actual } => Some((*required, *actual)),
+            _ => None,
+        }
+    }
+
     /// Returns the underlying I/O error, when present.
     pub const fn io_error(&self) -> Option<&io::Error> {
         match self {

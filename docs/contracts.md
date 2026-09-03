@@ -11,8 +11,8 @@ must include a fallback arm. `Event`, `CommitStatus`, `DescriptorOwnership`,
 domains; changing their cases is a breaking contract change. Event fields may
 grow; match with `..`.
 
-Use `Error` accessors for operation, commit status, registration ID, and typed
-I/O details.
+Use `Error` accessors for operation, commit status, registration ID, capacity
+details, and typed I/O errors.
 
 ## Registration ownership
 
