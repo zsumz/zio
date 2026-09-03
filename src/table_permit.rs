@@ -51,6 +51,7 @@ impl ReservationFailure {
         (self.error, self.descriptor)
     }
 
+    #[cfg(test)]
     pub(crate) fn discard_descriptor(self) -> Error {
         let (error, descriptor) = self.into_parts();
         drop(descriptor);
@@ -170,12 +171,6 @@ impl Reservation<'_> {
     pub(crate) fn keep<Value>(self, value: Value) -> Value {
         self.lease.keep();
         value
-    }
-
-    #[inline]
-    pub(crate) fn retire(self) -> Result<(), Error> {
-        drop(self.release()?);
-        Ok(())
     }
 
     #[inline]

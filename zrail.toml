@@ -595,7 +595,7 @@ target = "src/descriptor.rs"
 [[ratchet]]
 reason = "The mutation seam explicitly propagates the public borrowed-descriptor lifetime contract into fixed storage."
 rule = "rust.hygiene.unsafe"
-target = "src/mutation/machine.rs"
+target = "src/mutation/register_session.rs"
 
 [[ratchet]]
 reason = "The public borrowed-registration entrypoint states the complete caller-managed descriptor lifetime contract."

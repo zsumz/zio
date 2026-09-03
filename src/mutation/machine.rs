@@ -1,23 +1,17 @@
-//! Portable registration state transitions over a static mutation driver.
-
-use std::os::fd::{AsFd, OwnedFd};
+//! Portable mutation state transitions over a static driver.
 
 use crate::{
-    ArmState, CommitStatus, DeleteError, Error, Interest, Key, Mode, MutationError, Operation,
-    RegisterError, Registration, RegistrationState, descriptor::Descriptor,
-    registration::PollOwner, table::RegistrationTable,
+    ArmState, CommitStatus, DeleteError, Error, Interest, Mode, MutationError, Operation,
+    Registration, RegistrationState, registration::PollOwner, table::RegistrationTable,
 };
 
-use super::{
-    DeleteRequest, ModifyRequest, MutationDriver, authority::require_owner,
-    register::register_descriptor as apply_registration,
-};
+use super::{DeleteRequest, ModifyRequest, MutationDriver, authority::require_owner};
 
 /// Borrowed mutation state with a statically selected driver.
 pub(crate) struct MutationSession<'state, Driver> {
-    owner: &'state mut PollOwner,
-    registrations: &'state mut RegistrationTable,
-    driver: &'state mut Driver,
+    pub(super) owner: &'state mut PollOwner,
+    pub(super) registrations: &'state mut RegistrationTable,
+    pub(super) driver: &'state mut Driver,
 }
 
 impl<'state, Driver: MutationDriver> MutationSession<'state, Driver> {
@@ -31,86 +25,6 @@ impl<'state, Driver: MutationDriver> MutationSession<'state, Driver> {
             registrations,
             driver,
         }
-    }
-
-    pub(crate) fn register<F: AsFd + ?Sized>(
-        &mut self,
-        source: &F,
-        key: Key,
-        interest: Interest,
-        mode: Mode,
-    ) -> Result<Registration, RegisterError> {
-        validate_registration_interest(interest)?;
-        let descriptor = source.as_fd().try_clone_to_owned().map_err(|source| {
-            RegisterError::new(
-                Error::Io {
-                    operation: Operation::Register,
-                    source,
-                },
-                None,
-            )
-        })?;
-        self.register_descriptor(Descriptor::owned(descriptor), key, interest, mode)
-    }
-
-    pub(crate) fn register_owned(
-        &mut self,
-        source: OwnedFd,
-        key: Key,
-        interest: Interest,
-        mode: Mode,
-    ) -> Result<Registration, RegisterError> {
-        validate_registration_interest(interest)?;
-        self.register_descriptor(Descriptor::owned(source), key, interest, mode)
-    }
-
-    /// Registers after erasing the source borrow into the retained table.
-    ///
-    /// # Safety
-    ///
-    /// The source must satisfy the complete lifetime and identity contract of
-    /// [`crate::Poll::register_borrowed`].
-    #[allow(
-        unsafe_code,
-        reason = "this internal seam propagates the public borrowed-descriptor contract"
-    )]
-    #[inline]
-    pub(crate) unsafe fn register_borrowed<F: AsFd + ?Sized>(
-        &mut self,
-        source: &F,
-        key: Key,
-        interest: Interest,
-        mode: Mode,
-    ) -> Result<Registration, RegisterError> {
-        validate_registration_interest(interest)?;
-        // SAFETY: this function requires the caller to uphold the descriptor
-        // lifetime and identity invariant until the retained value is dropped.
-        let descriptor = unsafe { Descriptor::borrowed(source.as_fd()) };
-        self.register_descriptor(descriptor, key, interest, mode)
-    }
-
-    #[inline]
-    fn register_descriptor(
-        &mut self,
-        descriptor: Descriptor,
-        key: Key,
-        interest: Interest,
-        mode: Mode,
-    ) -> Result<Registration, RegisterError> {
-        let Self {
-            owner,
-            registrations,
-            driver,
-        } = self;
-        apply_registration(
-            owner,
-            registrations,
-            &mut **driver,
-            descriptor,
-            key,
-            interest,
-            mode,
-        )
     }
 
     pub(crate) fn modify(
@@ -223,13 +137,6 @@ impl<'state, Driver: MutationDriver> MutationSession<'state, Driver> {
             .retire()
             .map_err(|error| DeleteError::new(error, registration))
     }
-}
-
-#[inline]
-fn validate_registration_interest(interest: Interest) -> Result<(), RegisterError> {
-    (!interest.is_empty())
-        .then_some(())
-        .ok_or(RegisterError::new(Error::InvalidInterest, None))
 }
 
 fn mutation_error(operation: Operation, failure: crate::sys::MutationFailure) -> Error {

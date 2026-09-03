@@ -125,7 +125,7 @@ fn reservation_carries_the_inserted_descriptor_and_retire_proof() -> Result<(), 
         )
         .map_err(super::permit::ReservationFailure::discard_descriptor)?;
     assert_eq!(observed, (raw_descriptor, id));
-    reservation.retire()?;
+    drop(reservation.release()?);
     assert!(matches!(
         table.state(id),
         Err(Error::Stale { registration }) if registration == id

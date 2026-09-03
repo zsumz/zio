@@ -6,8 +6,8 @@ use crate::{
     DeleteError, Error, Interest, Key, Mode, Poll, RegisterError, Registration, RegistrationInfo,
     RegistrationState,
     mutation::{
-        MutationSession, registration_fd, registration_info, registration_state, registrations,
-        set_registration_key,
+        MutationSession, RegisterFailure, registration_fd, registration_info, registration_state,
+        registrations, set_registration_key,
     },
 };
 
@@ -52,7 +52,9 @@ impl Poll {
         interest: Interest,
         mode: Mode,
     ) -> Result<Registration, RegisterError> {
-        self.mutations().register_owned(source, key, interest, mode)
+        self.mutations()
+            .register_owned(source, key, interest, mode)
+            .map_err(RegisterFailure::discard_released)
     }
 
     /// Replaces interest and mode, rearming a one-shot registration.

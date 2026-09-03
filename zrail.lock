@@ -2,18 +2,18 @@
 schema = 2
 semantics = 3
 producer = "0.0.3-rc.4"
-contract_sha256 = "03e3fbba47efadd3d16dba10012d3cae2905a4d4742063d2f024cceb2c68eba8"
+contract_sha256 = "fff3b1b743fff4f399079c990d2fee04418097a839799f8c9ee7191d8886a7c2"
 
 [analysis]
-inventory_sha256 = "59db356639391d6fe377cab1123a2ac70728adbe83c3c2822b26bda83295bca6"
+inventory_sha256 = "d5d5c1fcc07673d161097038928462b7040a28f82ed6217b0bbff11079e293f2"
 exclusions_sha256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 cargo_lock_sha256 = "c57d02582afe8069129844f4f07aa867b3a1a9391d77b4be4e5ca0013a6d1687"
 packages = 3
 targets = 34
-physical_rust_files = 252
-base_source_contexts = 427
+physical_rust_files = 254
+base_source_contexts = 430
 derived_source_contexts = 0
-source_facts = 72655
+source_facts = 73207
 projection_queries = 0
 projected_facts = 0
 unresolved_bindings = 0
@@ -21,7 +21,7 @@ analyzer_semantics = 3
 
 [[analysis.contract_source]]
 path = "zrail.toml"
-sha256 = "5958b451fb46d604cf96d7d859f40ad8945334f1aca9809874e912d99b8b2318"
+sha256 = "05112b389fba2d955fa32647c97512d37611d9a2eaeeea1b871f43e782964c7a"
 
 [[package]]
 name = "zio"
@@ -596,7 +596,7 @@ value = 3
 
 [[ratchet]]
 rule = "rust.hygiene.unsafe"
-target = "src/mutation/machine.rs"
+target = "src/mutation/register_session.rs"
 value = 2
 
 [[ratchet]]

@@ -11,6 +11,44 @@ use crate::{
 
 use super::{MutationDriver, RegisterRequest};
 
+#[derive(Debug)]
+pub(crate) enum RegisterFailure {
+    Released {
+        error: Error,
+        descriptor: Descriptor,
+    },
+    Retained {
+        error: Error,
+        registration: Registration,
+    },
+}
+
+impl RegisterFailure {
+    pub(crate) const fn released(error: Error, descriptor: Descriptor) -> Self {
+        Self::Released { error, descriptor }
+    }
+
+    const fn retained(error: Error, registration: Registration) -> Self {
+        Self::Retained {
+            error,
+            registration,
+        }
+    }
+
+    pub(crate) fn discard_released(self) -> RegisterError {
+        match self {
+            Self::Released { error, descriptor } => {
+                drop(descriptor);
+                RegisterError::new(error, None)
+            }
+            Self::Retained {
+                error,
+                registration,
+            } => RegisterError::new(error, Some(registration)),
+        }
+    }
+}
+
 #[inline]
 pub(super) fn register_descriptor<Driver: MutationDriver>(
     owner: &mut PollOwner,
@@ -20,7 +58,7 @@ pub(super) fn register_descriptor<Driver: MutationDriver>(
     key: Key,
     interest: Interest,
     mode: Mode,
-) -> Result<Registration, RegisterError> {
+) -> Result<Registration, RegisterFailure> {
     if registrations.has_reusable_slot() {
         return register_reused(
             owner,
@@ -52,14 +90,14 @@ fn register_reused<Driver: MutationDriver>(
     key: Key,
     interest: Interest,
     mode: Mode,
-) -> Result<Registration, RegisterError> {
+) -> Result<Registration, RegisterFailure> {
     let permit = match registrations.reused_permit() {
         Ok(permit) => permit,
-        Err(error) => return register_state_failure(error),
+        Err(error) => return Err(RegisterFailure::released(error, descriptor)),
     };
     let owner = match owner.get_or_assign() {
         Ok(owner) => owner,
-        Err(error) => return register_state_failure(error),
+        Err(error) => return Err(RegisterFailure::released(error, descriptor)),
     };
     let registration = Registration::new(owner, permit.encoded_id());
     let reserved = permit.reserve_with(
@@ -79,7 +117,10 @@ fn register_reused<Driver: MutationDriver>(
     );
     let (reservation, native) = match reserved {
         Ok(reserved) => reserved,
-        Err(failure) => return register_state_failure(failure.discard_descriptor()),
+        Err(failure) => {
+            let (error, descriptor) = failure.into_parts();
+            return Err(RegisterFailure::released(error, descriptor));
+        }
     };
     match native {
         Ok(()) => Ok(reservation.keep(registration)),
@@ -95,14 +136,14 @@ fn register_fresh<Driver: MutationDriver>(
     key: Key,
     interest: Interest,
     mode: Mode,
-) -> Result<Registration, RegisterError> {
+) -> Result<Registration, RegisterFailure> {
     let permit = match registrations.fresh_permit() {
         Ok(permit) => permit,
-        Err(error) => return register_state_failure(error),
+        Err(error) => return Err(RegisterFailure::released(error, descriptor)),
     };
     let owner = match owner.get_or_assign() {
         Ok(owner) => owner,
-        Err(error) => return register_state_failure(error),
+        Err(error) => return Err(RegisterFailure::released(error, descriptor)),
     };
     let registration = Registration::new(owner, permit.encoded_id());
     let reserved = permit.reserve_with(
@@ -122,7 +163,10 @@ fn register_fresh<Driver: MutationDriver>(
     );
     let (reservation, native) = match reserved {
         Ok(reserved) => reserved,
-        Err(failure) => return register_state_failure(failure.discard_descriptor()),
+        Err(failure) => {
+            let (error, descriptor) = failure.into_parts();
+            return Err(RegisterFailure::released(error, descriptor));
+        }
     };
     match native {
         Ok(()) => Ok(reservation.keep(registration)),
@@ -132,17 +176,11 @@ fn register_fresh<Driver: MutationDriver>(
 
 #[cold]
 #[inline(never)]
-fn register_state_failure(error: Error) -> Result<Registration, RegisterError> {
-    Err(RegisterError::new(error, None))
-}
-
-#[cold]
-#[inline(never)]
 fn settle_register_failure(
     reservation: Reservation<'_>,
     registration: Registration,
     failure: MutationFailure,
-) -> Result<Registration, RegisterError> {
+) -> Result<Registration, RegisterFailure> {
     let commit = failure.commit();
     let error = Error::Mutation(MutationError::new(
         Operation::Register,
@@ -150,21 +188,20 @@ fn settle_register_failure(
         failure.into_source(),
     ));
     match commit {
-        CommitStatus::NotApplied => {
-            if let Err(state) = reservation.retire() {
-                return Err(RegisterError::new(state, None));
-            }
-            Err(RegisterError::new(error, None))
-        }
-        CommitStatus::Applied => Err(RegisterError::new(
-            error,
-            Some(reservation.keep(registration)),
-        )),
+        CommitStatus::NotApplied => match reservation.release() {
+            Ok(descriptor) => Err(RegisterFailure::released(error, descriptor)),
+            Err(state) => Err(RegisterFailure::retained(state, registration)),
+        },
+        CommitStatus::Applied => Err(RegisterFailure::retained(error, registration)),
         CommitStatus::Unknown => {
             if let Err(state) = reservation.mark_uncertain() {
-                return Err(RegisterError::new(state, Some(registration)));
+                return Err(RegisterFailure::retained(state, registration));
             }
-            Err(RegisterError::new(error, Some(registration)))
+            Err(RegisterFailure::retained(error, registration))
         }
     }
 }
+
+#[cfg(test)]
+#[path = "register_test.rs"]
+mod tests;
