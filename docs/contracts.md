@@ -5,11 +5,13 @@ matching nonblocking operation is always authoritative.
 
 ## API evolution
 
-`Error`, `Operation`, `CapacityKind`, and `CapacityReason` are open diagnostic vocabularies.
-Downstream matches must include a fallback arm. `Event`, `CommitStatus`,
-`DescriptorOwnership`, `Mode`, `Wait`, `ArmState`, `RegistrationState`,
-`RegisterOwnedError`, and `DeleteOwnedError` are closed domains; case changes are
-breaking. Event fields may grow; match with `..`.
+Public enums have two evolution contracts:
+
+- `Error`, `Operation`, `CapacityKind`, and `CapacityReason` are open
+  diagnostics. Downstream matches need a fallback arm.
+- `Event`, `CommitStatus`, `DescriptorOwnership`, `Mode`, `Wait`, `ArmState`,
+  `RegistrationState`, `RegisterOwnedError`, and `DeleteOwnedError` are closed.
+  Variant changes are breaking. Event fields may grow; match with `..`.
 
 `Operation` names only failures a current backend can report.
 `Error::UnsupportedPlatform` has no associated operation.

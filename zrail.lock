@@ -240,7 +240,7 @@ sha256 = "2a4b286bea1a4a7ccba09cfcdc7855595f2a7092f519d440f745e4e7f97ef067"
 
 [[gate.input]]
 path = "docs/contracts.md"
-sha256 = "3ed800c8142729c3c875b5cb9b38fb5b487ff6d0d82e2bca79d2c933dc06a011"
+sha256 = "e8a9fe4049f4c61500030983a463a45a8ffbe268922ea7ba3950b3d1a78fbc0c"
 
 [[gate.input]]
 path = "docs/performance.md"
@@ -539,7 +539,7 @@ sha256 = "1a50c2de88083d858f8ba6aa2ca2862b1fc99fac24bdc1a5c2e4441b12694d9d"
 
 [[gate.input]]
 path = "docs/contracts.md"
-sha256 = "3ed800c8142729c3c875b5cb9b38fb5b487ff6d0d82e2bca79d2c933dc06a011"
+sha256 = "e8a9fe4049f4c61500030983a463a45a8ffbe268922ea7ba3950b3d1a78fbc0c"
 
 [[gate.input]]
 path = "docs/performance.md"
