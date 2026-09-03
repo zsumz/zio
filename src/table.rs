@@ -3,12 +3,14 @@
 use std::num::{NonZeroU32, NonZeroUsize};
 
 use crate::binding::{Binding, Observation};
-use crate::token::{MAX_REGISTRATIONS, decode, encode};
+use crate::token::{decode, encode};
 use crate::{
     ArmState, CapacityKind, CapacityReason, CommitStatus, Error, Interest, Key, Mode, Registration,
     RegistrationId, RegistrationInfo, RegistrationState, registration::PollId,
 };
 
+#[path = "table_capacity.rs"]
+mod capacity;
 #[path = "table_permit.rs"]
 mod permit;
 #[path = "table_reserve.rs"]
@@ -34,9 +36,7 @@ pub(crate) struct RegistrationTable {
 
 impl RegistrationTable {
     pub(crate) fn new(limit: NonZeroUsize) -> Result<Self, Error> {
-        if limit.get() > MAX_REGISTRATIONS {
-            return Err(Error::BackendOverflow);
-        }
+        Self::validate_capacity(limit)?;
         let mut slots = Vec::new();
         slots
             .try_reserve_exact(limit.get())

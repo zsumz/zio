@@ -96,6 +96,7 @@ impl Poll {
             limit: registrations,
             reason: CapacityReason::Zero,
         })?;
+        RegistrationTable::validate_capacity(registration_capacity)?;
         let raw_events = Backend::raw_batch(event_capacity.get(), registration_capacity.get())
             .ok_or(Error::BackendOverflow)?;
         let registrations = RegistrationTable::new(registration_capacity)?;

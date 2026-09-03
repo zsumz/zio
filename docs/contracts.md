@@ -18,6 +18,8 @@ its diagnostic fields may grow.
 
 Public value layouts and flag encodings are opaque.
 
+`BackendLimit` rejects capacities that native or token representations cannot hold.
+
 ## Registration ownership
 
 `Poll::register` is the safe default. Each successful call retains a distinct

@@ -25,6 +25,10 @@ fn diagnostics_use_plain_display_names() {
     assert_eq!(Operation::RegisterWaker.to_string(), "register waker");
     assert_eq!(CommitStatus::NotApplied.to_string(), "not applied");
     assert_eq!(CapacityReason::Zero.to_string(), "must be nonzero");
+    assert_eq!(
+        CapacityReason::BackendLimit.to_string(),
+        "exceeds the backend limit"
+    );
     assert_eq!(CapacityReason::Exhausted.to_string(), "is exhausted");
     assert_eq!(
         CapacityReason::StorageUnavailable.to_string(),

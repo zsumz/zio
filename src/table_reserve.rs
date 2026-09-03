@@ -25,7 +25,7 @@ impl RegistrationTable {
         }
         if self.slots.len() < self.limit.get() {
             let slot_index = self.slots.len();
-            let free_index = u32::try_from(slot_index).map_err(|_| Error::BackendOverflow)?;
+            let free_index = u32::try_from(slot_index).map_err(|_| Error::Invariant)?;
             let id =
                 encode(free_index, NonZeroU32::MIN).ok_or(Error::RegistrationSpaceExhausted)?;
             let Self {

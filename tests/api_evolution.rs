@@ -45,6 +45,10 @@ fn capacity_diagnostics_are_open() {
     );
     assert_eq!(capacity_reason_class(CapacityReason::Zero), "zero");
     assert_eq!(
+        capacity_reason_class(CapacityReason::BackendLimit),
+        "backend-limit"
+    );
+    assert_eq!(
         capacity_reason_class(CapacityReason::StorageUnavailable),
         "storage"
     );

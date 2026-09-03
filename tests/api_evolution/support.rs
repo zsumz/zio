@@ -36,6 +36,7 @@ pub(super) fn capacity_kind_class(kind: CapacityKind) -> &'static str {
 pub(super) fn capacity_reason_class(reason: CapacityReason) -> &'static str {
     match reason {
         CapacityReason::Zero => "zero",
+        CapacityReason::BackendLimit => "backend-limit",
         CapacityReason::Exhausted => "exhausted",
         CapacityReason::StorageUnavailable => "storage",
         _ => "other",

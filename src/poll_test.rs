@@ -23,6 +23,19 @@ fn zero_capacities_report_their_kind() {
 }
 
 #[test]
+#[cfg(target_pointer_width = "64")]
+fn oversized_registration_capacity_reports_the_backend_limit() {
+    assert!(matches!(
+        Poll::with_capacity(1, usize::MAX),
+        Err(Error::Capacity {
+            kind: CapacityKind::Registration,
+            limit: usize::MAX,
+            reason: CapacityReason::BackendLimit,
+        })
+    ));
+}
+
+#[test]
 fn debug_output_is_backend_neutral() -> Result<(), crate::Error> {
     let mut poll = Poll::with_capacity(3, 5)?;
 

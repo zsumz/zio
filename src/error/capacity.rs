@@ -22,6 +22,8 @@ pub enum CapacityReason {
     Exhausted,
     /// Rust could not reserve the requested storage.
     StorageUnavailable,
+    /// The configured capacity exceeds a backend representation limit.
+    BackendLimit,
 }
 
 impl fmt::Display for CapacityKind {
@@ -39,6 +41,7 @@ impl fmt::Display for CapacityReason {
             Self::Zero => "must be nonzero",
             Self::Exhausted => "is exhausted",
             Self::StorageUnavailable => "could not be reserved",
+            Self::BackendLimit => "exceeds the backend limit",
         })
     }
 }

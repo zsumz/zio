@@ -95,6 +95,23 @@ fn construction_allocates_only_the_slot_buffer() -> Result<(), Box<dyn StdError>
 }
 
 #[test]
+#[cfg(target_pointer_width = "64")]
+fn construction_rejects_unrepresentable_registration_capacity() -> Result<(), Box<dyn StdError>> {
+    let limit = usize::try_from(u64::from(u32::MAX) + 1)?;
+    let limit = NonZeroUsize::new(limit).ok_or(Error::Invariant)?;
+
+    assert!(matches!(
+        RegistrationTable::new(limit),
+        Err(Error::Capacity {
+            kind: crate::CapacityKind::Registration,
+            limit: actual,
+            reason: crate::CapacityReason::BackendLimit,
+        }) if actual == limit.get()
+    ));
+    Ok(())
+}
+
+#[test]
 fn reserve_and_retire_remain_allocation_free() -> Result<(), Box<dyn StdError>> {
     let mut table = table(1)?;
     let source = File::open("/dev/null")?;
