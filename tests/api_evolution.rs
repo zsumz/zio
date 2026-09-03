@@ -1,9 +1,10 @@
 //! Downstream matching contracts for open diagnostics and closed domains.
 
 use zio::{
-    ArmState, CommitStatus, DeleteError, DescriptorOwnership, Error, Event, Events, Key, Mode,
-    MutationError, Operation, Poll, Readiness, RecoveryFailure, RecoveryOutcome, RegisterError,
-    Registration, RegistrationId, RegistrationInfo, RegistrationState, Wait, WaitReport, Waker,
+    ArmState, CapacityKind, CommitStatus, DeleteError, DescriptorOwnership, Error, Event, Events,
+    Key, Mode, MutationError, Operation, Poll, Readiness, RecoveryFailure, RecoveryOutcome,
+    RegisterError, Registration, RegistrationId, RegistrationInfo, RegistrationState, Wait,
+    WaitReport, Waker,
 };
 
 #[path = "api_evolution/support.rs"]
@@ -27,8 +28,19 @@ fn errors_expose_common_diagnostics_without_matching() {
     let _ = Error::registration_id as fn(&Error) -> Option<zio::RegistrationId>;
     let _ = Error::waker_key_conflict as fn(&Error) -> Option<(Key, Key)>;
     let _ = Error::capacity_limit as fn(&Error) -> Option<usize>;
+    let _ = Error::capacity_kind as fn(&Error) -> Option<CapacityKind>;
     let _ = Error::event_capacity_mismatch as fn(&Error) -> Option<(usize, usize)>;
     let _ = Error::io_error as fn(&Error) -> Option<&std::io::Error>;
+}
+
+#[test]
+fn capacity_kinds_are_open_diagnostics() {
+    assert_display::<CapacityKind>();
+    assert_eq!(capacity_kind_class(CapacityKind::Event), "event");
+    assert_eq!(
+        capacity_kind_class(CapacityKind::Registration),
+        "registration"
+    );
 }
 
 #[test]
@@ -202,6 +214,14 @@ fn operation_class(operation: Operation) -> &'static str {
 fn error_class(error: &Error) -> &'static str {
     match error {
         Error::Invariant => "contract",
+        _ => "other",
+    }
+}
+
+fn capacity_kind_class(kind: CapacityKind) -> &'static str {
+    match kind {
+        CapacityKind::Event => "event",
+        CapacityKind::Registration => "registration",
         _ => "other",
     }
 }

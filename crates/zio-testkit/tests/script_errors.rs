@@ -2,7 +2,7 @@
 
 use std::os::unix::net::UnixStream;
 
-use zio::{Error, Interest, Key, Mode, Operation};
+use zio::{CapacityKind, Error, Interest, Key, Mode, Operation};
 use zio_testkit::support::{MutationOutcome, MutationStep, ScriptError, ScriptedPoll};
 
 const KEY: Key = Key::new(404);
@@ -48,5 +48,12 @@ fn script_reports_remaining_steps() -> Result<(), Box<dyn std::error::Error>> {
 #[test]
 fn scripted_poll_rejects_zero_capacity() {
     let result = ScriptedPoll::with_capacity(0, std::iter::empty::<MutationStep>());
-    assert!(matches!(result, Err(Error::Capacity { limit: 0, .. })));
+    assert!(matches!(
+        result,
+        Err(Error::Capacity {
+            kind: CapacityKind::Registration,
+            limit: 0,
+            ..
+        })
+    ));
 }

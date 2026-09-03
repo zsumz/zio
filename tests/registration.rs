@@ -11,7 +11,7 @@ mod support;
 
 use std::{io::Write, os::unix::net::UnixStream, thread, time::Duration};
 
-use zio::{Error, Event, Interest, Key, Mode, Poll, Wait};
+use zio::{CapacityKind, Error, Event, Interest, Key, Mode, Poll, Wait};
 
 use support::require_no_recovery;
 
@@ -104,7 +104,15 @@ fn registration_capacity_is_fixed() -> Result<(), Box<dyn std::error::Error>> {
     let result = poll.register(&second, Key::new(2), Interest::READABLE, Mode::Level);
     assert!(matches!(
         result,
-        Err(error) if matches!(error.error(), Error::Capacity { limit: 1, .. })
+        Err(error)
+            if matches!(
+                error.error(),
+                Error::Capacity {
+                    kind: CapacityKind::Registration,
+                    limit: 1,
+                    ..
+                }
+            )
     ));
     assert_eq!(poll.registration_count(), 1);
 

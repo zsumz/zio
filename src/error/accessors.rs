@@ -4,7 +4,7 @@ use std::io;
 
 use crate::{Key, Registration, RegistrationId};
 
-use super::{CommitStatus, Error, Operation};
+use super::{CapacityKind, CommitStatus, Error, Operation};
 
 impl Error {
     /// Returns the associated operation, when one is recorded.
@@ -56,7 +56,15 @@ impl Error {
     /// Returns the fixed capacity associated with a capacity failure.
     pub const fn capacity_limit(&self) -> Option<usize> {
         match self {
-            Self::Capacity { limit } => Some(*limit),
+            Self::Capacity { limit, .. } => Some(*limit),
+            _ => None,
+        }
+    }
+
+    /// Returns the storage category associated with a capacity failure.
+    pub const fn capacity_kind(&self) -> Option<CapacityKind> {
+        match self {
+            Self::Capacity { kind, .. } => Some(*kind),
             _ => None,
         }
     }

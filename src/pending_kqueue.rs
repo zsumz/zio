@@ -4,7 +4,7 @@
 
 use core::num::NonZeroUsize;
 
-use crate::{Error, Key, Readiness, RegistrationId};
+use crate::{CapacityKind, Error, Key, Readiness, RegistrationId};
 
 const EMPTY: u32 = u32::MAX;
 
@@ -29,12 +29,14 @@ impl KqueuePending {
         entries
             .try_reserve_exact(capacity.get())
             .map_err(|_| Error::Capacity {
+                kind: CapacityKind::Event,
                 limit: capacity.get(),
             })?;
         let mut by_slot = Vec::new();
         by_slot
             .try_reserve_exact(registrations.get())
             .map_err(|_| Error::Capacity {
+                kind: CapacityKind::Registration,
                 limit: registrations.get(),
             })?;
         by_slot.resize(registrations.get(), EMPTY);

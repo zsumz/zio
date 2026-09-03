@@ -16,7 +16,10 @@ use std::{
     time::Duration,
 };
 
-use zio::{ArmState, Error, Event, Events, Interest, Key, Mode, Poll, RegistrationState, Wait};
+use zio::{
+    ArmState, CapacityKind, Error, Event, Events, Interest, Key, Mode, Poll, RegistrationState,
+    Wait,
+};
 
 use support::require_no_recovery;
 
@@ -226,7 +229,11 @@ fn wait_rejects_an_undersized_destination() -> Result<(), Box<dyn std::error::Er
 fn oversized_event_capacity_is_reported_without_panicking() {
     assert!(matches!(
         Events::with_capacity(usize::MAX),
-        Err(Error::Capacity { limit, .. }) if limit == usize::MAX
+        Err(Error::Capacity {
+            kind: CapacityKind::Event,
+            limit,
+            ..
+        }) if limit == usize::MAX
     ));
 }
 

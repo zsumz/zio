@@ -3,7 +3,7 @@
 use std::{fmt::Debug, os::unix::net::UnixStream};
 
 use zio::{
-    Error, Interest, Mode, Registration, RegistrationId, RegistrationState,
+    CapacityKind, Error, Interest, Mode, Registration, RegistrationId, RegistrationState,
     test_support::{ScriptedBackendState, ScriptedPoll},
 };
 
@@ -153,7 +153,11 @@ pub(crate) fn expect_retained_capacity(
         );
     }
     match error {
-        Error::Capacity { limit: 1, .. } => Ok(()),
+        Error::Capacity {
+            kind: CapacityKind::Registration,
+            limit: 1,
+            ..
+        } => Ok(()),
         actual => mismatch(
             scenario,
             ConformanceCheck::CapacityRetention,

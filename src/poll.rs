@@ -3,7 +3,7 @@
 use std::{fmt, num::NonZeroUsize};
 
 use crate::{
-    Error, Events, Key, Operation,
+    CapacityKind, Error, Events, Key, Operation,
     registration::PollOwner,
     sys::{Backend, RawBatch, Wake},
     table::RegistrationTable,
@@ -86,8 +86,12 @@ impl Poll {
 
     /// Creates a poller with fixed event and registration capacities.
     pub fn with_capacity(events: usize, registrations: usize) -> Result<Self, Error> {
-        let event_capacity = NonZeroUsize::new(events).ok_or(Error::Capacity { limit: events })?;
+        let event_capacity = NonZeroUsize::new(events).ok_or(Error::Capacity {
+            kind: CapacityKind::Event,
+            limit: events,
+        })?;
         let registration_capacity = NonZeroUsize::new(registrations).ok_or(Error::Capacity {
+            kind: CapacityKind::Registration,
             limit: registrations,
         })?;
         let raw_events = Backend::raw_batch(event_capacity.get(), registration_capacity.get())

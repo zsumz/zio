@@ -5,7 +5,7 @@ use std::num::{NonZeroU32, NonZeroUsize};
 use crate::binding::{Binding, Observation};
 use crate::token::{MAX_REGISTRATIONS, decode, encode};
 use crate::{
-    ArmState, CommitStatus, Error, Interest, Key, Mode, Registration, RegistrationId,
+    ArmState, CapacityKind, CommitStatus, Error, Interest, Key, Mode, Registration, RegistrationId,
     RegistrationInfo, RegistrationState, registration::PollId,
 };
 
@@ -40,7 +40,10 @@ impl RegistrationTable {
         let mut slots = Vec::new();
         slots
             .try_reserve_exact(limit.get())
-            .map_err(|_| Error::Capacity { limit: limit.get() })?;
+            .map_err(|_| Error::Capacity {
+                kind: CapacityKind::Registration,
+                limit: limit.get(),
+            })?;
         Ok(Self {
             limit,
             slots,
@@ -77,7 +80,10 @@ impl RegistrationTable {
         let mut registrations = Vec::new();
         registrations
             .try_reserve_exact(occupied)
-            .map_err(|_| Error::Capacity { limit: occupied })?;
+            .map_err(|_| Error::Capacity {
+                kind: CapacityKind::Registration,
+                limit: occupied,
+            })?;
         for (index, slot) in self.slots.iter().enumerate() {
             if slot.entry.is_none() {
                 continue;

@@ -5,11 +5,11 @@ matching nonblocking operation is always authoritative.
 
 ## API evolution
 
-`Error` and `Operation` are open diagnostic vocabularies. Downstream matches
-must include a fallback arm. `Event`, `CommitStatus`, `DescriptorOwnership`,
-`Mode`, `Wait`, `ArmState`, and `RegistrationState` are intentionally closed
-domains; changing their cases is a breaking contract change. Event fields may
-grow; match with `..`.
+`Error`, `Operation`, and `CapacityKind` are open diagnostic vocabularies.
+Downstream matches must include a fallback arm. `Event`, `CommitStatus`,
+`DescriptorOwnership`, `Mode`, `Wait`, `ArmState`, and `RegistrationState` are
+closed domains; case changes are breaking. Event fields may grow; match with
+`..`.
 
 `Operation` names only failures a current backend can report.
 

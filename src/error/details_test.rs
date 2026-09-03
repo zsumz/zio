@@ -2,7 +2,7 @@
 
 use std::io;
 
-use crate::{Registration, RegistrationId};
+use crate::{CapacityKind, Registration, RegistrationId};
 
 use super::{CommitStatus, DeleteError, Error, MutationError, Operation, RegisterError};
 
@@ -69,8 +69,12 @@ fn diagnostics_use_plain_display_names() {
         "registration 9 has uncertain backend state"
     );
     assert_eq!(
-        Error::Capacity { limit: 0 }.to_string(),
-        "fixed capacity 0 is unavailable"
+        Error::Capacity {
+            kind: CapacityKind::Event,
+            limit: 0,
+        }
+        .to_string(),
+        "event capacity 0 is unavailable"
     );
 }
 
@@ -136,7 +140,12 @@ fn top_level_accessors_expose_embedded_diagnostics() {
         Error::Uncertain { registration: id }.registration_id(),
         Some(id)
     );
-    assert_eq!(Error::Capacity { limit: 17 }.capacity_limit(), Some(17));
+    let capacity = Error::Capacity {
+        kind: CapacityKind::Registration,
+        limit: 17,
+    };
+    assert_eq!(capacity.capacity_limit(), Some(17));
+    assert_eq!(capacity.capacity_kind(), Some(CapacityKind::Registration));
     assert_eq!(
         Error::WakerAlreadyConfigured {
             existing: crate::Key::new(3),

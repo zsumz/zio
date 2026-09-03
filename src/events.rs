@@ -2,7 +2,7 @@
 
 use std::{iter::FusedIterator, num::NonZeroUsize};
 
-use crate::{Error, Event};
+use crate::{CapacityKind, Error, Event};
 
 /// Fixed-capacity destination preserving native resource order.
 /// A wake follows resource events, and registrations may share a key.
@@ -27,6 +27,7 @@ impl Events {
         events
             .try_reserve_exact(capacity.get())
             .map_err(|_| Error::Capacity {
+                kind: CapacityKind::Event,
                 limit: capacity.get(),
             })?;
         Ok(Self { capacity, events })

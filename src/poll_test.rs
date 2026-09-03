@@ -1,6 +1,24 @@
 //! Public poller diagnostics.
 
-use crate::{Key, Poll};
+use crate::{CapacityKind, Error, Key, Poll};
+
+#[test]
+fn zero_capacities_report_their_kind() {
+    assert!(matches!(
+        Poll::with_capacity(0, 1),
+        Err(Error::Capacity {
+            kind: CapacityKind::Event,
+            limit: 0,
+        })
+    ));
+    assert!(matches!(
+        Poll::with_capacity(1, 0),
+        Err(Error::Capacity {
+            kind: CapacityKind::Registration,
+            limit: 0,
+        })
+    ));
+}
 
 #[test]
 fn debug_output_is_backend_neutral() -> Result<(), crate::Error> {

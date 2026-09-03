@@ -8,7 +8,7 @@ use std::{
 };
 
 use crate::{
-    ArmState, Error, Interest, Key, Mode, RegistrationId, RegistrationState,
+    ArmState, CapacityKind, Error, Interest, Key, Mode, RegistrationId, RegistrationState,
     registration::PollOwner, table::RegistrationTable,
 };
 
@@ -90,7 +90,13 @@ fn capacity_preflight_does_not_attempt_identity_assignment()
         owner.get_or_assign_from(&next)?;
     }
 
-    assert!(matches!(result, Err(Error::Capacity { limit: 1 })));
+    assert!(matches!(
+        result,
+        Err(Error::Capacity {
+            kind: CapacityKind::Registration,
+            limit: 1,
+        })
+    ));
     assert!(owner.current().is_none());
     assert_eq!(next.load(Ordering::Relaxed), u64::MAX);
     Ok(())

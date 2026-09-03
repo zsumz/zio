@@ -1,6 +1,7 @@
 //! Portable setup, mutation, wait, wake, and recovery failures.
 
 mod accessors;
+mod capacity;
 mod details;
 #[cfg(test)]
 mod details_test;
@@ -13,6 +14,7 @@ use std::{fmt, io};
 
 use crate::{Key, Registration, RegistrationId};
 
+pub use capacity::CapacityKind;
 pub use details::{DeleteError, MutationError, RegisterError};
 pub use recovery::{RecoveryFailure, RecoveryOutcome};
 
@@ -126,6 +128,8 @@ pub enum Error {
     /// A requested fixed capacity is zero, exhausted, or unavailable.
     #[non_exhaustive]
     Capacity {
+        /// Storage category that was unavailable.
+        kind: CapacityKind,
         /// Configured capacity.
         limit: usize,
     },
@@ -173,7 +177,9 @@ impl fmt::Display for Error {
                 formatter,
                 "registration {registration} has uncertain backend state"
             ),
-            Self::Capacity { limit } => write!(formatter, "fixed capacity {limit} is unavailable"),
+            Self::Capacity { kind, limit } => {
+                write!(formatter, "{kind} capacity {limit} is unavailable")
+            }
             Self::RegistrationSpaceExhausted => {
                 formatter.write_str("registration generation space is exhausted")
             }

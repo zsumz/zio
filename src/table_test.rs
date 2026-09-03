@@ -248,5 +248,11 @@ fn assert_reused(
 }
 
 fn assert_capacity(result: &Result<crate::RegistrationId, Error>, expected: usize) {
-    assert!(matches!(result, Err(Error::Capacity { limit }) if *limit == expected));
+    assert!(matches!(
+        result,
+        Err(Error::Capacity {
+            kind: crate::CapacityKind::Registration,
+            limit,
+        }) if *limit == expected
+    ));
 }
