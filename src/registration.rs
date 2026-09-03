@@ -105,6 +105,16 @@ impl Registration {
         Self { owner, id }
     }
 
+    #[cfg_attr(
+        not(any(
+            test,
+            target_os = "linux",
+            target_os = "macos",
+            target_os = "freebsd",
+            target_os = "netbsd"
+        )),
+        allow(dead_code, reason = "matches supported observation construction")
+    )]
     pub(crate) const fn from_verified(owner: PollId, id: RegistrationId) -> Self {
         Self::new(owner, EncodedRegistrationId::from_verified(id))
     }
@@ -156,26 +166,6 @@ pub enum DescriptorOwnership {
     Owned,
     /// The caller owns the retained descriptor and its lifetime obligation.
     Borrowed,
-}
-
-impl RegistrationState {
-    /// Returns whether backend state is known to remain registered.
-    pub const fn is_registered(self) -> bool {
-        matches!(self, Self::Registered { .. })
-    }
-
-    /// Returns whether backend state cannot be proven.
-    pub const fn is_uncertain(self) -> bool {
-        matches!(self, Self::Uncertain)
-    }
-
-    /// Returns delivery eligibility when backend state is known.
-    pub const fn arm(self) -> Option<ArmState> {
-        match self {
-            Self::Registered { arm } => Some(arm),
-            Self::Uncertain => None,
-        }
-    }
 }
 
 /// Poller-retained configuration and state for one registration.

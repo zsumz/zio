@@ -23,6 +23,10 @@ use super::{
 #[derive(Debug)]
 pub(crate) struct RawBatch;
 
+#[allow(
+    clippy::unused_self,
+    reason = "matches the target-selected raw-event method contract"
+)]
 impl RawBatch {
     pub(crate) const fn event(&self, _index: usize, _observed: usize) -> Option<RawEvent> {
         None
@@ -33,6 +37,10 @@ impl RawBatch {
 #[derive(Debug)]
 pub(crate) struct Wake;
 
+#[allow(
+    clippy::unused_self,
+    reason = "matches the target-selected wake method contract"
+)]
 impl Wake {
     pub(crate) fn wake(&self) -> io::Result<()> {
         Err(unsupported_error())
@@ -43,6 +51,10 @@ impl Wake {
 #[derive(Debug)]
 pub(crate) struct Backend;
 
+#[allow(
+    clippy::unused_self,
+    reason = "matches the target-selected backend method contract"
+)]
 impl Backend {
     pub(crate) fn raw_batch(capacity: usize) -> Option<RawBatch> {
         (capacity > 0).then_some(RawBatch)
@@ -88,14 +100,6 @@ impl Backend {
 
     pub(crate) fn wait(&self, _batch: &mut RawBatch, _wait: Wait) -> io::Result<usize> {
         Err(unsupported_error())
-    }
-
-    pub(crate) fn disarm(
-        &self,
-        _descriptor: i32,
-        _interest: Interest,
-    ) -> Result<(), MutationFailure> {
-        Err(unsupported_mutation())
     }
 }
 

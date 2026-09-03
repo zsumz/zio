@@ -125,6 +125,15 @@ impl RegistrationTable {
     }
 
     #[cfg(test)]
+    #[cfg_attr(
+        not(any(
+            target_os = "linux",
+            target_os = "macos",
+            target_os = "freebsd",
+            target_os = "netbsd"
+        )),
+        allow(dead_code, reason = "matches supported retirement test support")
+    )]
     #[inline]
     pub(crate) fn prepare_retire(
         &mut self,

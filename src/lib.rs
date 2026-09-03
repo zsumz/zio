@@ -55,6 +55,7 @@ mod registration_borrowed;
 mod registration_debug;
 mod registration_id;
 mod registration_ops;
+mod registration_state;
 mod sys;
 mod table;
 #[cfg(feature = "unstable-test-support")]

@@ -73,8 +73,8 @@ impl RawBatch {
     }
 
     #[cfg_attr(
-        target_os = "linux",
-        allow(dead_code, reason = "projection-stable non-Linux raw-event facade")
+        not(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd")),
+        allow(dead_code, reason = "matches the target-selected raw-event facade")
     )]
     pub(crate) fn event(&self, index: usize, observed: usize) -> Option<RawEvent> {
         #[cfg(target_os = "linux")]
