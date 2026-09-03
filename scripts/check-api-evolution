@@ -113,8 +113,6 @@ printf '%s\n' \
   '    assert_thread_error::<RecoveryFailure>();' \
   '    let _ = MutationError::into_parts as fn(MutationError) -> (Operation, CommitStatus, std::io::Error);' \
   '    assert_ordered::<Registration>();' \
-  '    let _ = RegistrationId::get as fn(RegistrationId) -> u64;' \
-  '    assert_from::<u64, RegistrationId>();' \
   '    assert_display::<RegistrationId>();' \
   '    assert_hash::<Event>();' \
   '    assert_hash::<Wait>();' \

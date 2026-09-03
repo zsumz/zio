@@ -13,11 +13,10 @@ use crate::{
 };
 
 #[test]
-fn registration_ids_expose_their_numeric_value() {
+fn registration_ids_format_for_diagnostics() {
     let id = RegistrationId::new(42);
 
     assert_eq!(id.get(), 42);
-    assert_eq!(u64::from(id), 42);
     assert_eq!(id.to_string(), "42");
 }
 

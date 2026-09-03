@@ -39,8 +39,6 @@ fn registration_handles_support_ordered_collections() {
 
 #[test]
 fn registration_ids_support_diagnostic_interop() {
-    let _ = RegistrationId::get as fn(RegistrationId) -> u64;
-    assert_from::<u64, RegistrationId>();
     assert_display::<RegistrationId>();
 }
 

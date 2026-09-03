@@ -13,7 +13,7 @@ targets = 38
 physical_rust_files = 273
 base_source_contexts = 456
 derived_source_contexts = 0
-source_facts = 78692
+source_facts = 78664
 projection_queries = 0
 projected_facts = 0
 unresolved_bindings = 0
@@ -240,7 +240,7 @@ sha256 = "2a4b286bea1a4a7ccba09cfcdc7855595f2a7092f519d440f745e4e7f97ef067"
 
 [[gate.input]]
 path = "docs/contracts.md"
-sha256 = "0c0f3a34d34be6eead1b6505897f7589352125af79d46ca767db3dc1eaa2dc63"
+sha256 = "f170b4753479805022aba3fe32eb7befce8d9d8e9d54784c7edd1a883f24442e"
 
 [[gate.input]]
 path = "docs/performance.md"
@@ -260,7 +260,7 @@ sha256 = "45e07033c8cd89ed400ee4e96ec608e338e89822233abd6e56c85040ece66520"
 
 [[gate.input]]
 path = "scripts/check-api-evolution"
-sha256 = "bb6ca75361028ad6fc36f96c7ba333f126703fc87788293f3c036e61793472c6"
+sha256 = "6aeb29082541bb0233154c5045b429543bc2532eb25735749cb5ba4b0fbfdcf0"
 
 [[gate.input]]
 path = "scripts/rehearse-release"
@@ -539,7 +539,7 @@ sha256 = "bce0e2ea23db2f5b8577cf539a6020e2558eca5419856bef1ef38877c4322bd9"
 
 [[gate.input]]
 path = "docs/contracts.md"
-sha256 = "0c0f3a34d34be6eead1b6505897f7589352125af79d46ca767db3dc1eaa2dc63"
+sha256 = "f170b4753479805022aba3fe32eb7befce8d9d8e9d54784c7edd1a883f24442e"
 
 [[gate.input]]
 path = "docs/performance.md"
@@ -555,7 +555,7 @@ sha256 = "279d77167cec5426fa80f457cd066dc74a360fbe4e2816f4f3fa01487a918fdc"
 
 [[gate.input]]
 path = "scripts/check-api-evolution"
-sha256 = "bb6ca75361028ad6fc36f96c7ba333f126703fc87788293f3c036e61793472c6"
+sha256 = "6aeb29082541bb0233154c5045b429543bc2532eb25735749cb5ba4b0fbfdcf0"
 
 [[gate.input]]
 path = "scripts/rehearse-release"

@@ -21,8 +21,7 @@ impl RegistrationId {
         Self(raw)
     }
 
-    /// Returns the opaque poller-local numeric identity.
-    pub const fn get(self) -> u64 {
+    pub(crate) const fn get(self) -> u64 {
         self.0
     }
 }
