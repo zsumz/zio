@@ -5,7 +5,97 @@ use core::{
     ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not, Sub, SubAssign},
 };
 
-use zio::{Error, Events, RecoveryFailure, RecoveryOutcome};
+use zio::{
+    ArmState, CapacityKind, CapacityReason, CommitStatus, DescriptorOwnership, Error, Event,
+    Events, Key, Mode, Operation, Readiness, RecoveryFailure, RecoveryOutcome, RegistrationState,
+    Wait,
+};
+
+pub(super) fn operation_class(operation: Operation) -> &'static str {
+    match operation {
+        Operation::Wait => "wait",
+        _ => "other",
+    }
+}
+
+pub(super) fn error_class(error: &Error) -> &'static str {
+    match error {
+        Error::Invariant => "contract",
+        _ => "other",
+    }
+}
+
+pub(super) fn capacity_kind_class(kind: CapacityKind) -> &'static str {
+    match kind {
+        CapacityKind::Event => "event",
+        CapacityKind::Registration => "registration",
+        _ => "other",
+    }
+}
+
+pub(super) fn capacity_reason_class(reason: CapacityReason) -> &'static str {
+    match reason {
+        CapacityReason::Zero => "zero",
+        CapacityReason::Exhausted => "exhausted",
+        CapacityReason::StorageUnavailable => "storage",
+        _ => "other",
+    }
+}
+
+pub(super) fn mode_class(mode: Mode) -> &'static str {
+    match mode {
+        Mode::Level => "level",
+        Mode::OneShot => "one-shot",
+    }
+}
+
+pub(super) fn wait_class(wait: Wait) -> &'static str {
+    match wait {
+        Wait::NoBlock => "no-block",
+        Wait::For(_) => "for",
+        Wait::Forever => "forever",
+    }
+}
+
+pub(super) fn commit_class(commit: CommitStatus) -> &'static str {
+    match commit {
+        CommitStatus::NotApplied => "not-applied",
+        CommitStatus::Applied => "applied",
+        CommitStatus::Unknown => "unknown",
+    }
+}
+
+pub(super) fn arm_class(arm: ArmState) -> &'static str {
+    match arm {
+        ArmState::Armed => "armed",
+        ArmState::Disarmed => "disarmed",
+    }
+}
+
+pub(super) fn state_class(state: RegistrationState) -> &'static str {
+    match state {
+        RegistrationState::Registered { arm } => arm_class(arm),
+        RegistrationState::Uncertain => "uncertain",
+    }
+}
+
+pub(super) fn ownership_class(ownership: DescriptorOwnership) -> &'static str {
+    match ownership {
+        DescriptorOwnership::Owned => "owned",
+        DescriptorOwnership::Borrowed => "borrowed",
+    }
+}
+
+#[allow(
+    dead_code,
+    reason = "compilation proves exhaustive downstream matching"
+)]
+pub(super) fn event_class(event: Event) -> (Key, Option<Readiness>) {
+    match event {
+        Event::Resource { key, readiness, .. } => (key, Some(readiness)),
+        Event::Wake { key, .. } => (key, None),
+    }
+}
 
 pub(super) fn assert_slice<T: AsRef<[U]>, U>() {}
 

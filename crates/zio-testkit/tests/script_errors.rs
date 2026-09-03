@@ -2,7 +2,7 @@
 
 use std::os::unix::net::UnixStream;
 
-use zio::{CapacityKind, Error, Interest, Key, Mode, Operation};
+use zio::{CapacityKind, CapacityReason, Error, Interest, Key, Mode, Operation};
 use zio_testkit::support::{MutationOutcome, MutationStep, ScriptError, ScriptedPoll};
 
 const KEY: Key = Key::new(404);
@@ -53,6 +53,7 @@ fn scripted_poll_rejects_zero_capacity() {
         Err(Error::Capacity {
             kind: CapacityKind::Registration,
             limit: 0,
+            reason: CapacityReason::Zero,
             ..
         })
     ));

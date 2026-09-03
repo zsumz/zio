@@ -1,6 +1,6 @@
 //! Public poller diagnostics.
 
-use crate::{CapacityKind, Error, Key, Poll};
+use crate::{CapacityKind, CapacityReason, Error, Key, Poll};
 
 #[test]
 fn zero_capacities_report_their_kind() {
@@ -9,6 +9,7 @@ fn zero_capacities_report_their_kind() {
         Err(Error::Capacity {
             kind: CapacityKind::Event,
             limit: 0,
+            reason: CapacityReason::Zero,
         })
     ));
     assert!(matches!(
@@ -16,6 +17,7 @@ fn zero_capacities_report_their_kind() {
         Err(Error::Capacity {
             kind: CapacityKind::Registration,
             limit: 0,
+            reason: CapacityReason::Zero,
         })
     ));
 }

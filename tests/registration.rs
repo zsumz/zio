@@ -11,7 +11,7 @@ mod support;
 
 use std::{io::Write, os::unix::net::UnixStream, thread, time::Duration};
 
-use zio::{CapacityKind, Error, Event, Interest, Key, Mode, Poll, Wait};
+use zio::{CapacityKind, CapacityReason, Error, Event, Interest, Key, Mode, Poll, Wait};
 
 use support::require_no_recovery;
 
@@ -110,6 +110,7 @@ fn registration_capacity_is_fixed() -> Result<(), Box<dyn std::error::Error>> {
                 Error::Capacity {
                     kind: CapacityKind::Registration,
                     limit: 1,
+                    reason: CapacityReason::Exhausted,
                     ..
                 }
             )

@@ -17,8 +17,8 @@ use std::{
 };
 
 use zio::{
-    ArmState, CapacityKind, Error, Event, Events, Interest, Key, Mode, Poll, RegistrationState,
-    Wait,
+    ArmState, CapacityKind, CapacityReason, Error, Event, Events, Interest, Key, Mode, Poll,
+    RegistrationState, Wait,
 };
 
 use support::require_no_recovery;
@@ -232,6 +232,7 @@ fn zero_event_capacity_is_reported_as_capacity_failure() {
         Err(Error::Capacity {
             kind: CapacityKind::Event,
             limit: 0,
+            reason: CapacityReason::Zero,
             ..
         })
     ));
@@ -244,6 +245,7 @@ fn oversized_event_capacity_is_reported_without_panicking() {
         Err(Error::Capacity {
             kind: CapacityKind::Event,
             limit,
+            reason: CapacityReason::StorageUnavailable,
             ..
         }) if limit == usize::MAX
     ));

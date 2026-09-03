@@ -4,7 +4,7 @@ use std::io;
 
 use crate::{Key, Registration, RegistrationId};
 
-use super::{CapacityKind, CommitStatus, Error, Operation};
+use super::{CapacityKind, CapacityReason, CommitStatus, Error, Operation};
 
 impl Error {
     /// Returns the associated operation, when one is recorded.
@@ -65,6 +65,14 @@ impl Error {
     pub const fn capacity_kind(&self) -> Option<CapacityKind> {
         match self {
             Self::Capacity { kind, .. } => Some(*kind),
+            _ => None,
+        }
+    }
+
+    /// Returns why a fixed capacity was unavailable.
+    pub const fn capacity_reason(&self) -> Option<CapacityReason> {
+        match self {
+            Self::Capacity { reason, .. } => Some(*reason),
             _ => None,
         }
     }

@@ -253,6 +253,7 @@ fn assert_capacity(result: &Result<crate::RegistrationId, Error>, expected: usiz
         Err(Error::Capacity {
             kind: crate::CapacityKind::Registration,
             limit,
+            reason: crate::CapacityReason::Exhausted,
         }) if *limit == expected
     ));
 }

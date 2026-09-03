@@ -8,8 +8,8 @@ use std::{
 };
 
 use crate::{
-    ArmState, CapacityKind, Error, Interest, Key, Mode, RegistrationId, RegistrationState,
-    registration::PollOwner, table::RegistrationTable,
+    ArmState, CapacityKind, CapacityReason, Error, Interest, Key, Mode, RegistrationId,
+    RegistrationState, registration::PollOwner, table::RegistrationTable,
 };
 
 #[test]
@@ -95,6 +95,7 @@ fn capacity_preflight_does_not_attempt_identity_assignment()
         Err(Error::Capacity {
             kind: CapacityKind::Registration,
             limit: 1,
+            reason: CapacityReason::Exhausted,
         })
     ));
     assert!(owner.current().is_none());

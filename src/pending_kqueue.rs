@@ -4,7 +4,7 @@
 
 use core::num::NonZeroUsize;
 
-use crate::{CapacityKind, Error, Key, Readiness, RegistrationId};
+use crate::{CapacityKind, CapacityReason, Error, Key, Readiness, RegistrationId};
 
 const EMPTY: u32 = u32::MAX;
 
@@ -31,6 +31,7 @@ impl KqueuePending {
             .map_err(|_| Error::Capacity {
                 kind: CapacityKind::Event,
                 limit: capacity.get(),
+                reason: CapacityReason::StorageUnavailable,
             })?;
         let mut by_slot = Vec::new();
         by_slot
@@ -38,6 +39,7 @@ impl KqueuePending {
             .map_err(|_| Error::Capacity {
                 kind: CapacityKind::Registration,
                 limit: registrations.get(),
+                reason: CapacityReason::StorageUnavailable,
             })?;
         by_slot.resize(registrations.get(), EMPTY);
         Ok(Self {

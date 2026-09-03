@@ -43,7 +43,7 @@ printf '%s\n' \
   > "$consumer_dir/Cargo.toml"
 
 printf '%s\n' \
-  'use zio::{ArmState, CapacityKind, CommitStatus, DeleteError, DescriptorOwnership, Error, Event, Key, Mode, MutationError, Operation, Poll, RecoveryFailure, RecoveryOutcome, RegisterError, Registration, RegistrationId, RegistrationInfo, RegistrationState, Wait, WaitReport, Waker};' \
+  'use zio::{ArmState, CapacityKind, CapacityReason, CommitStatus, DeleteError, DescriptorOwnership, Error, Event, Key, Mode, MutationError, Operation, Poll, RecoveryFailure, RecoveryOutcome, RegisterError, Registration, RegistrationId, RegistrationInfo, RegistrationState, Wait, WaitReport, Waker};' \
   '' \
   'fn main() {' \
   '    assert_eq!(classify_error(&Error::Invariant), 1);' \
@@ -59,6 +59,7 @@ printf '%s\n' \
   '    let _ = Error::waker_key_conflict as fn(&Error) -> Option<(Key, Key)>;' \
   '    let _ = Error::capacity_limit as fn(&Error) -> Option<usize>;' \
   '    let _ = Error::capacity_kind as fn(&Error) -> Option<CapacityKind>;' \
+  '    let _ = Error::capacity_reason as fn(&Error) -> Option<CapacityReason>;' \
   '    let _ = Error::event_capacity_mismatch as fn(&Error) -> Option<(usize, usize)>;' \
   '    let _ = Error::io_error as fn(&Error) -> Option<&std::io::Error>;' \
   '    let _ = classify_event as fn(Event) -> u8;' \
@@ -108,7 +109,9 @@ printf '%s\n' \
   '    assert_display::<Operation>();' \
   '    assert_display::<CommitStatus>();' \
   '    assert_display::<CapacityKind>();' \
+  '    assert_display::<CapacityReason>();' \
   '    assert_eq!(classify_capacity(CapacityKind::Event), 0);' \
+  '    assert_eq!(classify_capacity_reason(CapacityReason::Zero), 0);' \
   '    assert_send::<Poll>();' \
   '    assert_send_sync::<Waker>();' \
   '    let _ = Waker::key as fn(&Waker) -> Key;' \
@@ -197,6 +200,15 @@ printf '%s\n' \
   '        CapacityKind::Event => 0,' \
   '        CapacityKind::Registration => 1,' \
   '        _ => 2,' \
+  '    }' \
+  '}' \
+  '' \
+  'fn classify_capacity_reason(reason: CapacityReason) -> u8 {' \
+  '    match reason {' \
+  '        CapacityReason::Zero => 0,' \
+  '        CapacityReason::Exhausted => 1,' \
+  '        CapacityReason::StorageUnavailable => 2,' \
+  '        _ => 3,' \
   '    }' \
   '}' \
   '' \
@@ -324,6 +336,22 @@ printf '%s\n' \
   > "$consumer_dir/examples/capacity-kind-without-wildcard.rs"
 
 printf '%s\n' \
+  'use zio::CapacityReason;' \
+  '' \
+  'fn main() {' \
+  '    let _ = classify(CapacityReason::Zero);' \
+  '}' \
+  '' \
+  'fn classify(reason: CapacityReason) -> u8 {' \
+  '    match reason {' \
+  '        CapacityReason::Zero => 0,' \
+  '        CapacityReason::Exhausted => 1,' \
+  '        CapacityReason::StorageUnavailable => 2,' \
+  '    }' \
+  '}' \
+  > "$consumer_dir/examples/capacity-reason-without-wildcard.rs"
+
+printf '%s\n' \
   'use zio::Error;' \
   '' \
   'fn main() {' \
@@ -332,7 +360,7 @@ printf '%s\n' \
   '' \
   'fn capacity(error: &Error) -> Option<usize> {' \
   '    match error {' \
-  '        Error::Capacity { kind: _, limit } => Some(*limit),' \
+  '        Error::Capacity { kind: _, limit, reason: _ } => Some(*limit),' \
   '        _ => None,' \
   '    }' \
   '}' \
@@ -427,6 +455,8 @@ for toolchain in 1.88.0 1.97.1; do
   assert_non_exhaustive_match "$toolchain" operation-without-wildcard Operation Operation
   assert_non_exhaustive_match \
     "$toolchain" capacity-kind-without-wildcard CapacityKind CapacityKind
+  assert_non_exhaustive_match \
+    "$toolchain" capacity-reason-without-wildcard CapacityReason CapacityReason
   assert_non_exhaustive_fields "$toolchain"
   assert_receive_only_variant "$toolchain" construct-resource Resource
   assert_receive_only_variant "$toolchain" construct-wake Wake
@@ -442,6 +472,8 @@ operation_msrv_sha256="$(shasum -a 256 "$receipt_dir/operation-without-wildcard-
 operation_current_sha256="$(shasum -a 256 "$receipt_dir/operation-without-wildcard-1.97.1.stderr" | awk '{print $1}')"
 capacity_kind_msrv_sha256="$(shasum -a 256 "$receipt_dir/capacity-kind-without-wildcard-1.88.0.stderr" | awk '{print $1}')"
 capacity_kind_current_sha256="$(shasum -a 256 "$receipt_dir/capacity-kind-without-wildcard-1.97.1.stderr" | awk '{print $1}')"
+capacity_reason_msrv_sha256="$(shasum -a 256 "$receipt_dir/capacity-reason-without-wildcard-1.88.0.stderr" | awk '{print $1}')"
+capacity_reason_current_sha256="$(shasum -a 256 "$receipt_dir/capacity-reason-without-wildcard-1.97.1.stderr" | awk '{print $1}')"
 capacity_msrv_sha256="$(shasum -a 256 "$receipt_dir/capacity-without-rest-1.88.0.stderr" | awk '{print $1}')"
 capacity_current_sha256="$(shasum -a 256 "$receipt_dir/capacity-without-rest-1.97.1.stderr" | awk '{print $1}')"
 resource_msrv_sha256="$(shasum -a 256 "$receipt_dir/construct-resource-1.88.0.stderr" | awk '{print $1}')"
@@ -456,13 +488,15 @@ jq -n \
   --arg operation_current_sha256 "$operation_current_sha256" \
   --arg capacity_kind_msrv_sha256 "$capacity_kind_msrv_sha256" \
   --arg capacity_kind_current_sha256 "$capacity_kind_current_sha256" \
+  --arg capacity_reason_msrv_sha256 "$capacity_reason_msrv_sha256" \
+  --arg capacity_reason_current_sha256 "$capacity_reason_current_sha256" \
   --arg capacity_msrv_sha256 "$capacity_msrv_sha256" \
   --arg capacity_current_sha256 "$capacity_current_sha256" \
   --arg resource_msrv_sha256 "$resource_msrv_sha256" \
   --arg resource_current_sha256 "$resource_current_sha256" \
   --arg wake_msrv_sha256 "$wake_msrv_sha256" \
   --arg wake_current_sha256 "$wake_current_sha256" \
-  '{schema:"zio.public-api-contract.v1", status:"passed", version:$version, toolchains:["1.88.0","1.97.1"], open_enums:["Error","Operation","CapacityKind"], closed_enums:["Event","CommitStatus","DescriptorOwnership","Mode","Wait","ArmState","RegistrationState"], field_extensible_variants:["Error::Capacity"], receive_only_variants:["Event::Resource","Event::Wake"], diagnostics:{error_msrv:$error_msrv_sha256,error_current:$error_current_sha256,operation_msrv:$operation_msrv_sha256,operation_current:$operation_current_sha256,capacity_kind_msrv:$capacity_kind_msrv_sha256,capacity_kind_current:$capacity_kind_current_sha256,capacity_msrv:$capacity_msrv_sha256,capacity_current:$capacity_current_sha256,resource_msrv:$resource_msrv_sha256,resource_current:$resource_current_sha256,wake_msrv:$wake_msrv_sha256,wake_current:$wake_current_sha256}}' \
+  '{schema:"zio.public-api-contract.v1", status:"passed", version:$version, toolchains:["1.88.0","1.97.1"], open_enums:["Error","Operation","CapacityKind","CapacityReason"], closed_enums:["Event","CommitStatus","DescriptorOwnership","Mode","Wait","ArmState","RegistrationState"], field_extensible_variants:["Error::Capacity"], receive_only_variants:["Event::Resource","Event::Wake"], diagnostics:{error_msrv:$error_msrv_sha256,error_current:$error_current_sha256,operation_msrv:$operation_msrv_sha256,operation_current:$operation_current_sha256,capacity_kind_msrv:$capacity_kind_msrv_sha256,capacity_kind_current:$capacity_kind_current_sha256,capacity_reason_msrv:$capacity_reason_msrv_sha256,capacity_reason_current:$capacity_reason_current_sha256,capacity_msrv:$capacity_msrv_sha256,capacity_current:$capacity_current_sha256,resource_msrv:$resource_msrv_sha256,resource_current:$resource_current_sha256,wake_msrv:$wake_msrv_sha256,wake_current:$wake_current_sha256}}' \
   > "$evidence_dir/public-api-contract.json"
 
 printf 'API evolution contract passed: zio %s\n' "$version"

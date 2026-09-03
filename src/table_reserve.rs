@@ -3,7 +3,7 @@
 use std::num::NonZeroU32;
 
 use crate::{
-    CapacityKind, Error,
+    CapacityKind, CapacityReason, Error,
     token::{MAX_GENERATION, encode},
 };
 
@@ -51,6 +51,7 @@ impl RegistrationTable {
             Err(Error::Capacity {
                 kind: CapacityKind::Registration,
                 limit: self.limit.get(),
+                reason: CapacityReason::Exhausted,
             })
         }
     }

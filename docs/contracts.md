@@ -5,7 +5,7 @@ matching nonblocking operation is always authoritative.
 
 ## API evolution
 
-`Error`, `Operation`, and `CapacityKind` are open diagnostic vocabularies.
+`Error`, `Operation`, `CapacityKind`, and `CapacityReason` are open diagnostic vocabularies.
 Downstream matches must include a fallback arm. `Event`, `CommitStatus`,
 `DescriptorOwnership`, `Mode`, `Wait`, `ArmState`, and `RegistrationState` are
 closed domains; case changes are breaking. Event fields may grow; match with

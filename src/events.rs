@@ -2,7 +2,7 @@
 
 use std::{iter::FusedIterator, num::NonZeroUsize};
 
-use crate::{CapacityKind, Error, Event};
+use crate::{CapacityKind, CapacityReason, Error, Event};
 
 /// Fixed-capacity destination preserving native resource order.
 /// A wake follows resource events, and registrations may share a key.
@@ -18,6 +18,7 @@ impl Events {
         let capacity = NonZeroUsize::new(capacity).ok_or(Error::Capacity {
             kind: CapacityKind::Event,
             limit: capacity,
+            reason: CapacityReason::Zero,
         })?;
         Self::new(capacity)
     }
@@ -29,6 +30,7 @@ impl Events {
             .map_err(|_| Error::Capacity {
                 kind: CapacityKind::Event,
                 limit: capacity.get(),
+                reason: CapacityReason::StorageUnavailable,
             })?;
         Ok(Self { capacity, events })
     }

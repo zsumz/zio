@@ -2,7 +2,7 @@
 
 use std::io;
 
-use crate::{CapacityKind, Registration, RegistrationId};
+use crate::{CapacityKind, CapacityReason, Registration, RegistrationId};
 
 use super::{CommitStatus, DeleteError, Error, MutationError, Operation, RegisterError};
 
@@ -24,6 +24,12 @@ fn mutation_failure_returns_every_owned_part() {
 fn diagnostics_use_plain_display_names() {
     assert_eq!(Operation::RegisterWaker.to_string(), "register waker");
     assert_eq!(CommitStatus::NotApplied.to_string(), "not applied");
+    assert_eq!(CapacityReason::Zero.to_string(), "must be nonzero");
+    assert_eq!(CapacityReason::Exhausted.to_string(), "is exhausted");
+    assert_eq!(
+        CapacityReason::StorageUnavailable.to_string(),
+        "could not be reserved"
+    );
 
     let mutation = MutationError::new(
         Operation::Modify,
@@ -72,9 +78,10 @@ fn diagnostics_use_plain_display_names() {
         Error::Capacity {
             kind: CapacityKind::Event,
             limit: 0,
+            reason: CapacityReason::Zero,
         }
         .to_string(),
-        "event capacity 0 is unavailable"
+        "event capacity 0 must be nonzero"
     );
 }
 
@@ -143,9 +150,14 @@ fn top_level_accessors_expose_embedded_diagnostics() {
     let capacity = Error::Capacity {
         kind: CapacityKind::Registration,
         limit: 17,
+        reason: CapacityReason::StorageUnavailable,
     };
     assert_eq!(capacity.capacity_limit(), Some(17));
     assert_eq!(capacity.capacity_kind(), Some(CapacityKind::Registration));
+    assert_eq!(
+        capacity.capacity_reason(),
+        Some(CapacityReason::StorageUnavailable)
+    );
     assert_eq!(
         Error::WakerAlreadyConfigured {
             existing: crate::Key::new(3),

@@ -12,11 +12,33 @@ pub enum CapacityKind {
     Registration,
 }
 
+/// Why a fixed capacity was unavailable.
+#[non_exhaustive]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum CapacityReason {
+    /// The configured capacity was zero.
+    Zero,
+    /// Every configured slot was occupied.
+    Exhausted,
+    /// Rust could not reserve the requested storage.
+    StorageUnavailable,
+}
+
 impl fmt::Display for CapacityKind {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str(match self {
             Self::Event => "event",
             Self::Registration => "registration",
+        })
+    }
+}
+
+impl fmt::Display for CapacityReason {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(match self {
+            Self::Zero => "must be nonzero",
+            Self::Exhausted => "is exhausted",
+            Self::StorageUnavailable => "could not be reserved",
         })
     }
 }

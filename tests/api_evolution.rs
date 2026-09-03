@@ -1,10 +1,10 @@
 //! Downstream matching contracts for open diagnostics and closed domains.
 
 use zio::{
-    ArmState, CapacityKind, CommitStatus, DeleteError, DescriptorOwnership, Error, Event, Events,
-    Key, Mode, MutationError, Operation, Poll, Readiness, RecoveryFailure, RecoveryOutcome,
-    RegisterError, Registration, RegistrationId, RegistrationInfo, RegistrationState, Wait,
-    WaitReport, Waker,
+    ArmState, CapacityKind, CapacityReason, CommitStatus, DeleteError, DescriptorOwnership, Error,
+    Event, Events, Key, Mode, MutationError, Operation, Poll, Readiness, RecoveryFailure,
+    RecoveryOutcome, RegisterError, Registration, RegistrationId, RegistrationInfo,
+    RegistrationState, Wait, WaitReport, Waker,
 };
 
 #[path = "api_evolution/support.rs"]
@@ -29,17 +29,24 @@ fn errors_expose_common_diagnostics_without_matching() {
     let _ = Error::waker_key_conflict as fn(&Error) -> Option<(Key, Key)>;
     let _ = Error::capacity_limit as fn(&Error) -> Option<usize>;
     let _ = Error::capacity_kind as fn(&Error) -> Option<CapacityKind>;
+    let _ = Error::capacity_reason as fn(&Error) -> Option<CapacityReason>;
     let _ = Error::event_capacity_mismatch as fn(&Error) -> Option<(usize, usize)>;
     let _ = Error::io_error as fn(&Error) -> Option<&std::io::Error>;
 }
 
 #[test]
-fn capacity_kinds_are_open_diagnostics() {
+fn capacity_diagnostics_are_open() {
     assert_display::<CapacityKind>();
+    assert_display::<CapacityReason>();
     assert_eq!(capacity_kind_class(CapacityKind::Event), "event");
     assert_eq!(
         capacity_kind_class(CapacityKind::Registration),
         "registration"
+    );
+    assert_eq!(capacity_reason_class(CapacityReason::Zero), "zero");
+    assert_eq!(
+        capacity_reason_class(CapacityReason::StorageUnavailable),
+        "storage"
     );
 }
 
@@ -213,81 +220,4 @@ fn keys_support_lossless_standard_conversions() {
     assert_from::<Key, u64>();
     assert_from::<u64, Key>();
     assert_display::<Key>();
-}
-
-fn operation_class(operation: Operation) -> &'static str {
-    match operation {
-        Operation::Wait => "wait",
-        _ => "other",
-    }
-}
-
-fn error_class(error: &Error) -> &'static str {
-    match error {
-        Error::Invariant => "contract",
-        _ => "other",
-    }
-}
-
-fn capacity_kind_class(kind: CapacityKind) -> &'static str {
-    match kind {
-        CapacityKind::Event => "event",
-        CapacityKind::Registration => "registration",
-        _ => "other",
-    }
-}
-
-fn mode_class(mode: Mode) -> &'static str {
-    match mode {
-        Mode::Level => "level",
-        Mode::OneShot => "one-shot",
-    }
-}
-
-fn wait_class(wait: Wait) -> &'static str {
-    match wait {
-        Wait::NoBlock => "no-block",
-        Wait::For(_) => "for",
-        Wait::Forever => "forever",
-    }
-}
-
-fn commit_class(commit: CommitStatus) -> &'static str {
-    match commit {
-        CommitStatus::NotApplied => "not-applied",
-        CommitStatus::Applied => "applied",
-        CommitStatus::Unknown => "unknown",
-    }
-}
-
-fn arm_class(arm: ArmState) -> &'static str {
-    match arm {
-        ArmState::Armed => "armed",
-        ArmState::Disarmed => "disarmed",
-    }
-}
-
-fn state_class(state: RegistrationState) -> &'static str {
-    match state {
-        RegistrationState::Registered { arm } => arm_class(arm),
-        RegistrationState::Uncertain => "uncertain",
-    }
-}
-
-fn ownership_class(ownership: DescriptorOwnership) -> &'static str {
-    match ownership {
-        DescriptorOwnership::Owned => "owned",
-        DescriptorOwnership::Borrowed => "borrowed",
-    }
-}
-
-#[allow(
-    dead_code,
-    reason = "compilation proves exhaustive downstream matching"
-)]
-fn event_class(event: Event) -> (Key, Option<Readiness>) {
-    match event {
-        Event::Resource { key, readiness, .. } => (key, Some(readiness)),
-        Event::Wake { key, .. } => (key, None),
-    }
 }

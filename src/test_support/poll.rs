@@ -6,8 +6,8 @@ use std::{
 };
 
 use crate::{
-    CapacityKind, CommitStatus, DeleteError, Error, Interest, Key, Mode, RegisterError,
-    Registration, RegistrationId, RegistrationInfo, RegistrationState,
+    CapacityKind, CapacityReason, CommitStatus, DeleteError, Error, Interest, Key, Mode,
+    RegisterError, Registration, RegistrationId, RegistrationInfo, RegistrationState,
     mutation::{
         MutationSession, registration_fd, registration_info, registration_state, registrations,
         set_registration_key,
@@ -47,6 +47,7 @@ impl ScriptedPoll {
         let capacity = NonZeroUsize::new(registrations).ok_or(Error::Capacity {
             kind: CapacityKind::Registration,
             limit: registrations,
+            reason: CapacityReason::Zero,
         })?;
         Ok(Self {
             owner: PollOwner::unassigned(),

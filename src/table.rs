@@ -5,8 +5,8 @@ use std::num::{NonZeroU32, NonZeroUsize};
 use crate::binding::{Binding, Observation};
 use crate::token::{MAX_REGISTRATIONS, decode, encode};
 use crate::{
-    ArmState, CapacityKind, CommitStatus, Error, Interest, Key, Mode, Registration, RegistrationId,
-    RegistrationInfo, RegistrationState, registration::PollId,
+    ArmState, CapacityKind, CapacityReason, CommitStatus, Error, Interest, Key, Mode, Registration,
+    RegistrationId, RegistrationInfo, RegistrationState, registration::PollId,
 };
 
 #[path = "table_permit.rs"]
@@ -43,6 +43,7 @@ impl RegistrationTable {
             .map_err(|_| Error::Capacity {
                 kind: CapacityKind::Registration,
                 limit: limit.get(),
+                reason: CapacityReason::StorageUnavailable,
             })?;
         Ok(Self {
             limit,
@@ -83,6 +84,7 @@ impl RegistrationTable {
             .map_err(|_| Error::Capacity {
                 kind: CapacityKind::Registration,
                 limit: occupied,
+                reason: CapacityReason::StorageUnavailable,
             })?;
         for (index, slot) in self.slots.iter().enumerate() {
             if slot.entry.is_none() {
