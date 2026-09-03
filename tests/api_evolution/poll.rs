@@ -22,11 +22,13 @@ fn poll_exposes_construction_and_observation() {
 
 #[test]
 fn poll_exposes_stored_configuration_rearm() {
+    let _ = Poll::modify as fn(&mut Poll, &Registration, zio::Interest, Mode) -> Result<(), Error>;
     let _ = Poll::rearm as fn(&mut Poll, &Registration) -> Result<(), Error>;
 }
 
 #[test]
 fn poll_supports_fail_fast_bulk_deletion() {
+    let _ = Poll::delete as fn(&mut Poll, Registration) -> Result<(), zio::DeleteError>;
     let _ = Poll::delete_all as fn(&mut Poll) -> Result<(), DeleteAllError>;
 }
 
@@ -98,6 +100,8 @@ fn poll_exposes_capacity_and_retained_count() {
 
 #[test]
 fn poll_exposes_authoritative_registration_info() {
+    let _ =
+        Poll::registration_state as fn(&Poll, &Registration) -> Result<RegistrationState, Error>;
     let _ = Poll::registration_info as fn(&Poll, &Registration) -> Result<RegistrationInfo, Error>;
     let _ = RegistrationInfo::key as fn(&RegistrationInfo) -> Key;
     let _ = RegistrationInfo::interest as fn(&RegistrationInfo) -> zio::Interest;
