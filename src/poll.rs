@@ -19,6 +19,9 @@ pub const DEFAULT_EVENT_CAPACITY: usize = 1_024;
 pub const DEFAULT_REGISTRATION_CAPACITY: usize = 1_024;
 
 /// Cloneable cross-thread capability that interrupts its owning poller.
+///
+/// Clones may outlive the poller. They retain its native wake resource, but
+/// later triggers have no observer.
 #[derive(Clone)]
 pub struct Waker {
     wake: Wake,

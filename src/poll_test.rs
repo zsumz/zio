@@ -125,3 +125,13 @@ fn waker_identity_tracks_the_keyed_poller_target() -> Result<(), crate::Error> {
     assert!(!first.will_wake(&distinct));
     Ok(())
 }
+
+#[test]
+fn waker_can_outlive_its_poller() -> Result<(), crate::Error> {
+    let mut poll = Poll::with_capacity(1, 1)?;
+    let waker = poll.waker(Key::new(9))?;
+
+    drop(poll);
+
+    waker.wake()
+}
