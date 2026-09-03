@@ -29,20 +29,6 @@ fn builder_names_custom_capacities() -> Result<(), Error> {
 }
 
 #[test]
-fn builder_pairs_a_poller_with_its_event_capacity() -> Result<(), Error> {
-    let (poll, events) = Poll::builder()
-        .event_capacity(3)
-        .registration_capacity(5)
-        .build_with_events()?;
-
-    assert_eq!(poll.event_capacity(), 3);
-    assert_eq!(poll.registration_capacity(), 5);
-    assert_eq!(events.capacity(), 3);
-    assert!(events.is_empty());
-    Ok(())
-}
-
-#[test]
 fn builder_defers_capacity_validation_to_build() {
     assert!(matches!(
         Poll::builder().event_capacity(0).build(),

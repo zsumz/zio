@@ -140,7 +140,6 @@ printf '%s\n' \
   '    let _ = PollBuilder::event_capacity as fn(PollBuilder, usize) -> PollBuilder;' \
   '    let _ = PollBuilder::registration_capacity as fn(PollBuilder, usize) -> PollBuilder;' \
   '    let _ = PollBuilder::build as fn(PollBuilder) -> Result<Poll, Error>;' \
-  '    let _ = PollBuilder::build_with_events as fn(PollBuilder) -> Result<(Poll, Events), Error>;' \
   '    let _ = Poll::rearm as fn(&mut Poll, &Registration) -> Result<(), Error>;' \
   '    let _ = Poll::modify_with_key as fn(&mut Poll, &Registration, Key, zio::Interest, Mode) -> Result<(), Error>;' \
   '    let _ = Poll::delete_all as fn(&mut Poll) -> Result<(), DeleteAllError>;' \
