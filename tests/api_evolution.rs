@@ -70,6 +70,18 @@ fn poll_exposes_stored_configuration_rearm() {
 }
 
 #[test]
+fn poll_accepts_owned_descriptors_without_duplication() {
+    let _ = Poll::register_owned
+        as fn(
+            &mut Poll,
+            std::os::fd::OwnedFd,
+            Key,
+            zio::Interest,
+            Mode,
+        ) -> Result<Registration, RegisterError>;
+}
+
+#[test]
 fn poll_exposes_capacity_and_retained_count() {
     let _ = Poll::event_capacity as fn(&Poll) -> usize;
     let _ = Poll::registration_capacity as fn(&Poll) -> usize;

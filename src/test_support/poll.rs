@@ -2,7 +2,7 @@
 
 use std::{
     num::NonZeroUsize,
-    os::fd::{AsFd, AsRawFd},
+    os::fd::{AsFd, AsRawFd, OwnedFd},
 };
 
 use crate::{
@@ -60,6 +60,17 @@ impl ScriptedPoll {
         mode: Mode,
     ) -> Result<Registration, RegisterError> {
         self.mutations().register(source, key, interest, mode)
+    }
+
+    /// Registers one descriptor by transferring ownership through the next step.
+    pub fn register_owned(
+        &mut self,
+        source: OwnedFd,
+        key: Key,
+        interest: Interest,
+        mode: Mode,
+    ) -> Result<Registration, RegisterError> {
+        self.mutations().register_owned(source, key, interest, mode)
     }
 
     /// Registers one descriptor without duplicating it through the next step.

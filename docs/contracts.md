@@ -22,6 +22,9 @@ cannot redirect later mutations. Handles are poller-scoped; another poller
 rejects them. Keys need not be unique. Each resource event carries its exact
 registration handle.
 
+`Poll::register_owned` transfers an `OwnedFd` without duplication. A
+handle-bearing failure retains it; every other failure closes it.
+
 `Poll::set_key` changes only future resource-event routing and does no backend work.
 
 ## Borrowed registration

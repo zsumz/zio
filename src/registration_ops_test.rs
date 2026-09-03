@@ -1,6 +1,12 @@
 //! Lazy owner assignment through the public mutation surface.
 
-use std::{error::Error as StdError, os::unix::net::UnixStream};
+use std::{
+    error::Error as StdError,
+    os::{
+        fd::{AsFd, AsRawFd},
+        unix::net::UnixStream,
+    },
+};
 
 use crate::{ArmState, Error, Interest, Key, Mode, Poll, RegistrationState};
 
@@ -32,6 +38,22 @@ fn registration_info_tracks_committed_configuration() -> Result<(), Box<dyn StdE
         poll.registration_info(&registration),
         Err(Error::Stale { registration: stale }) if stale == registration.id()
     ));
+    Ok(())
+}
+
+#[test]
+fn owned_registration_retains_the_transferred_descriptor() -> Result<(), Box<dyn StdError>> {
+    let (source, _peer) = UnixStream::pair()?;
+    let descriptor = source.as_fd().try_clone_to_owned()?;
+    let raw = descriptor.as_raw_fd();
+    let mut poll = Poll::with_capacity(1, 1)?;
+
+    let registration =
+        poll.register_owned(descriptor, Key::new(8), Interest::READABLE, Mode::Level)?;
+    let retained = poll.registrations.binding(registration.id(), false)?;
+
+    assert_eq!(retained.descriptor.as_raw_fd(), raw);
+    poll.delete(registration)?;
     Ok(())
 }
 

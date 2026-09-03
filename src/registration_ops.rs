@@ -1,6 +1,6 @@
 //! Public registration operations over the static mutation state machine.
 
-use std::os::fd::AsFd;
+use std::os::fd::{AsFd, OwnedFd};
 
 use crate::{
     DeleteError, Error, Interest, Key, Mode, Poll, RegisterError, Registration, RegistrationInfo,
@@ -35,6 +35,21 @@ impl Poll {
         mode: Mode,
     ) -> Result<Registration, RegisterError> {
         self.mutations().register(source, key, interest, mode)
+    }
+
+    /// Registers one descriptor by transferring ownership to the poller.
+    ///
+    /// This avoids descriptor duplication. The source is consumed on every
+    /// outcome. A handle-bearing failure retains it in the poller; every other
+    /// failure closes it before returning.
+    pub fn register_owned(
+        &mut self,
+        source: OwnedFd,
+        key: Key,
+        interest: Interest,
+        mode: Mode,
+    ) -> Result<Registration, RegisterError> {
+        self.mutations().register_owned(source, key, interest, mode)
     }
 
     /// Replaces interest and mode, rearming a one-shot registration.

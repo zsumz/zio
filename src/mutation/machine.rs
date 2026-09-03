@@ -1,6 +1,6 @@
 //! Portable registration state transitions over a static mutation driver.
 
-use std::os::fd::AsFd;
+use std::os::fd::{AsFd, OwnedFd};
 
 use crate::{
     ArmState, CommitStatus, DeleteError, Error, Interest, Key, Mode, MutationError, Operation,
@@ -51,6 +51,17 @@ impl<'state, Driver: MutationDriver> MutationSession<'state, Driver> {
             )
         })?;
         self.register_descriptor(Descriptor::owned(descriptor), key, interest, mode)
+    }
+
+    pub(crate) fn register_owned(
+        &mut self,
+        source: OwnedFd,
+        key: Key,
+        interest: Interest,
+        mode: Mode,
+    ) -> Result<Registration, RegisterError> {
+        validate_registration_interest(interest)?;
+        self.register_descriptor(Descriptor::owned(source), key, interest, mode)
     }
 
     /// Registers after erasing the source borrow into the retained table.
