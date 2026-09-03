@@ -171,7 +171,7 @@ impl RegistrationTable {
         let armed = RegistrationState::Registered {
             arm: ArmState::Armed,
         };
-        if entry.mode != Mode::OneShot || entry.state != armed {
+        if !entry.mode.is_one_shot() || entry.state != armed {
             return Err(Error::Invariant);
         }
         entry.state = match commit {

@@ -5,9 +5,9 @@
 use core::borrow::Borrow;
 
 use crate::{
-    ArmState, CommitStatus, Error, Event, Events, Mode, Operation, RecoveryFailure,
-    RecoveryOutcome, Registration, RegistrationId, RegistrationState, WaitReport,
-    pending_kqueue::PendingResource, registration::PollId, table::RegistrationTable,
+    ArmState, CommitStatus, Error, Event, Events, Operation, RecoveryFailure, RecoveryOutcome,
+    Registration, RegistrationId, RegistrationState, WaitReport, pending_kqueue::PendingResource,
+    registration::PollId, table::RegistrationTable,
 };
 
 /// Allocation-free result retained until post-observation state reduction.
@@ -124,7 +124,7 @@ where
         let binding = registrations
             .binding(pending.registration, false)
             .map_err(|_| Error::Invariant)?;
-        if binding.mode != Mode::OneShot {
+        if !binding.mode.is_one_shot() {
             continue;
         }
         if binding.state

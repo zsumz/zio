@@ -3,7 +3,7 @@
 #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
 use std::os::fd::AsRawFd;
 
-use crate::{Error, Events, Mode, Operation, Poll, Wait, WaitReport};
+use crate::{Error, Events, Operation, Poll, Wait, WaitReport};
 
 impl Poll {
     /// Replaces `events` with one bounded readiness observation.
@@ -70,7 +70,7 @@ impl Poll {
                 let registration =
                     crate::Registration::from_verified(owner.ok_or(Error::Invariant)?, resource.id);
                 let _ = resource.descriptor;
-                if resource.mode == Mode::OneShot {
+                if resource.mode.is_one_shot() {
                     registrations.apply_disarm(resource.id, crate::CommitStatus::Applied)?;
                 }
                 Ok(Some((registration, resource.key)))
@@ -126,7 +126,7 @@ impl Poll {
         for index in 0..delivered {
             let pending = *self.pending.as_slice().get(index).ok_or(Error::Invariant)?;
             let binding = self.registrations.binding(pending.registration, false)?;
-            if binding.mode != Mode::OneShot {
+            if !binding.mode.is_one_shot() {
                 continue;
             }
             self.raw_events

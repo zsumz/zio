@@ -135,7 +135,7 @@ fn epoll_flags(token: u64, interest: Interest, mode: Mode) -> u32 {
     if interest.is_writable() {
         flags |= libc::EPOLLOUT.cast_unsigned();
     }
-    if mode == Mode::OneShot {
+    if mode.is_one_shot() {
         flags |= libc::EPOLLONESHOT.cast_unsigned();
     }
     flags

@@ -181,7 +181,7 @@ impl ScriptedPoll {
         registration_state(self.owner.current(), &self.registrations, registration)?;
         let descriptor = {
             let binding = self.registrations.binding(registration.id(), false)?;
-            if binding.mode != Mode::OneShot {
+            if !binding.mode.is_one_shot() {
                 return Err(Error::Invariant);
             }
             binding.descriptor.as_raw_fd()

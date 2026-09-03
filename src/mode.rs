@@ -8,3 +8,14 @@ pub enum Mode {
     /// Disarm after delivery until explicitly rearmed or modified.
     OneShot,
 }
+
+impl Mode {
+    /// Returns whether delivery disarms the registration.
+    pub const fn is_one_shot(self) -> bool {
+        matches!(self, Self::OneShot)
+    }
+}
+
+#[cfg(test)]
+#[path = "mode_test.rs"]
+mod tests;
