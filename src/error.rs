@@ -144,8 +144,6 @@ pub enum Error {
         /// Supplied logical capacity.
         actual: usize,
     },
-    /// The backend integer domain cannot express the configured capacity.
-    BackendOverflow,
     /// A validated internal invariant diverged.
     Invariant,
     /// The current target has no supported readiness backend.
@@ -193,9 +191,6 @@ impl fmt::Display for Error {
                 formatter,
                 "event capacity {actual} is smaller than required capacity {required}"
             ),
-            Self::BackendOverflow => {
-                formatter.write_str("configured capacity exceeds the backend integer domain")
-            }
             Self::Invariant => formatter.write_str("validated internal invariant diverged"),
             Self::UnsupportedPlatform => {
                 formatter.write_str("the current target has no supported readiness backend")

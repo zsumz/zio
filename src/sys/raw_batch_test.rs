@@ -2,15 +2,15 @@
 
 #![cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
 
-use crate::{Interest, RegistrationId};
+use crate::{CapacityKind, CapacityReason, Error, Interest, RegistrationId};
 
 use super::raw_batch::RawBatch;
 
 #[test]
 fn native_observations_cover_every_filter_while_recovery_is_delivery_bounded() {
     let batch = RawBatch::new(1, 2);
-    assert!(batch.is_some());
-    let Some(mut batch) = batch else {
+    assert!(batch.is_ok());
+    let Ok(mut batch) = batch else {
         return;
     };
 
@@ -35,8 +35,8 @@ fn disarm_storage_uses_the_smaller_configured_limit() {
 
 fn assert_disarm_limit(events: usize, registrations: usize, expected: usize) {
     let batch = RawBatch::new(events, registrations);
-    assert!(batch.is_some());
-    let Some(mut batch) = batch else {
+    assert!(batch.is_ok());
+    let Ok(mut batch) = batch else {
         return;
     };
 
@@ -52,4 +52,17 @@ fn assert_disarm_limit(events: usize, registrations: usize, expected: usize) {
             .push_disarm(RegistrationId::new(1), 1, Interest::READABLE)
             .is_none()
     );
+}
+
+#[test]
+#[cfg(target_pointer_width = "64")]
+fn oversized_native_observation_capacity_reports_registration_limit() {
+    assert!(matches!(
+        RawBatch::new(1, usize::MAX),
+        Err(Error::Capacity {
+            kind: CapacityKind::Registration,
+            limit: usize::MAX,
+            reason: CapacityReason::BackendLimit,
+        })
+    ));
 }

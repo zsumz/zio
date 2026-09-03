@@ -7,8 +7,8 @@ use std::{
 };
 
 use crate::{
-    ArmState, Interest, Mode, Readiness, RegistrationId, RegistrationState, Wait, error::Operation,
-    observe_recovery::DisarmOutcome,
+    ArmState, Error, Interest, Mode, Readiness, RegistrationId, RegistrationState, Wait,
+    error::Operation, observe_recovery::DisarmOutcome,
 };
 
 use super::super::{
@@ -30,12 +30,16 @@ pub(crate) struct RawBatch {
 }
 
 impl RawBatch {
-    fn new(event_capacity: usize, disarm_capacity: usize) -> Option<Self> {
-        let native_capacity = disarm_capacity.checked_mul(2)?;
-        Some(Self {
-            raw: KeventBatch::new(event_capacity, native_capacity)?,
-            disarms: DisarmBatch::new(disarm_capacity)?,
-        })
+    fn new(
+        native_events: usize,
+        native_changes: usize,
+        recoveries: usize,
+        arena_error: Error,
+        recovery_error: Error,
+    ) -> Result<Self, Error> {
+        let raw = KeventBatch::new(native_events, native_changes).ok_or(arena_error)?;
+        let disarms = DisarmBatch::new(recoveries).ok_or(recovery_error)?;
+        Ok(Self { raw, disarms })
     }
 
     pub(crate) fn event(&self, index: usize, observed: usize) -> Option<RawEvent> {
@@ -117,8 +121,20 @@ pub(crate) struct Backend {
 }
 
 impl Backend {
-    pub(crate) fn raw_batch(event_capacity: usize, disarm_capacity: usize) -> Option<RawBatch> {
-        RawBatch::new(event_capacity, disarm_capacity)
+    pub(crate) fn raw_batch(
+        native_events: usize,
+        native_changes: usize,
+        recoveries: usize,
+        arena_error: Error,
+        recovery_error: Error,
+    ) -> Result<RawBatch, Error> {
+        RawBatch::new(
+            native_events,
+            native_changes,
+            recoveries,
+            arena_error,
+            recovery_error,
+        )
     }
 
     pub(crate) fn new() -> Result<(Self, Wake), SetupFailure> {

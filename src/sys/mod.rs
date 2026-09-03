@@ -1,5 +1,8 @@
 //! Target-selected readiness, wake, and selector mechanisms.
 
+mod batch_capacity;
+#[cfg(test)]
+mod batch_capacity_test;
 mod event;
 mod failure;
 mod kqueue_group;

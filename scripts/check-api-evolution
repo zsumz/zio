@@ -290,9 +290,8 @@ printf '%s\n' \
   '        Error::Capacity { .. } => 7,' \
   '        Error::RegistrationSpaceExhausted => 8,' \
   '        Error::EventsTooSmall { .. } => 9,' \
-  '        Error::BackendOverflow => 10,' \
-  '        Error::Invariant => 11,' \
-  '        Error::UnsupportedPlatform => 12,' \
+  '        Error::Invariant => 10,' \
+  '        Error::UnsupportedPlatform => 11,' \
   '    }' \
   '}' \
   > "$consumer_dir/examples/error-without-wildcard.rs"

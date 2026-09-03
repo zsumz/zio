@@ -36,6 +36,34 @@ fn oversized_registration_capacity_reports_the_backend_limit() {
 }
 
 #[test]
+#[cfg(target_os = "linux")]
+fn oversized_event_capacity_reports_the_backend_limit() {
+    assert!(matches!(
+        Poll::with_capacity(usize::MAX, 1),
+        Err(Error::Capacity {
+            kind: CapacityKind::Event,
+            limit: usize::MAX,
+            reason: CapacityReason::BackendLimit,
+        })
+    ));
+}
+
+#[test]
+#[cfg(any(target_os = "macos", target_os = "freebsd"))]
+fn oversized_kqueue_observation_capacity_reports_the_backend_limit() -> Result<(), Error> {
+    let limit = usize::try_from(u32::MAX).map_err(|_| Error::Invariant)?;
+    assert!(matches!(
+        Poll::with_capacity(1, limit),
+        Err(Error::Capacity {
+            kind: CapacityKind::Registration,
+            limit: actual,
+            reason: CapacityReason::BackendLimit,
+        }) if actual == limit
+    ));
+    Ok(())
+}
+
+#[test]
 fn debug_output_is_backend_neutral() -> Result<(), crate::Error> {
     let mut poll = Poll::with_capacity(3, 5)?;
 

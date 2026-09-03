@@ -19,23 +19,27 @@ pub(crate) struct RawBatch {
 }
 
 impl RawBatch {
-    pub(super) fn new(events: usize, registrations: usize) -> Option<Self> {
+    pub(super) fn new(events: usize, registrations: usize) -> Result<Self, crate::Error> {
         #[cfg(target_os = "linux")]
         {
             let _ = registrations;
-            super::linux_group::Backend::raw_batch(events).map(|linux| Self { linux })
+            super::linux_group::Backend::raw_batch(events)
+                .map(|linux| Self { linux })
+                .ok_or(crate::Error::Capacity {
+                    kind: crate::CapacityKind::Event,
+                    limit: events,
+                    reason: crate::CapacityReason::BackendLimit,
+                })
         }
         #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
         {
-            // Each registration can contribute separate read and write
-            // observations, plus one user-filter wake. Retaining the complete
-            // native batch lets translation fully union split observations.
-            let complete_observation_capacity = registrations.checked_mul(2)?.checked_add(1)?;
-            // Only delivered logical events can require one-shot recovery.
-            let recovery_capacity = events.min(registrations);
+            let capacity = super::batch_capacity::KqueueCapacity::new(events, registrations)?;
             super::kqueue_group::Backend::raw_batch(
-                complete_observation_capacity,
-                recovery_capacity,
+                capacity.native_events(),
+                capacity.native_changes(),
+                capacity.recoveries(),
+                capacity.arena_error(),
+                capacity.recovery_error(),
             )
             .map(|kqueue| Self { kqueue })
         }
@@ -47,7 +51,9 @@ impl RawBatch {
         )))]
         {
             let _ = registrations;
-            super::unsupported::Backend::raw_batch(events).map(|unsupported| Self { unsupported })
+            super::unsupported::Backend::raw_batch(events)
+                .map(|unsupported| Self { unsupported })
+                .ok_or(crate::Error::Invariant)
         }
     }
 

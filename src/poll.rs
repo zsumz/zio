@@ -97,8 +97,7 @@ impl Poll {
             reason: CapacityReason::Zero,
         })?;
         RegistrationTable::validate_capacity(registration_capacity)?;
-        let raw_events = Backend::raw_batch(event_capacity.get(), registration_capacity.get())
-            .ok_or(Error::BackendOverflow)?;
+        let raw_events = Backend::raw_batch(event_capacity.get(), registration_capacity.get())?;
         let registrations = RegistrationTable::new(registration_capacity)?;
         let (backend, wake) = Backend::new().map_err(|failure| {
             if failure.operation() == Operation::UnsupportedPlatform {

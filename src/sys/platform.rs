@@ -30,7 +30,7 @@ pub(crate) struct Backend {
 }
 
 impl Backend {
-    pub(crate) fn raw_batch(events: usize, registrations: usize) -> Option<RawBatch> {
+    pub(crate) fn raw_batch(events: usize, registrations: usize) -> Result<RawBatch, crate::Error> {
         RawBatch::new(events, registrations)
     }
 
