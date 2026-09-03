@@ -13,7 +13,7 @@ targets = 34
 physical_rust_files = 246
 base_source_contexts = 417
 derived_source_contexts = 0
-source_facts = 71771
+source_facts = 71774
 projection_queries = 0
 projected_facts = 0
 unresolved_bindings = 0
@@ -196,7 +196,7 @@ sha256 = "6336437f8ec8efdbe54c8304c75909c7db40c0b0a2d3e43a1af0426eb6cd3a90"
 
 [[gate.input]]
 path = ".github/workflows/ci.yml"
-sha256 = "c888ad46f3e8d5a8654326195d27e9d42d8f6a6ff7c6b49007dff3c51d9949d6"
+sha256 = "8f2f2a16d2cd638e7c489851f76c0f6766b86143da204ca457f3fc137368534a"
 
 [[gate.input]]
 path = ".gitignore"
@@ -273,7 +273,7 @@ sha256 = "e63c2cd05f6e85cfa28391cc966a29530ec95f038e85f10707ea4df1fb94e390"
 [[gate]]
 name = "ci"
 path = ".github/workflows/ci.yml"
-sha256 = "c888ad46f3e8d5a8654326195d27e9d42d8f6a6ff7c6b49007dff3c51d9949d6"
+sha256 = "8f2f2a16d2cd638e7c489851f76c0f6766b86143da204ca457f3fc137368534a"
 
 [[gate.input]]
 path = "rust-toolchain.toml"
@@ -572,7 +572,7 @@ sha256 = "e63c2cd05f6e85cfa28391cc966a29530ec95f038e85f10707ea4df1fb94e390"
 [[ratchet]]
 rule = "rust.file-size"
 target = "src/sys/linux_group/epoll.rs"
-value = 266
+value = 265
 
 [[ratchet]]
 rule = "rust.hygiene.unsafe"

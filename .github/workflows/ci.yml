@@ -34,10 +34,13 @@ jobs:
 
       - name: Install Rust toolchains
         run: |
-          rustup toolchain install 1.88.0 --profile minimal
+          rustup toolchain install 1.88.0 \
+            --profile minimal \
+            --target i686-unknown-linux-gnu
           rustup toolchain install 1.97.1 \
             --profile minimal \
-            --component clippy,rustfmt
+            --component clippy,rustfmt \
+            --target i686-unknown-linux-gnu
 
       - name: Install qualification tools
         run: |
@@ -46,6 +49,13 @@ jobs:
 
       - name: Fetch the locked dependency graph
         run: cargo +1.88.0 fetch --locked
+
+      - name: Compile 32-bit Linux API
+        run: |
+          cargo +1.88.0 check --target i686-unknown-linux-gnu \
+            --workspace --all-targets --all-features --locked --offline
+          cargo +1.97.1 check --target i686-unknown-linux-gnu \
+            --workspace --all-targets --all-features --locked --offline
 
       - name: Run canonical qualification
         env:

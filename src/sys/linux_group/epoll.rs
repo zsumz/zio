@@ -15,6 +15,14 @@ use rustix::event::epoll;
 
 use crate::{Error, Event, Events, Key, Registration};
 
+const _: () = assert!(
+    size_of::<Event>() >= size_of::<libc::epoll_event>()
+        && align_of::<Event>() >= align_of::<libc::epoll_event>()
+        && !needs_drop::<Event>()
+        && (size_of::<Event>() - size_of::<libc::epoll_event>()) % align_of::<libc::epoll_event>()
+            == 0
+);
+
 #[cfg(test)]
 pub(super) const fn epoll_test_registration_flags(one_shot: bool) -> u32 {
     let flags = libc::EPOLLIN.cast_unsigned() | libc::EPOLLRDHUP.cast_unsigned();
@@ -49,17 +57,8 @@ impl EpollBatch {
         let max_events = libc::c_int::try_from(capacity)
             .ok()
             .filter(|count| *count > 0)?;
-        if size_of::<Event>() < size_of::<libc::epoll_event>()
-            || align_of::<Event>() < align_of::<libc::epoll_event>()
-            || needs_drop::<Event>()
-        {
-            return None;
-        }
-        let gap = size_of::<Event>().checked_sub(size_of::<libc::epoll_event>())?;
+        let gap = size_of::<Event>() - size_of::<libc::epoll_event>();
         let native_offset = capacity.checked_mul(gap)?;
-        if native_offset % align_of::<libc::epoll_event>() != 0 {
-            return None;
-        }
         Some(Self {
             max_events,
             capacity,
