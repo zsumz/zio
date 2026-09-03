@@ -11,7 +11,8 @@ impl Poll {
     ///
     /// `events` must match or exceed [`Self::event_capacity`]. It is cleared on
     /// entry and left empty on error. A successful report may carry one-shot
-    /// recovery trouble; process every event before reconciling it.
+    /// recovery trouble; process every event before reconciling it. Without a
+    /// pending wake, stable ready sets larger than the batch rotate across calls.
     pub fn wait(&mut self, events: &mut Events, wait: Wait) -> Result<WaitReport, Error> {
         events.clear();
         self.pending.clear();
@@ -118,15 +119,20 @@ impl Poll {
                 .add(resource.id, resource.key, raw.readiness())?;
         }
         let resource_limit = self.event_capacity.get() - usize::from(woke);
-        let delivered = self.pending.as_slice().len().min(resource_limit);
-        self.prepare_disarms(delivered)?;
+        let delivery = self.pending.delivery_range(resource_limit);
+        self.prepare_disarms(delivery.clone())?;
         let recovery = self.backend.submit_disarms(&mut self.raw_events).err();
+        let pending = self
+            .pending
+            .as_slice()
+            .get(delivery)
+            .ok_or(Error::Invariant)?;
         crate::observe_recovery::finish(
             owner,
             &mut self.registrations,
             events,
-            self.pending.as_slice(),
-            delivered,
+            pending,
+            pending.len(),
             woke,
             self.wake_key,
             self.raw_events.disarm_outcomes(),
@@ -135,9 +141,9 @@ impl Poll {
     }
 
     #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
-    fn prepare_disarms(&mut self, delivered: usize) -> Result<(), Error> {
+    fn prepare_disarms(&mut self, delivery: core::ops::Range<usize>) -> Result<(), Error> {
         self.raw_events.clear_disarms();
-        for index in 0..delivered {
+        for index in delivery {
             let pending = *self.pending.as_slice().get(index).ok_or(Error::Invariant)?;
             let binding = self.registrations.binding(pending.registration, false)?;
             if !binding.mode.is_one_shot() {

@@ -5,15 +5,15 @@ producer = "0.0.3-rc.4"
 contract_sha256 = "b499fe258f87662d3db66b6aed7ea5f887887bdff84095d86829283d27019239"
 
 [analysis]
-inventory_sha256 = "6d57e95eefd62d2259721d658826e547dfb3b476ba7fc5b1c0e49054b6d49a14"
+inventory_sha256 = "d6456077f436110b7f9d9d781b70357509ea802e571e4573d81529bba06760bc"
 exclusions_sha256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 cargo_lock_sha256 = "c57d02582afe8069129844f4f07aa867b3a1a9391d77b4be4e5ca0013a6d1687"
 packages = 3
-targets = 38
-physical_rust_files = 274
-base_source_contexts = 457
+targets = 39
+physical_rust_files = 275
+base_source_contexts = 458
 derived_source_contexts = 0
-source_facts = 79466
+source_facts = 79872
 projection_queries = 0
 projected_facts = 0
 unresolved_bindings = 0
@@ -240,7 +240,7 @@ sha256 = "2a4b286bea1a4a7ccba09cfcdc7855595f2a7092f519d440f745e4e7f97ef067"
 
 [[gate.input]]
 path = "docs/contracts.md"
-sha256 = "e8a9fe4049f4c61500030983a463a45a8ffbe268922ea7ba3950b3d1a78fbc0c"
+sha256 = "1d69e259a66981629f76703bf8905e02257e0ceb53d72f7a898a40a0d18176e8"
 
 [[gate.input]]
 path = "docs/performance.md"
@@ -539,7 +539,7 @@ sha256 = "73303f1eba53b406bf8d8bfade18750b7d1a1971d0d3fa3498582e1b335439d3"
 
 [[gate.input]]
 path = "docs/contracts.md"
-sha256 = "e8a9fe4049f4c61500030983a463a45a8ffbe268922ea7ba3950b3d1a78fbc0c"
+sha256 = "1d69e259a66981629f76703bf8905e02257e0ceb53d72f7a898a40a0d18176e8"
 
 [[gate.input]]
 path = "docs/performance.md"

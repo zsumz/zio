@@ -170,7 +170,7 @@ impl Poll {
             event_capacity,
             wake,
             wake_key: None,
-            pending: crate::pending::PendingBatch::new(event_capacity, registration_capacity)?,
+            pending: crate::pending::PendingBatch::new(registration_capacity)?,
             _owner_local: OwnerLocal(PhantomData),
         })
     }

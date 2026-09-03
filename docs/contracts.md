@@ -133,6 +133,8 @@ Direct readiness predicates return `false` for wake events.
 One wait emits at most one event per registration and unions split native
 hints. Resource events retain first-observation order; a wake follows them.
 Separate registrations remain separate even when their keys match.
+Without a pending wake, stable ready sets larger than event capacity rotate
+across waits.
 
 ## Recovery behavior
 
@@ -166,10 +168,10 @@ ownership scratch. Successful waits reuse it without growing zio-owned heap
 storage. Wake, observation, registration iteration, and successful bulk
 deletion allocate nothing.
 
-Kqueue retains observation space for both filters of every registration plus
-the wake filter so a delivered registration receives its complete split-filter
-snapshot. One-shot recovery plans and receipts are bounded separately by the
-smaller configured event and registration limit.
+Kqueue retains raw space for both filters of every registration plus the wake
+filter, and one coalesced entry per registration. A delivered registration
+therefore receives its complete split-filter snapshot. One-shot recovery plans
+and receipts are bounded separately by the smaller configured limit.
 
 A failed post-delivery recovery alone creates one owned `Vec` snapshot, bounded
 by the smaller configured event and registration limit. Allocation exhaustion
