@@ -47,6 +47,27 @@ fn diagnostics_use_plain_display_names() {
         conflict.to_string(),
         "poller wake key is 3, not requested key 5"
     );
+    assert_eq!(
+        Error::WrongPoller {
+            registration: Registration::test(7),
+        }
+        .to_string(),
+        "registration 7 belongs to another poller"
+    );
+    assert_eq!(
+        Error::Stale {
+            registration: RegistrationId::new(8),
+        }
+        .to_string(),
+        "registration 8 is stale"
+    );
+    assert_eq!(
+        Error::Uncertain {
+            registration: RegistrationId::new(9),
+        }
+        .to_string(),
+        "registration 9 has uncertain backend state"
+    );
 }
 
 #[test]

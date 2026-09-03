@@ -166,16 +166,17 @@ impl fmt::Display for Error {
             Self::WrongPoller { registration } => {
                 write!(
                     formatter,
-                    "registration {registration:?} belongs to another poller"
+                    "registration {} belongs to another poller",
+                    registration.id()
                 )
             }
             Self::InvalidInterest => formatter.write_str("readiness interest must not be empty"),
             Self::Stale { registration } => {
-                write!(formatter, "registration {registration:?} is stale")
+                write!(formatter, "registration {registration} is stale")
             }
             Self::Uncertain { registration } => write!(
                 formatter,
-                "registration {registration:?} has uncertain backend state"
+                "registration {registration} has uncertain backend state"
             ),
             Self::Capacity { limit } => write!(formatter, "fixed capacity {limit} was reached"),
             Self::RegistrationSpaceExhausted => {
