@@ -1,6 +1,8 @@
 //! Readiness set operators.
 
-use core::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
+use core::ops::{
+    BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not, Sub, SubAssign,
+};
 
 use super::Readiness;
 
@@ -43,6 +45,14 @@ impl BitXor for Readiness {
 impl BitXorAssign for Readiness {
     fn bitxor_assign(&mut self, rhs: Self) {
         *self = self.symmetric_difference(rhs);
+    }
+}
+
+impl Not for Readiness {
+    type Output = Self;
+
+    fn not(self) -> Self::Output {
+        self.complement()
     }
 }
 

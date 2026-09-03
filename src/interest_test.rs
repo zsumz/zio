@@ -26,6 +26,9 @@ fn set_operations_match_membership() {
     assert_eq!(COMBINED - Interest::READABLE, WRITABLE);
     assert_eq!(COMBINED ^ Interest::READABLE, WRITABLE);
     assert_eq!(COMBINED.symmetric_difference(Interest::WRITABLE), READABLE);
+    assert_eq!(Interest::READABLE.complement(), WRITABLE);
+    assert_eq!(!Interest::READABLE, WRITABLE);
+    assert_eq!(!Interest::EMPTY, Interest::ALL);
 
     let mut assigned = COMBINED;
     assigned &= Interest::WRITABLE;

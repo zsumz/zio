@@ -99,6 +99,8 @@ printf '%s\n' \
   '    let mut interest = zio::Interest::READABLE;' \
   '    let _ = zio::Interest::ALL;' \
   '    let _ = interest.symmetric_difference(zio::Interest::ALL);' \
+  '    let _ = interest.complement();' \
+  '    let _ = !interest;' \
   '    interest |= zio::Interest::WRITABLE;' \
   '    interest &= zio::Interest::WRITABLE;' \
   '    interest ^= zio::Interest::READABLE;' \
@@ -107,6 +109,8 @@ printf '%s\n' \
   '    let mut readiness = zio::Readiness::READABLE | zio::Readiness::READ_CLOSED;' \
   '    let _ = zio::Readiness::ALL;' \
   '    let _ = readiness.symmetric_difference(zio::Readiness::ALL);' \
+  '    let _ = readiness.complement();' \
+  '    let _ = !readiness;' \
   '    let _ = readiness.intersects(zio::Readiness::READABLE);' \
   '    readiness |= zio::Readiness::ERROR;' \
   '    readiness &= zio::Readiness::READ_CLOSED | zio::Readiness::ERROR;' \

@@ -43,6 +43,9 @@ fn readiness_set_operations_match_membership() {
         COMBINED.symmetric_difference(Readiness::READ_CLOSED),
         READABLE
     );
+    assert_eq!(Readiness::ALL.complement(), Readiness::EMPTY);
+    assert_eq!(!Readiness::EMPTY, Readiness::ALL);
+    assert_eq!(!COMBINED, Readiness::ALL - COMBINED);
 
     let mut assigned = COMBINED;
     assigned &= Readiness::READ_CLOSED;

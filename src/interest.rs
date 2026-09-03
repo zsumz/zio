@@ -2,7 +2,7 @@
 
 use core::{
     fmt,
-    ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign},
+    ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not, Sub, SubAssign},
 };
 
 /// Backend-neutral readiness interests for one registration.
@@ -59,6 +59,12 @@ impl Interest {
         Self(self.0 ^ other.0)
     }
 
+    /// Returns every supported interest absent from this set.
+    #[must_use]
+    pub const fn complement(self) -> Self {
+        Self::ALL.difference(self)
+    }
+
     /// Returns whether readable interest is present.
     pub const fn is_readable(self) -> bool {
         self.contains(Self::READABLE)
@@ -109,6 +115,14 @@ impl BitXor for Interest {
 impl BitXorAssign for Interest {
     fn bitxor_assign(&mut self, rhs: Self) {
         *self = self.symmetric_difference(rhs);
+    }
+}
+
+impl Not for Interest {
+    type Output = Self;
+
+    fn not(self) -> Self::Output {
+        self.complement()
     }
 }
 

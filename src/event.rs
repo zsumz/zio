@@ -123,6 +123,12 @@ impl Readiness {
         Self(self.0 ^ other.0)
     }
 
+    /// Returns every supported readiness hint absent from this set.
+    #[must_use]
+    pub const fn complement(self) -> Self {
+        Self::ALL.difference(self)
+    }
+
     /// Returns whether readable readiness is present.
     pub const fn is_readable(self) -> bool {
         self.contains(Self::READABLE)

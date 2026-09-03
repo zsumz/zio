@@ -2,7 +2,7 @@
 
 use core::{
     iter::FusedIterator,
-    ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign},
+    ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not, Sub, SubAssign},
 };
 
 use zio::{
@@ -131,6 +131,8 @@ fn flag_sets_support_standard_set_operators() {
     let _ =
         zio::Interest::symmetric_difference as fn(zio::Interest, zio::Interest) -> zio::Interest;
     let _ = Readiness::symmetric_difference as fn(Readiness, Readiness) -> Readiness;
+    let _ = zio::Interest::complement as fn(zio::Interest) -> zio::Interest;
+    let _ = Readiness::complement as fn(Readiness) -> Readiness;
     assert_eq!(
         zio::Interest::ALL,
         zio::Interest::READABLE | zio::Interest::WRITABLE
@@ -193,6 +195,7 @@ where
         + BitAndAssign
         + BitXor<Output = T>
         + BitXorAssign
+        + Not<Output = T>
         + Sub<Output = T>
         + SubAssign,
 {
