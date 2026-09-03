@@ -18,3 +18,21 @@ fn readiness_union_operators_match_membership() {
     assigned |= Readiness::READ_CLOSED;
     assert_eq!(assigned, combined);
 }
+
+#[test]
+fn readiness_intersection_and_difference_match_membership() {
+    const COMBINED: Readiness = Readiness::READABLE.union(Readiness::READ_CLOSED);
+    const READABLE: Readiness = COMBINED.intersection(Readiness::READABLE);
+    const CLOSED: Readiness = COMBINED.difference(Readiness::READABLE);
+
+    assert!(COMBINED.intersects(Readiness::READ_CLOSED));
+    assert_eq!(READABLE, Readiness::READABLE);
+    assert_eq!(CLOSED, Readiness::READ_CLOSED);
+    assert_eq!(COMBINED & Readiness::READABLE, READABLE);
+    assert_eq!(COMBINED - Readiness::READABLE, CLOSED);
+
+    let mut assigned = COMBINED;
+    assigned &= Readiness::READ_CLOSED;
+    assigned -= Readiness::READ_CLOSED;
+    assert_eq!(assigned, Readiness::EMPTY);
+}

@@ -69,9 +69,14 @@ printf '%s\n' \
   '    let _ = RegistrationInfo::state as fn(&RegistrationInfo) -> RegistrationState;' \
   '    let mut interest = zio::Interest::READABLE;' \
   '    interest |= zio::Interest::WRITABLE;' \
+  '    interest &= zio::Interest::WRITABLE;' \
+  '    interest -= zio::Interest::WRITABLE;' \
   '    let _ = interest;' \
   '    let mut readiness = zio::Readiness::READABLE | zio::Readiness::READ_CLOSED;' \
+  '    let _ = readiness.intersects(zio::Readiness::READABLE);' \
   '    readiness |= zio::Readiness::ERROR;' \
+  '    readiness &= zio::Readiness::READ_CLOSED | zio::Readiness::ERROR;' \
+  '    readiness -= zio::Readiness::ERROR;' \
   '    let _ = readiness;' \
   '}' \
   '' \

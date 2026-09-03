@@ -1,5 +1,5 @@
 //! Caller keys and portable readiness observations.
-use core::ops::{BitOr, BitOrAssign};
+use core::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Sub, SubAssign};
 
 use crate::Registration;
 
@@ -75,10 +75,27 @@ impl Readiness {
         self.0 & other.0 == other.0
     }
 
+    /// Returns whether the sets share any readiness hint.
+    pub const fn intersects(self, other: Self) -> bool {
+        self.0 & other.0 != 0
+    }
+
     /// Returns the union of two readiness sets.
     #[must_use]
     pub const fn union(self, other: Self) -> Self {
         Self(self.0 | other.0)
+    }
+
+    /// Returns the readiness hints present in both sets.
+    #[must_use]
+    pub const fn intersection(self, other: Self) -> Self {
+        Self(self.0 & other.0)
+    }
+
+    /// Returns the readiness hints not present in `other`.
+    #[must_use]
+    pub const fn difference(self, other: Self) -> Self {
+        Self(self.0 & !other.0)
     }
 
     /// Returns whether readable readiness is present.
@@ -118,6 +135,34 @@ impl BitOr for Readiness {
 impl BitOrAssign for Readiness {
     fn bitor_assign(&mut self, rhs: Self) {
         *self = self.union(rhs);
+    }
+}
+
+impl BitAnd for Readiness {
+    type Output = Self;
+
+    fn bitand(self, rhs: Self) -> Self::Output {
+        self.intersection(rhs)
+    }
+}
+
+impl BitAndAssign for Readiness {
+    fn bitand_assign(&mut self, rhs: Self) {
+        *self = self.intersection(rhs);
+    }
+}
+
+impl Sub for Readiness {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        self.difference(rhs)
+    }
+}
+
+impl SubAssign for Readiness {
+    fn sub_assign(&mut self, rhs: Self) {
+        *self = self.difference(rhs);
     }
 }
 

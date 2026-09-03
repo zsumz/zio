@@ -1,6 +1,6 @@
 //! Portable readiness interests.
 
-use core::ops::{BitOr, BitOrAssign};
+use core::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Sub, SubAssign};
 
 /// Backend-neutral readiness interests for one registration.
 #[repr(transparent)]
@@ -25,10 +25,27 @@ impl Interest {
         self.0 & other.0 == other.0
     }
 
+    /// Returns whether the sets share any interest.
+    pub const fn intersects(self, other: Self) -> bool {
+        self.0 & other.0 != 0
+    }
+
     /// Returns the union of two interest sets.
     #[must_use]
     pub const fn union(self, other: Self) -> Self {
         Self(self.0 | other.0)
+    }
+
+    /// Returns the interests present in both sets.
+    #[must_use]
+    pub const fn intersection(self, other: Self) -> Self {
+        Self(self.0 & other.0)
+    }
+
+    /// Returns the interests not present in `other`.
+    #[must_use]
+    pub const fn difference(self, other: Self) -> Self {
+        Self(self.0 & !other.0)
     }
 
     /// Returns whether readable interest is present.
@@ -53,6 +70,34 @@ impl BitOr for Interest {
 impl BitOrAssign for Interest {
     fn bitor_assign(&mut self, rhs: Self) {
         *self = self.union(rhs);
+    }
+}
+
+impl BitAnd for Interest {
+    type Output = Self;
+
+    fn bitand(self, rhs: Self) -> Self::Output {
+        self.intersection(rhs)
+    }
+}
+
+impl BitAndAssign for Interest {
+    fn bitand_assign(&mut self, rhs: Self) {
+        *self = self.intersection(rhs);
+    }
+}
+
+impl Sub for Interest {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        self.difference(rhs)
+    }
+}
+
+impl SubAssign for Interest {
+    fn sub_assign(&mut self, rhs: Self) {
+        *self = self.difference(rhs);
     }
 }
 

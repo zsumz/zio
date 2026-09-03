@@ -1,6 +1,6 @@
 //! Downstream matching contracts for open diagnostics and closed domains.
 
-use core::ops::{BitOr, BitOrAssign};
+use core::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Sub, SubAssign};
 
 use zio::{
     ArmState, CommitStatus, DeleteError, Error, Event, Key, Mode, MutationError, Operation, Poll,
@@ -64,12 +64,21 @@ fn poll_exposes_authoritative_registration_info() {
 }
 
 #[test]
-fn flag_sets_support_standard_union_operators() {
-    assert_union::<zio::Interest>();
-    assert_union::<Readiness>();
+fn flag_sets_support_standard_set_operators() {
+    assert_set_operators::<zio::Interest>();
+    assert_set_operators::<Readiness>();
 }
 
-fn assert_union<T: BitOr<Output = T> + BitOrAssign>() {}
+fn assert_set_operators<T>()
+where
+    T: BitOr<Output = T>
+        + BitOrAssign
+        + BitAnd<Output = T>
+        + BitAndAssign
+        + Sub<Output = T>
+        + SubAssign,
+{
+}
 
 fn operation_class(operation: Operation) -> &'static str {
     match operation {

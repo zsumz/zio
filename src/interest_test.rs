@@ -12,3 +12,21 @@ fn union_operators_match_membership() {
     assigned |= Interest::WRITABLE;
     assert_eq!(assigned, combined);
 }
+
+#[test]
+fn intersection_and_difference_match_membership() {
+    const COMBINED: Interest = Interest::READABLE.union(Interest::WRITABLE);
+    const READABLE: Interest = COMBINED.intersection(Interest::READABLE);
+    const WRITABLE: Interest = COMBINED.difference(Interest::READABLE);
+
+    assert!(COMBINED.intersects(Interest::WRITABLE));
+    assert_eq!(READABLE, Interest::READABLE);
+    assert_eq!(WRITABLE, Interest::WRITABLE);
+    assert_eq!(COMBINED & Interest::READABLE, READABLE);
+    assert_eq!(COMBINED - Interest::READABLE, WRITABLE);
+
+    let mut assigned = COMBINED;
+    assigned &= Interest::WRITABLE;
+    assigned -= Interest::WRITABLE;
+    assert_eq!(assigned, Interest::EMPTY);
+}
