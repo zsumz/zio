@@ -216,6 +216,18 @@ status = "enforced"
 title = "Safe registration retains a distinct descriptor and exact generation"
 
 [[invariant]]
+document = "docs/contracts.md#registration-ownership"
+evidence = [
+    "rust-test:tests/registration_lifetime.rs::dropping_poller_closes_a_transferred_descriptor",
+    "rust-test:tests/borrowed_registration.rs::dropping_poller_does_not_close_borrowed_source",
+    "gate:check",
+    "gate:ci",
+]
+id = "OWNERSHIP-DROP-01"
+status = "enforced"
+title = "Poller drop closes owned descriptors and preserves borrowed descriptors"
+
+[[invariant]]
 document = "docs/contracts.md#registration-lifetime"
 evidence = [
     "rust-test:tests/registration_lifetime.rs::registration_handle_traits_are_stable",

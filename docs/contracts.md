@@ -38,6 +38,8 @@ retained registration.
 descriptor. Borrowed registrations are rejected before backend work. An
 `Applied` failure returns the descriptor; other failures return the attempted
 handle. Inspect the cause before reuse.
+Dropping a poller closes retained owned descriptors; borrowed descriptors
+remain caller-owned.
 `Poll::registration_fd` safely borrows any retained resource descriptor,
 including one in uncertain backend state.
 `Poll::registrations` returns a bounded snapshot. `Poll::iter_registrations`
