@@ -52,6 +52,7 @@ mod pending_kqueue_test;
 mod poll;
 mod registration;
 mod registration_borrowed;
+mod registration_debug;
 mod registration_id;
 mod registration_ops;
 mod sys;

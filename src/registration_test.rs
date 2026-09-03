@@ -42,6 +42,14 @@ fn registration_handle_remains_sixteen_bytes() {
 }
 
 #[test]
+fn registration_debug_hides_authority_encoding() {
+    assert_eq!(
+        format!("{:?}", crate::Registration::test(42)),
+        "Registration { id: 42, .. }"
+    );
+}
+
+#[test]
 fn owner_is_allocated_once() -> Result<(), Error> {
     let next = AtomicU64::new(41);
     let mut owner = PollOwner::unassigned();

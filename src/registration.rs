@@ -95,7 +95,7 @@ impl PollOwner {
 /// retires the generation or the poller itself is dropped.
 /// Ordering supports ordered containers; it does not express registration age.
 #[must_use = "retain a registration handle for explicit early deletion"]
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Registration {
     owner: PollId,
     id: EncodedRegistrationId,
