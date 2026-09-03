@@ -8,11 +8,11 @@ use core::fmt;
 pub enum CapacityKind {
     /// Delivered-event storage.
     Event,
-    /// Retained-registration storage.
+    /// Registration-table or handle-snapshot storage.
     Registration,
 }
 
-/// Why a fixed capacity was unavailable.
+/// Why a logical capacity failed.
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum CapacityReason {

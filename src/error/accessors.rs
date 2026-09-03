@@ -54,7 +54,7 @@ impl Error {
         }
     }
 
-    /// Returns the fixed capacity associated with a capacity failure.
+    /// Returns the logical capacity involved in a capacity failure.
     pub const fn capacity_limit(&self) -> Option<usize> {
         match self {
             Self::Capacity { limit, .. } => Some(*limit),

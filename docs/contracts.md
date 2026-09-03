@@ -20,6 +20,7 @@ its diagnostic fields may grow.
 Public value layouts and flag encodings are opaque.
 
 `BackendLimit` rejects capacities that native or token representations cannot hold.
+`Error::capacity_limit` reports the configured or attempted logical capacity.
 
 ## Registration ownership
 

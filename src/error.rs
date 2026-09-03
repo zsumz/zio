@@ -131,14 +131,14 @@ pub enum Error {
         /// Rejected registration.
         registration: RegistrationId,
     },
-    /// A requested fixed capacity was unavailable.
+    /// A logical capacity was invalid, exhausted, or unavailable.
     #[non_exhaustive]
     Capacity {
-        /// Storage category that was unavailable.
+        /// Affected storage category.
         kind: CapacityKind,
-        /// Configured capacity.
+        /// Logical capacity involved in the failure.
         limit: usize,
-        /// Why the capacity was unavailable.
+        /// Reason for the failure.
         reason: CapacityReason,
     },
     /// The supplied event destination cannot hold a complete batch.
