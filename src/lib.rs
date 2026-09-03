@@ -57,7 +57,7 @@ mod registration_id;
 mod registration_ops;
 mod sys;
 mod table;
-#[cfg(feature = "test-support")]
+#[cfg(feature = "unstable-test-support")]
 #[doc(hidden)]
 pub mod test_support;
 mod token;

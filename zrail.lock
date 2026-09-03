@@ -174,7 +174,7 @@ kind = "normal"
 scope = "internal"
 optional = false
 default_features = false
-features = ["test-support"]
+features = ["unstable-test-support"]
 
 [package.dependency.source]
 kind = "workspace-member"
@@ -208,7 +208,7 @@ sha256 = "c57d02582afe8069129844f4f07aa867b3a1a9391d77b4be4e5ca0013a6d1687"
 
 [[gate.input]]
 path = "Cargo.toml"
-sha256 = "3747199745ee72e0ab9e047de6de4a2ea1605555d30cad47946b076475417371"
+sha256 = "f8f367d0df9ed6f8b7c053ab72a89cb1a7f5f4aa4ae7c8f95e2d0e61f162814d"
 
 [[gate.input]]
 path = "LICENSE"
@@ -294,7 +294,7 @@ sha256 = "c57d02582afe8069129844f4f07aa867b3a1a9391d77b4be4e5ca0013a6d1687"
 
 [[gate.input]]
 path = "Cargo.toml"
-sha256 = "3747199745ee72e0ab9e047de6de4a2ea1605555d30cad47946b076475417371"
+sha256 = "f8f367d0df9ed6f8b7c053ab72a89cb1a7f5f4aa4ae7c8f95e2d0e61f162814d"
 
 [[gate.input]]
 path = "crates/zio-qualify/Cargo.toml"
@@ -527,7 +527,7 @@ sha256 = "c57d02582afe8069129844f4f07aa867b3a1a9391d77b4be4e5ca0013a6d1687"
 
 [[gate.input]]
 path = "Cargo.toml"
-sha256 = "3747199745ee72e0ab9e047de6de4a2ea1605555d30cad47946b076475417371"
+sha256 = "f8f367d0df9ed6f8b7c053ab72a89cb1a7f5f4aa4ae7c8f95e2d0e61f162814d"
 
 [[gate.input]]
 path = "LICENSE"

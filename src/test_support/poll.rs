@@ -23,7 +23,7 @@ use super::{
 
 /// Concrete mutation-only poller driven by a finite backend script.
 ///
-/// This type is compiled only with `test-support` and is intended for the
+/// This type is compiled only with `unstable-test-support` and is intended for the
 /// version-matched `zio-testkit`. It does not expose native descriptors or
 /// implement waiting.
 #[derive(Debug)]
