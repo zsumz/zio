@@ -10,8 +10,8 @@ pub enum Wait {
     /// Wait for readiness for approximately the supplied duration.
     ///
     /// A backend may round a positive duration up to its native timeout
-    /// resolution. Zero remains nonblocking, and interruptions may return
-    /// before the timeout elapses.
+    /// resolution. Zero remains nonblocking. An interrupted backend wait
+    /// returns [`Error::Io`](crate::Error::Io) before the timeout elapses.
     For(Duration),
     /// Permit indefinite blocking until the backend returns.
     Forever,
