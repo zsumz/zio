@@ -94,7 +94,8 @@ impl Poll {
     /// Ensures a registration is armed without changing its interest or mode.
     ///
     /// A disarmed one-shot registration is modified and rearmed. Already-armed
-    /// and level registrations return without backend work.
+    /// and level registrations return without backend work. An uncertain
+    /// registration returns [`Error::Uncertain`] without backend work.
     pub fn rearm(&mut self, registration: &Registration) -> Result<(), Error> {
         self.mutations().rearm(registration)
     }

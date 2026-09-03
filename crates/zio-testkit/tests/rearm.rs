@@ -120,6 +120,14 @@ fn verify_failure(commit: CommitStatus) -> Result<(), Box<dyn std::error::Error>
     let (state, backend) = expected_failure(commit);
     assert_eq!(poll.registration_state(&registration)?, state);
     assert_eq!(poll.backend_state(registration.id()), backend);
+    if commit == CommitStatus::Unknown {
+        let calls = poll.calls().len();
+        assert!(matches!(
+            poll.rearm(&registration),
+            Err(Error::Uncertain { registration: id }) if id == registration.id()
+        ));
+        assert_eq!(poll.calls().len(), calls);
+    }
     poll.delete(registration)?;
     poll.finish()?;
     Ok(())

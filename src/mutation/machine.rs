@@ -108,7 +108,19 @@ impl<'state, Driver: MutationDriver> MutationSession<'state, Driver> {
                         arm: ArmState::Armed,
                     },
                 ) => None,
-                _ => return Err(Error::Invariant),
+                (_, RegistrationState::Uncertain) => {
+                    return Err(Error::Uncertain {
+                        registration: registration.id(),
+                    });
+                }
+                (
+                    Mode::Level,
+                    RegistrationState::Registered {
+                        arm: ArmState::Disarmed,
+                    },
+                ) => {
+                    return Err(Error::Invariant);
+                }
             }
         };
         match interest {
