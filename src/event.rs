@@ -67,14 +67,10 @@ impl fmt::Display for Key {
 
 /// Backend-neutral advisory readiness hints for one resource.
 ///
-/// Hints are a snapshot of what the backend reported, not a promise that a
-/// later operation will succeed or avoid blocking. Multiple hints may be
-/// present. In particular, closure or error hints may accompany an event even
-/// when the matching direction was not requested. Test flag membership and use
-/// the corresponding nonblocking operation as the source of truth. A closure
-/// hint identifies the operation direction to inspect, not the peer action that
-/// caused it; native backends may conservatively report an additional hint, and
-/// an absent closure hint does not prove that the direction remains open.
+/// Hints may combine, vary by platform, and appear without matching requested
+/// interest. They are snapshots, not promises that later I/O will succeed. Test
+/// membership and treat the corresponding nonblocking operation as
+/// authoritative. An absent closure hint does not prove a direction is open.
 #[derive(Clone, Copy, Default, Eq, Hash, PartialEq)]
 pub struct Readiness(u8);
 
