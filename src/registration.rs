@@ -87,10 +87,11 @@ impl PollOwner {
 /// Copying a handle does not create another registration. Once deletion is
 /// proven applied, the exact generation is retired and every remaining copy is
 /// stale. Dropping one or every handle does not delete the registration. The
-/// poller retains an owned duplicate for [`Poll::register`](crate::Poll::register),
-/// while the caller retains the descriptor for
-/// [`Poll::register_borrowed`](crate::Poll::register_borrowed), until deletion
-/// retires the generation or the poller itself is dropped.
+/// Safe registration leaves the poller owning its retained descriptor:
+/// [`Poll::register`](crate::Poll::register) duplicates it and
+/// [`Poll::register_owned`](crate::Poll::register_owned) transfers it. With
+/// [`Poll::register_borrowed`](crate::Poll::register_borrowed), the caller
+/// retains it until deletion retires the generation or the poller is dropped.
 /// Ordering supports ordered containers; it does not express registration age.
 #[must_use = "retain a registration handle for explicit early deletion"]
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
