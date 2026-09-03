@@ -6,7 +6,7 @@
 
 use std::{marker::PhantomData, os::unix::net::UnixStream, time::Duration};
 
-use zio::{Event, Key, Mode, Poll, Registration, Wait, Waker};
+use zio::{Event, Key, Mode, Poll, Registration, Waker};
 
 use super::backend::{Backend, Profile, display};
 use super::zio_backend::finish_wait;
@@ -71,7 +71,7 @@ impl Backend for ZioBorrowedBackend {
         let result = unsafe {
             self.poll_mut()?.register_borrowed(
                 source,
-                Key::new(key),
+                Key::from(key),
                 zio::Interest::READABLE,
                 mode(profile),
             )
@@ -107,9 +107,8 @@ impl Backend for ZioBorrowedBackend {
         timeout: Duration,
         observe: &mut dyn FnMut(usize) -> Result<(), String>,
     ) -> Result<usize, String> {
-        self.events.clear();
         let result = match self.poll.as_mut() {
-            Some(poll) => poll.wait(&mut self.events, Wait::For(timeout)),
+            Some(poll) => poll.wait(&mut self.events, timeout.into()),
             None => return Err("zio borrowed backend was invalidated".to_owned()),
         };
         let report = result.map_err(|error| self.invalidate(error))?;
@@ -118,17 +117,16 @@ impl Backend for ZioBorrowedBackend {
             for event in &self.events {
                 match *event {
                     Event::Resource { key, readiness, .. } if readiness.is_readable() => {
-                        observe(usize::try_from(key.get()).map_err(display)?)?;
+                        observe(usize::try_from(u64::from(key)).map_err(display)?)?;
                         count = count.saturating_add(1);
                     }
                     Event::Resource { key, readiness, .. } => {
                         return Err(format!(
-                            "zio borrowed key {} was not readable: {readiness:?}",
-                            key.get()
+                            "zio borrowed key {key} was not readable: {readiness:?}"
                         ));
                     }
                     Event::Wake { key, .. } => {
-                        return Err(format!("unexpected zio borrowed wake key {}", key.get()));
+                        return Err(format!("unexpected zio borrowed wake key {key}"));
                     }
                 }
             }
@@ -138,7 +136,7 @@ impl Backend for ZioBorrowedBackend {
     }
 
     fn configure_wake(&mut self) -> Result<(), String> {
-        let result = self.poll_mut()?.waker(Key::new(u64::MAX));
+        let result = self.poll_mut()?.waker(Key::from(u64::MAX));
         self.waker = Some(result.map_err(|error| self.invalidate(error))?);
         Ok(())
     }
@@ -150,14 +148,13 @@ impl Backend for ZioBorrowedBackend {
     }
 
     fn wait_for_wake(&mut self, timeout: Duration) -> Result<u64, String> {
-        self.events.clear();
         let result = match self.poll.as_mut() {
-            Some(poll) => poll.wait(&mut self.events, Wait::For(timeout)),
+            Some(poll) => poll.wait(&mut self.events, timeout.into()),
             None => return Err("zio borrowed backend was invalidated".to_owned()),
         };
         let report = result.map_err(|error| self.invalidate(error))?;
         let delivery = match self.events.as_slice() {
-            [Event::Wake { key, .. }] if *key == Key::new(u64::MAX) => Ok(1),
+            [Event::Wake { key, .. }] if *key == Key::from(u64::MAX) => Ok(1),
             events => Err(format!(
                 "unexpected zio borrowed wake observations: {events:?}"
             )),
