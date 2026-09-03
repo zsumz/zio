@@ -68,6 +68,10 @@ fn diagnostics_use_plain_display_names() {
         .to_string(),
         "registration 9 has uncertain backend state"
     );
+    assert_eq!(
+        Error::Capacity { limit: 0 }.to_string(),
+        "fixed capacity 0 is unavailable"
+    );
 }
 
 #[test]

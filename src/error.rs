@@ -123,7 +123,7 @@ pub enum Error {
         /// Affected registration.
         registration: RegistrationId,
     },
-    /// A fixed registration or event capacity was reached or invalid.
+    /// A requested fixed capacity is zero, exhausted, or unavailable.
     Capacity {
         /// Configured capacity.
         limit: usize,
@@ -172,7 +172,7 @@ impl fmt::Display for Error {
                 formatter,
                 "registration {registration} has uncertain backend state"
             ),
-            Self::Capacity { limit } => write!(formatter, "fixed capacity {limit} was reached"),
+            Self::Capacity { limit } => write!(formatter, "fixed capacity {limit} is unavailable"),
             Self::RegistrationSpaceExhausted => {
                 formatter.write_str("registration generation space is exhausted")
             }
