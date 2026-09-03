@@ -48,6 +48,9 @@ printf '%s\n' \
   'fn main() {' \
   '    assert_eq!(classify_error(&Error::Invariant), 1);' \
   '    assert_eq!(classify_operation(Operation::Wait), 1);' \
+  '    let _ = Error::operation as fn(&Error) -> Option<Operation>;' \
+  '    let _ = Error::commit as fn(&Error) -> Option<CommitStatus>;' \
+  '    let _ = Error::io_error as fn(&Error) -> Option<&std::io::Error>;' \
   '    let _ = classify_event as fn(Event) -> u8;' \
   '    assert_eq!(classify_commit(CommitStatus::Unknown), 2);' \
   '    assert_eq!(classify_mode(Mode::OneShot), 1);' \

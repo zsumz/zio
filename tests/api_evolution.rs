@@ -20,6 +20,13 @@ fn open_diagnostics_support_forward_compatible_fallbacks() {
 }
 
 #[test]
+fn errors_expose_common_diagnostics_without_matching() {
+    let _ = Error::operation as fn(&Error) -> Option<Operation>;
+    let _ = Error::commit as fn(&Error) -> Option<CommitStatus>;
+    let _ = Error::io_error as fn(&Error) -> Option<&std::io::Error>;
+}
+
+#[test]
 fn closed_delivery_and_state_domains_remain_exhaustive() {
     assert_eq!(mode_class(Mode::Level), "level");
     assert_eq!(wait_class(Wait::NoBlock), "no-block");

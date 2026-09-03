@@ -121,6 +121,35 @@ pub enum Error {
     UnsupportedPlatform,
 }
 
+impl Error {
+    /// Returns the associated operation, when one is recorded.
+    pub const fn operation(&self) -> Option<Operation> {
+        match self {
+            Self::Io { operation, .. } => Some(*operation),
+            Self::Mutation(error) => Some(error.operation()),
+            Self::UnsupportedPlatform => Some(Operation::UnsupportedPlatform),
+            _ => None,
+        }
+    }
+
+    /// Returns the mutation commit status, when present.
+    pub const fn commit(&self) -> Option<CommitStatus> {
+        match self {
+            Self::Mutation(error) => Some(error.commit()),
+            _ => None,
+        }
+    }
+
+    /// Returns the underlying I/O error, when present.
+    pub const fn io_error(&self) -> Option<&io::Error> {
+        match self {
+            Self::Io { source, .. } => Some(source),
+            Self::Mutation(error) => Some(error.source()),
+            _ => None,
+        }
+    }
+}
+
 impl fmt::Display for Error {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

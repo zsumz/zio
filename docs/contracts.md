@@ -11,6 +11,8 @@ must include a fallback arm. `Event`, `CommitStatus`, `Mode`, `Wait`,
 their cases is a breaking contract change. Event fields may grow; match with
 `..`.
 
+Use `Error` accessors for operation, commit status, and typed I/O details.
+
 ## Registration ownership
 
 `Poll::register` is the safe default. Each successful call retains a distinct
