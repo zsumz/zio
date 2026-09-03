@@ -56,6 +56,14 @@ impl Poll {
         self.mutations().modify(registration, interest, mode)
     }
 
+    /// Ensures a registration is armed without changing its interest or mode.
+    ///
+    /// A disarmed one-shot registration is modified and rearmed. Already-armed
+    /// and level registrations return without backend work.
+    pub fn rearm(&mut self, registration: &Registration) -> Result<(), Error> {
+        self.mutations().rearm(registration)
+    }
+
     /// Deletes a registration and releases its retained descriptor state.
     ///
     /// Success retires the exact generation and makes every remaining handle

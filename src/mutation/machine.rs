@@ -3,9 +3,9 @@
 use std::os::fd::AsFd;
 
 use crate::{
-    CommitStatus, DeleteError, Error, Interest, Key, Mode, MutationError, Operation, RegisterError,
-    Registration, RegistrationState, descriptor::Descriptor, registration::PollOwner,
-    table::RegistrationTable,
+    ArmState, CommitStatus, DeleteError, Error, Interest, Key, Mode, MutationError, Operation,
+    RegisterError, Registration, RegistrationState, descriptor::Descriptor,
+    registration::PollOwner, table::RegistrationTable,
 };
 
 use super::{
@@ -144,6 +144,32 @@ impl<'state, Driver: MutationDriver> MutationSession<'state, Driver> {
         }
         self.registrations
             .commit_modify(registration.id(), interest, mode)
+    }
+
+    pub(crate) fn rearm(&mut self, registration: &Registration) -> Result<(), Error> {
+        require_owner(self.owner.current(), registration)?;
+        let interest = {
+            let binding = self.registrations.binding(registration.id(), false)?;
+            match (binding.mode, binding.state) {
+                (
+                    Mode::OneShot,
+                    RegistrationState::Registered {
+                        arm: ArmState::Disarmed,
+                    },
+                ) => Some(binding.interest),
+                (
+                    _,
+                    RegistrationState::Registered {
+                        arm: ArmState::Armed,
+                    },
+                ) => None,
+                _ => return Err(Error::Invariant),
+            }
+        };
+        match interest {
+            Some(interest) => self.modify(registration, interest, Mode::OneShot),
+            None => Ok(()),
+        }
     }
 
     #[inline]

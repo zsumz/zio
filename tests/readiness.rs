@@ -47,7 +47,7 @@ fn one_shot_requires_explicit_rearm() -> Result<(), Box<dyn std::error::Error>> 
     assert!(events.is_empty());
     require_no_recovery(report)?;
 
-    poll.modify(&delivered, Interest::READABLE, Mode::OneShot)?;
+    poll.rearm(&delivered)?;
     assert_eq!(
         poll.registration_state(&registration)?,
         RegistrationState::Registered {

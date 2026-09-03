@@ -1,7 +1,7 @@
 //! Downstream matching contracts for open diagnostics and closed domains.
 
 use zio::{
-    ArmState, CommitStatus, DeleteError, Error, Event, Key, Mode, Operation, Readiness,
+    ArmState, CommitStatus, DeleteError, Error, Event, Key, Mode, Operation, Poll, Readiness,
     RecoveryOutcome, RegisterError, Registration, RegistrationState, Wait,
 };
 
@@ -32,6 +32,11 @@ fn errors_return_registration_handles() {
     let _ = RegisterError::registration as fn(&RegisterError) -> Option<Registration>;
     let _ = DeleteError::registration as fn(&DeleteError) -> Registration;
     let _ = rejected_registration as fn(&Error) -> Option<Registration>;
+}
+
+#[test]
+fn poll_exposes_stored_configuration_rearm() {
+    let _ = Poll::rearm as fn(&mut Poll, &Registration) -> Result<(), Error>;
 }
 
 fn operation_class(operation: Operation) -> &'static str {

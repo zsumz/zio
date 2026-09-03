@@ -98,6 +98,11 @@ impl ScriptedPoll {
         self.mutations().modify(registration, interest, mode)
     }
 
+    /// Rearms a disarmed one-shot registration through the next modify step.
+    pub fn rearm(&mut self, registration: &Registration) -> Result<(), Error> {
+        self.mutations().rearm(registration)
+    }
+
     /// Deletes one registration through the next scripted deletion step.
     pub fn delete(&mut self, registration: Registration) -> Result<(), DeleteError> {
         self.mutations().delete(registration)

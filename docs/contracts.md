@@ -58,8 +58,8 @@ handle. Inspect and retain it before propagating or consuming the error.
 
 Level mode reports while a source remains ready. A successful one-shot wait
 disarms each delivered registration. Rearming requires an explicit,
-successfully applied modification. Recovery failures report the exact state
-described below.
+successfully applied mutation. `Poll::rearm` preserves interest and mode;
+`Poll::modify` replaces them. Recovery failures report the exact state below.
 
 ## Readiness contract
 

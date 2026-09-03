@@ -5,6 +5,6 @@
 pub enum Mode {
     /// Continue reporting readiness while the resource remains ready.
     Level,
-    /// Disarm after delivery until an explicit modification rearms the resource.
+    /// Disarm after delivery until explicitly rearmed or modified.
     OneShot,
 }

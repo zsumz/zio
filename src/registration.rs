@@ -132,7 +132,7 @@ impl Registration {
 pub enum ArmState {
     /// The resource is eligible for readiness delivery.
     Armed,
-    /// Delivery is disabled until an explicit modification rearms it.
+    /// Delivery is disabled until explicitly rearmed or modified.
     Disarmed,
 }
 
