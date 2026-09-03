@@ -3,7 +3,7 @@
 use zio::{
     ArmState, CapacityKind, CapacityReason, CommitStatus, DeleteAllError, DeleteError,
     DeleteOwnedError, DescriptorOwnership, Error, Event, Events, Key, Mode, MutationError,
-    Operation, Poll, Readiness, RecoveryFailure, RecoveryOutcome, RegisterError,
+    Operation, Poll, PollBuilder, Readiness, RecoveryFailure, RecoveryOutcome, RegisterError,
     RegisterOwnedError, Registration, RegistrationId, RegistrationInfo, RegistrationState, Wait,
     WaitReport, Waker,
 };
@@ -136,6 +136,7 @@ fn public_values_remain_thread_portable() {
     assert_copy_thread_value::<CommitStatus>();
     assert_copy_thread_value::<CapacityKind>();
     assert_copy_thread_value::<CapacityReason>();
+    assert_copy_thread_value::<PollBuilder>();
     assert_thread_value::<Events>();
     assert_thread_value::<WaitReport>();
 }
@@ -211,6 +212,11 @@ fn poll_snapshots_retained_registration_handles() {
 
 #[test]
 fn poll_exposes_capacity_and_retained_count() {
+    let _ = Poll::builder as fn() -> PollBuilder;
+    let _ = PollBuilder::new as fn() -> PollBuilder;
+    let _ = PollBuilder::event_capacity as fn(PollBuilder, usize) -> PollBuilder;
+    let _ = PollBuilder::registration_capacity as fn(PollBuilder, usize) -> PollBuilder;
+    let _ = PollBuilder::build as fn(PollBuilder) -> Result<Poll, Error>;
     let _ = Poll::event_capacity as fn(&Poll) -> usize;
     let _ = Poll::registration_capacity as fn(&Poll) -> usize;
     let _ = Poll::registration_count as fn(&Poll) -> usize;

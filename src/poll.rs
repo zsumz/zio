@@ -9,6 +9,10 @@ use crate::{
     table::RegistrationTable,
 };
 
+#[path = "poll_builder.rs"]
+mod builder;
+pub use builder::PollBuilder;
+
 /// Default delivered event capacity for one poll operation.
 pub const DEFAULT_EVENT_CAPACITY: usize = 1_024;
 /// Default number of registrations retained by one poller.

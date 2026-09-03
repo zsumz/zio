@@ -73,7 +73,7 @@ pub use event::{Event, Key, Readiness};
 pub use events::Events;
 pub use interest::Interest;
 pub use mode::Mode;
-pub use poll::{DEFAULT_EVENT_CAPACITY, DEFAULT_REGISTRATION_CAPACITY, Poll, Waker};
+pub use poll::{DEFAULT_EVENT_CAPACITY, DEFAULT_REGISTRATION_CAPACITY, Poll, PollBuilder, Waker};
 pub use registration::{ArmState, DescriptorOwnership, RegistrationState};
 pub use registration::{Registration, RegistrationId, RegistrationInfo};
 pub use wait::Wait;
