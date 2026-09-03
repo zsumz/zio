@@ -96,9 +96,13 @@ fn registration_capacity_is_fixed() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(poll.registration_capacity(), 1);
     assert_eq!(poll.registration_count(), 0);
     assert_eq!(poll.remaining_registration_capacity(), 1);
+    assert!(poll.is_empty());
+    assert!(!poll.is_full());
     let registration = poll.register(&first, Key::new(1), Interest::READABLE, Mode::Level)?;
     assert_eq!(poll.registration_count(), 1);
     assert_eq!(poll.remaining_registration_capacity(), 0);
+    assert!(!poll.is_empty());
+    assert!(poll.is_full());
     assert_eq!(poll.registrations()?, vec![registration]);
 
     let result = poll.register(&second, Key::new(2), Interest::READABLE, Mode::Level);
@@ -116,10 +120,12 @@ fn registration_capacity_is_fixed() -> Result<(), Box<dyn std::error::Error>> {
             )
     ));
     assert_eq!(poll.registration_count(), 1);
+    assert!(poll.is_full());
 
     poll.delete(registration)?;
     assert_eq!(poll.registration_count(), 0);
     assert_eq!(poll.remaining_registration_capacity(), 1);
+    assert!(!poll.is_full());
     assert!(poll.registrations()?.is_empty());
     Ok(())
 }

@@ -37,9 +37,11 @@ descriptor. Borrowed registrations are rejected before backend work. An
 `Applied` failure returns the descriptor; other failures retain the handle.
 `Poll::registration_fd` safely borrows any retained resource descriptor,
 including one in uncertain backend state.
-`Poll::registrations` returns a bounded snapshot with unspecified order.
+`Poll::registrations` returns a bounded snapshot. `Poll::iter_registrations`
+borrows the same set without allocating. Both have unspecified order.
 `RegistrationInfo::descriptor_ownership` reports who owns the retained descriptor.
-Remaining capacity excludes live and generation-exhausted slots.
+Full means no slot is reservable. Remaining capacity excludes live and
+generation-exhausted slots.
 
 `Poll::set_key` changes only future resource-event routing and does no backend work.
 `RegistrationState::arm` returns `None` when backend state is uncertain.

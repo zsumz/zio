@@ -76,7 +76,7 @@ fn failed_register_count_follows_commit_status() -> Result<(), Box<dyn std::erro
         (CommitStatus::Unknown, 1),
     ] {
         let (source, _peer) = UnixStream::pair()?;
-        let mut poll = ScriptedPoll::new([MutationStep::Register(failure(commit))])?;
+        let mut poll = ScriptedPoll::with_capacity(1, [MutationStep::Register(failure(commit))])?;
 
         assert!(
             poll.register(&source, Key::new(1), Interest::READABLE, Mode::Level)
@@ -87,6 +87,7 @@ fn failed_register_count_follows_commit_status() -> Result<(), Box<dyn std::erro
             poll.remaining_registration_capacity(),
             poll.registration_capacity() - retained
         );
+        assert_eq!(poll.is_full(), retained == 1);
     }
     Ok(())
 }

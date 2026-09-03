@@ -142,6 +142,11 @@ impl Poll {
         self.registration_count() == 0
     }
 
+    /// Returns whether no registration slot is currently reservable.
+    pub const fn is_full(&self) -> bool {
+        self.remaining_registration_capacity() == 0
+    }
+
     /// Returns authoritative state for a handle owned by this poller.
     pub fn registration_state(
         &self,

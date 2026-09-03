@@ -17,6 +17,11 @@ impl ScriptedPoll {
         self.registration_count() == 0
     }
 
+    /// Returns whether no registration slot is currently reservable.
+    pub const fn is_full(&self) -> bool {
+        self.remaining_registration_capacity() == 0
+    }
+
     /// Iterates retained registration handles without allocating.
     pub fn iter_registrations(
         &self,
