@@ -52,6 +52,7 @@ printf '%s\n' \
   '    assert_eq!(classify_operation(Operation::Wait), 1);' \
   '    assert_eq!(Operation::Wait.to_string(), "wait");' \
   '    assert_eq!(CommitStatus::Unknown.to_string(), "unknown");' \
+  '    assert_eq!(Error::UnsupportedPlatform.operation(), None);' \
   '    let _ = Error::operation as fn(&Error) -> Option<Operation>;' \
   '    let _ = Error::commit as fn(&Error) -> Option<CommitStatus>;' \
   '    let _ = Error::registration_id as fn(&Error) -> Option<zio::RegistrationId>;' \
@@ -367,7 +368,6 @@ printf '%s\n' \
   '        Operation::Wait => 6,' \
   '        Operation::TriggerWake => 7,' \
   '        Operation::Disarm => 8,' \
-  '        Operation::UnsupportedPlatform => 9,' \
   '    }' \
   '}' \
   > "$consumer_dir/examples/operation-without-wildcard.rs"

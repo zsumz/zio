@@ -12,6 +12,7 @@ Downstream matches must include a fallback arm. `Event`, `CommitStatus`,
 breaking. Event fields may grow; match with `..`.
 
 `Operation` names only failures a current backend can report.
+`Error::UnsupportedPlatform` has no associated operation.
 
 Use `Error` accessors for structured details. Match `Error::Capacity` with `..`;
 its diagnostic fields may grow.

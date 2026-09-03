@@ -10,6 +10,7 @@ use super::support::*;
 
 #[test]
 fn errors_expose_common_diagnostics_without_matching() {
+    assert_eq!(Error::UnsupportedPlatform.operation(), None);
     let _ = Error::operation as fn(&Error) -> Option<Operation>;
     let _ = Error::commit as fn(&Error) -> Option<CommitStatus>;
     let _ = Error::registration_id as fn(&Error) -> Option<zio::RegistrationId>;

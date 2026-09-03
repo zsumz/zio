@@ -132,10 +132,7 @@ fn top_level_accessors_expose_embedded_diagnostics() {
         Some(6)
     );
 
-    assert_eq!(
-        Error::UnsupportedPlatform.operation(),
-        Some(Operation::UnsupportedPlatform)
-    );
+    assert_eq!(Error::UnsupportedPlatform.operation(), None);
     assert!(Error::Invariant.io_error().is_none());
     assert_eq!(Error::Invariant.registration_id(), None);
 

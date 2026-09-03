@@ -47,8 +47,6 @@ pub enum Operation {
     TriggerWake,
     /// Disable a delivered one-shot registration.
     Disarm,
-    /// Report that the current target has no backend.
-    UnsupportedPlatform,
 }
 
 impl fmt::Display for Operation {
@@ -63,7 +61,6 @@ impl fmt::Display for Operation {
             Self::Wait => "wait",
             Self::TriggerWake => "trigger wake",
             Self::Disarm => "disarm",
-            Self::UnsupportedPlatform => "unsupported platform",
         })
     }
 }

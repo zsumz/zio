@@ -141,15 +141,9 @@ impl Poll {
         RegistrationTable::validate_capacity(registration_capacity)?;
         let raw_events = Backend::raw_batch(event_capacity.get(), registration_capacity.get())?;
         let registrations = RegistrationTable::new(registration_capacity)?;
-        let (backend, wake) = Backend::new().map_err(|failure| {
-            if failure.operation() == Operation::UnsupportedPlatform {
-                Error::UnsupportedPlatform
-            } else {
-                Error::Io {
-                    operation: failure.operation(),
-                    source: failure.into_source(),
-                }
-            }
+        let (backend, wake) = Backend::new().map_err(|failure| Error::Io {
+            operation: failure.operation(),
+            source: failure.into_source(),
         })?;
         Ok(Self {
             owner: PollOwner::unassigned(),

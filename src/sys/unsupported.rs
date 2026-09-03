@@ -62,7 +62,7 @@ impl Backend {
 
     pub(crate) fn new() -> Result<(Self, Arc<Wake>), SetupFailure> {
         Err(SetupFailure::new(
-            Operation::UnsupportedPlatform,
+            Operation::CreatePoller,
             unsupported_error(),
         ))
     }

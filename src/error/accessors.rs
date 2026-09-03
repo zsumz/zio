@@ -12,7 +12,6 @@ impl Error {
         match self {
             Self::Io { operation, .. } => Some(*operation),
             Self::Mutation(error) => Some(error.operation()),
-            Self::UnsupportedPlatform => Some(Operation::UnsupportedPlatform),
             _ => None,
         }
     }
