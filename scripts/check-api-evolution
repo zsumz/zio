@@ -70,6 +70,7 @@ printf '%s\n' \
   '    assert_eq!(classify_commit(CommitStatus::Unknown), 2);' \
   '    assert_eq!(classify_mode(Mode::OneShot), 1);' \
   '    assert_eq!(classify_wait(Wait::Forever), 2);' \
+  '    let _ = Wait::is_nonblocking as fn(Wait) -> bool;' \
   '    assert_eq!(classify_arm(ArmState::Disarmed), 1);' \
   '    assert_eq!(classify_state(RegistrationState::Uncertain), 2);' \
   '    assert_eq!(classify_ownership(DescriptorOwnership::Borrowed), 1);' \

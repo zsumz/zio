@@ -40,6 +40,7 @@ fn closed_delivery_and_state_domains_remain_exhaustive() {
     assert_eq!(arm_class(ArmState::Disarmed), "disarmed");
     assert_eq!(state_class(RegistrationState::Uncertain), "uncertain");
     assert_eq!(ownership_class(DescriptorOwnership::Borrowed), "borrowed");
+    let _ = Wait::is_nonblocking as fn(Wait) -> bool;
     let _ = RegistrationState::is_registered as fn(RegistrationState) -> bool;
     let _ = RegistrationState::is_uncertain as fn(RegistrationState) -> bool;
     let _ = RegistrationState::arm as fn(RegistrationState) -> Option<ArmState>;

@@ -146,10 +146,10 @@ operating-system internals are outside this guarantee.
 ## Wait behavior
 
 `Wait::NoBlock` and zero duration are nonblocking. Positive durations never
-collapse to nonblocking; a backend may round up to its supported resolution,
-and scheduling may delay return. Linux rounds up to milliseconds. Kqueue uses
-nanosecond fields. Large limits are clamped to the backend integer range, and
-interruption may return early.
+collapse to nonblocking; `Wait::is_nonblocking` recognizes both forms. A backend
+may round up to its supported resolution, and scheduling may delay return. Linux
+rounds up to milliseconds. Kqueue uses nanosecond fields. Large limits are
+clamped to the backend integer range, and interruption may return early.
 
 Use nonblocking descriptors and perform I/O until it would block.
 

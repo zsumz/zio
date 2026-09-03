@@ -18,6 +18,15 @@ pub enum Wait {
 }
 
 impl Wait {
+    /// Returns whether this request is nonblocking.
+    pub const fn is_nonblocking(self) -> bool {
+        match self {
+            Self::NoBlock => true,
+            Self::For(duration) => duration.is_zero(),
+            Self::Forever => false,
+        }
+    }
+
     /// Returns the portable timeout representation.
     ///
     /// `None` represents an indefinite wait and zero represents a nonblocking
@@ -30,3 +39,7 @@ impl Wait {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "wait_test.rs"]
+mod tests;
