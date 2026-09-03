@@ -148,9 +148,14 @@ impl<'a> IntoIterator for &'a RecoveryFailure {
 
 impl fmt::Display for RecoveryFailure {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let registration = if self.len() == 1 {
+            "registration"
+        } else {
+            "registrations"
+        };
         write!(
             formatter,
-            "{} recovery failed for {} registrations: {}",
+            "{} recovery failed for {} {registration}: {}",
             self.operation,
             self.len(),
             self.source

@@ -92,6 +92,13 @@ fn retained_recovery_snapshots_are_independent() {
     assert_eq!(second.outcomes()[0].registration(), registration(32));
     assert_eq!(first.source().raw_os_error(), Some(5));
     assert_eq!(second.source().raw_os_error(), Some(6));
+    assert_eq!(
+        first.to_string(),
+        format!(
+            "disarm recovery failed for 1 registration: {}",
+            first.source()
+        )
+    );
 }
 
 const fn registration(id: u64) -> Registration {
