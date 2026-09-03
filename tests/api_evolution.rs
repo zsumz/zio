@@ -3,9 +3,9 @@
 use core::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Sub, SubAssign};
 
 use zio::{
-    ArmState, CommitStatus, DeleteError, Error, Event, Key, Mode, MutationError, Operation, Poll,
-    Readiness, RecoveryOutcome, RegisterError, Registration, RegistrationInfo, RegistrationState,
-    Wait,
+    ArmState, CommitStatus, DeleteError, Error, Event, Events, Key, Mode, MutationError, Operation,
+    Poll, Readiness, RecoveryOutcome, RegisterError, Registration, RegistrationInfo,
+    RegistrationState, Wait,
 };
 
 #[test]
@@ -68,6 +68,13 @@ fn flag_sets_support_standard_set_operators() {
     assert_set_operators::<zio::Interest>();
     assert_set_operators::<Readiness>();
 }
+
+#[test]
+fn event_batches_support_immutable_slice_interop() {
+    assert_event_slice::<Events>();
+}
+
+fn assert_event_slice<T: AsRef<[Event]>>() {}
 
 fn assert_set_operators<T>()
 where

@@ -98,3 +98,9 @@ impl<'a> IntoIterator for &'a Events {
         self.events.iter()
     }
 }
+
+impl AsRef<[Event]> for Events {
+    fn as_ref(&self) -> &[Event] {
+        self.as_slice()
+    }
+}
