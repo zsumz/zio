@@ -127,6 +127,18 @@ impl Poll {
         Ok(())
     }
 
+    /// Returns whether this poller retains the exact registration.
+    ///
+    /// Uncertain registrations are retained. Stale and foreign handles are not.
+    pub fn contains(&self, registration: &Registration) -> bool {
+        self.registration_state(registration).is_ok()
+    }
+
+    /// Returns whether this poller retains no registrations.
+    pub const fn is_empty(&self) -> bool {
+        self.registration_count() == 0
+    }
+
     /// Returns authoritative state for a handle owned by this poller.
     pub fn registration_state(
         &self,

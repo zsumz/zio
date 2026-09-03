@@ -25,6 +25,8 @@ fn uncertain_register_retains_requested_configuration() -> Result<(), Box<dyn st
         .ok_or_else(|| io::Error::other("unknown registration lost its handle"))?;
     let info = poll.registration_info(&registration)?;
 
+    assert!(poll.contains(&registration));
+    assert!(!poll.is_empty());
     assert_eq!(poll.registration_count(), 1);
     assert_eq!(poll.registrations()?, vec![registration]);
     assert!(poll.registration_fd(&registration).is_ok());
@@ -103,6 +105,7 @@ fn failed_delete_count_follows_commit_status() -> Result<(), Box<dyn std::error:
         let registration = poll.register(&source, Key::new(1), Interest::READABLE, Mode::Level)?;
 
         assert!(poll.delete(registration).is_err());
+        assert_eq!(poll.is_empty(), retained == 0);
         assert_eq!(poll.registration_count(), retained);
         assert_eq!(
             poll.remaining_registration_capacity(),

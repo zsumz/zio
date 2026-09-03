@@ -214,6 +214,8 @@ fn poll_exposes_capacity_and_retained_count() {
     let _ = Poll::registration_capacity as fn(&Poll) -> usize;
     let _ = Poll::registration_count as fn(&Poll) -> usize;
     let _ = Poll::remaining_registration_capacity as fn(&Poll) -> usize;
+    let _ = Poll::contains as fn(&Poll, &Registration) -> bool;
+    let _ = Poll::is_empty as fn(&Poll) -> bool;
 }
 
 #[test]

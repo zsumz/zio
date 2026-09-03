@@ -1,5 +1,8 @@
 //! Concrete scripted poller sharing the production mutation state machine.
 
+#[path = "poll_membership.rs"]
+mod membership;
+
 use std::{
     num::NonZeroUsize,
     os::fd::{AsFd, AsRawFd, BorrowedFd, OwnedFd},

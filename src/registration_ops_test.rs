@@ -136,3 +136,21 @@ fn wrong_poller_check_does_not_assign_stranger() -> Result<(), Box<dyn StdError>
     assert!(stranger.owner.current().is_none());
     Ok(())
 }
+
+#[test]
+fn membership_tracks_exact_retained_generations() -> Result<(), Box<dyn StdError>> {
+    let (source, _peer) = UnixStream::pair()?;
+    let mut poll = Poll::with_capacity(1, 1)?;
+    let stranger = Poll::with_capacity(1, 1)?;
+    assert!(poll.is_empty());
+
+    let registration = poll.register(&source, Key::new(4), Interest::READABLE, Mode::Level)?;
+    assert!(poll.contains(&registration));
+    assert!(!poll.is_empty());
+    assert!(!stranger.contains(&registration));
+
+    poll.delete(registration)?;
+    assert!(!poll.contains(&registration));
+    assert!(poll.is_empty());
+    Ok(())
+}
