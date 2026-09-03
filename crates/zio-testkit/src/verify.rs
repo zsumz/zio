@@ -51,13 +51,12 @@ pub(crate) fn expect_mutation(
             mutation.commit(),
         );
     }
-    let source = mutation.into_source();
-    if source.kind() != source_kind(scenario.operation()) {
+    if mutation.source().kind() != source_kind(scenario.operation()) {
         return mismatch(
             scenario,
             ConformanceCheck::Source,
             source_kind(scenario.operation()),
-            source.kind(),
+            mutation.source().kind(),
         );
     }
     Ok(())
