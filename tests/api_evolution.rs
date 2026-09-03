@@ -31,7 +31,6 @@ fn open_diagnostics_support_forward_compatible_fallbacks() {
 #[test]
 fn closed_delivery_and_state_domains_remain_exhaustive() {
     assert_eq!(mode_class(Mode::Level), "level");
-    let _ = Mode::is_one_shot as fn(Mode) -> bool;
     assert_eq!(wait_class(Wait::NoBlock), "no-block");
     assert_eq!(commit_class(CommitStatus::Unknown), "unknown");
     assert_eq!(arm_class(ArmState::Disarmed), "disarmed");

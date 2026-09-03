@@ -74,7 +74,6 @@ printf '%s\n' \
   '    let _ = Event::is_error as fn(Event) -> bool;' \
   '    assert_eq!(classify_commit(CommitStatus::Unknown), 2);' \
   '    assert_eq!(classify_mode(Mode::OneShot), 1);' \
-  '    let _ = Mode::is_one_shot as fn(Mode) -> bool;' \
   '    assert_eq!(classify_wait(Wait::Forever), 2);' \
   '    let _ = Wait::is_nonblocking as fn(Wait) -> bool;' \
   '    assert_eq!(classify_arm(ArmState::Disarmed), 1);' \

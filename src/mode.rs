@@ -10,8 +10,7 @@ pub enum Mode {
 }
 
 impl Mode {
-    /// Returns whether delivery disarms the registration.
-    pub const fn is_one_shot(self) -> bool {
+    pub(crate) const fn is_one_shot(self) -> bool {
         matches!(self, Self::OneShot)
     }
 }
