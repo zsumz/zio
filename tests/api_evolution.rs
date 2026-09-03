@@ -61,6 +61,8 @@ fn closed_delivery_and_state_domains_remain_exhaustive() {
 #[test]
 fn recovery_outcomes_return_registration_handles() {
     let _ = RecoveryOutcome::registration as fn(&RecoveryOutcome) -> Registration;
+    let _ = RecoveryFailure::len as fn(&RecoveryFailure) -> usize;
+    let _ = RecoveryFailure::is_empty as fn(&RecoveryFailure) -> bool;
     assert_slice::<RecoveryFailure, RecoveryOutcome>();
     let _ = assert_recovery_iterator as fn(&RecoveryFailure);
 }

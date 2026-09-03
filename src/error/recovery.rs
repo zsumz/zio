@@ -104,6 +104,16 @@ impl RecoveryFailure {
         &self.outcomes
     }
 
+    /// Returns the number of exact registration outcomes.
+    pub fn len(&self) -> usize {
+        self.outcomes.len()
+    }
+
+    /// Returns whether no registration outcome is retained.
+    pub fn is_empty(&self) -> bool {
+        self.outcomes.is_empty()
+    }
+
     /// Iterates over exact outcomes in observation order.
     pub fn iter(&self) -> core::slice::Iter<'_, RecoveryOutcome> {
         self.outcomes.iter()
@@ -142,7 +152,7 @@ impl fmt::Display for RecoveryFailure {
             formatter,
             "{} recovery failed for {} registrations: {}",
             self.operation,
-            self.outcomes.len(),
+            self.len(),
             self.source
         )
     }

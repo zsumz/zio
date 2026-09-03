@@ -81,6 +81,8 @@ printf '%s\n' \
   '    let _ = RegistrationState::is_uncertain as fn(RegistrationState) -> bool;' \
   '    let _ = RegistrationState::arm as fn(RegistrationState) -> Option<ArmState>;' \
   '    let _ = RecoveryOutcome::registration as fn(&RecoveryOutcome) -> Registration;' \
+  '    let _ = RecoveryFailure::len as fn(&RecoveryFailure) -> usize;' \
+  '    let _ = RecoveryFailure::is_empty as fn(&RecoveryFailure) -> bool;' \
   '    assert_slice::<RecoveryFailure, RecoveryOutcome>();' \
   '    let _ = iterate_recovery as fn(&RecoveryFailure);' \
   '    let _ = WaitReport::is_complete as fn(&WaitReport) -> bool;' \
