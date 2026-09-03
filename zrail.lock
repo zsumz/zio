@@ -13,7 +13,7 @@ targets = 36
 physical_rust_files = 259
 base_source_contexts = 437
 derived_source_contexts = 0
-source_facts = 74109
+source_facts = 74151
 projection_queries = 0
 projected_facts = 0
 unresolved_bindings = 0
@@ -240,7 +240,7 @@ sha256 = "2a4b286bea1a4a7ccba09cfcdc7855595f2a7092f519d440f745e4e7f97ef067"
 
 [[gate.input]]
 path = "docs/contracts.md"
-sha256 = "6557ce3e4a77fa3c34b9ac28adafed8191afff455414270b4a77505cc0144519"
+sha256 = "5dda18f563782cd06e434ee7e97d86df4a1520f75b648208ddd4015d4f386713"
 
 [[gate.input]]
 path = "docs/performance.md"
@@ -539,7 +539,7 @@ sha256 = "ac9ebcc7cbf9044222faa730d5d3c9957af0c411d5b9b47065acb0ec73d400b8"
 
 [[gate.input]]
 path = "docs/contracts.md"
-sha256 = "6557ce3e4a77fa3c34b9ac28adafed8191afff455414270b4a77505cc0144519"
+sha256 = "5dda18f563782cd06e434ee7e97d86df4a1520f75b648208ddd4015d4f386713"
 
 [[gate.input]]
 path = "docs/performance.md"

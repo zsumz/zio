@@ -91,6 +91,18 @@ impl std::os::fd::AsFd for Poll {
     }
 }
 
+#[cfg(any(
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "freebsd",
+    target_os = "netbsd"
+))]
+impl std::os::fd::AsRawFd for Poll {
+    fn as_raw_fd(&self) -> std::os::fd::RawFd {
+        std::os::fd::AsRawFd::as_raw_fd(&std::os::fd::AsFd::as_fd(self))
+    }
+}
+
 impl Poll {
     /// Creates a poller with the default fixed capacities.
     pub fn new() -> Result<Self, Error> {

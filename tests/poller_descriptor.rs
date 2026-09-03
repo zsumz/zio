@@ -7,9 +7,21 @@
     target_os = "netbsd"
 ))]
 
-use std::{io, time::Duration};
+use std::{
+    io,
+    os::fd::{AsFd, AsRawFd},
+    time::Duration,
+};
 
 use zio::{Event, Interest, Key, Mode, Poll, Wait};
+
+#[test]
+fn raw_descriptor_matches_the_safe_borrow() -> Result<(), zio::Error> {
+    let poll = Poll::with_capacity(1, 1)?;
+
+    assert_eq!(poll.as_raw_fd(), poll.as_fd().as_raw_fd());
+    Ok(())
+}
 
 #[test]
 fn poller_can_be_observed_by_another_poller() -> Result<(), Box<dyn std::error::Error>> {
