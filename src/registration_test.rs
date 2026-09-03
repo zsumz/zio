@@ -8,9 +8,18 @@ use std::{
 };
 
 use crate::{
-    ArmState, Error, Interest, Key, Mode, RegistrationState, registration::PollOwner,
-    table::RegistrationTable,
+    ArmState, Error, Interest, Key, Mode, RegistrationId, RegistrationState,
+    registration::PollOwner, table::RegistrationTable,
 };
+
+#[test]
+fn registration_ids_expose_their_numeric_value() {
+    let id = RegistrationId::new(42);
+
+    assert_eq!(id.get(), 42);
+    assert_eq!(u64::from(id), 42);
+    assert_eq!(id.to_string(), "42");
+}
 
 #[test]
 fn registration_state_queries_preserve_uncertainty() {

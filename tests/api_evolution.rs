@@ -1,15 +1,14 @@
 //! Downstream matching contracts for open diagnostics and closed domains.
 
-use core::{
-    iter::FusedIterator,
-    ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not, Sub, SubAssign},
-};
-
 use zio::{
     ArmState, CommitStatus, DeleteError, DescriptorOwnership, Error, Event, Events, Key, Mode,
     MutationError, Operation, Poll, Readiness, RecoveryOutcome, RegisterError, Registration,
-    RegistrationInfo, RegistrationState, Wait, WaitReport, Waker,
+    RegistrationId, RegistrationInfo, RegistrationState, Wait, WaitReport, Waker,
 };
+
+#[path = "api_evolution/support.rs"]
+mod support;
+use support::*;
 
 #[test]
 fn open_diagnostics_support_forward_compatible_fallbacks() {
@@ -68,6 +67,13 @@ fn errors_return_registration_handles() {
 #[test]
 fn registration_handles_support_ordered_collections() {
     assert_ordered::<Registration>();
+}
+
+#[test]
+fn registration_ids_support_diagnostic_interop() {
+    let _ = RegistrationId::get as fn(RegistrationId) -> u64;
+    assert_from::<u64, RegistrationId>();
+    assert_display::<RegistrationId>();
 }
 
 #[test]
@@ -179,47 +185,6 @@ fn keys_support_lossless_standard_conversions() {
     assert_from::<Key, u64>();
     assert_from::<u64, Key>();
     assert_display::<Key>();
-}
-
-fn assert_event_slice<T: AsRef<[Event]>>() {}
-
-fn assert_ordered<T: Ord>() {}
-
-fn assert_hash<T: core::hash::Hash>() {}
-
-fn assert_display<T: core::fmt::Display>() {}
-
-fn assert_error_ref<T: AsRef<Error>>() {}
-
-fn assert_send<T: Send>() {}
-
-fn assert_send_sync<T: Send + Sync>() {}
-
-fn assert_from<T: From<U>, U>() {}
-
-fn assert_event_iterators(events: &mut Events) {
-    assert_iterator(events.iter());
-    assert_iterator(events.drain());
-}
-
-fn assert_owned_event_iterator(events: Events) {
-    assert_iterator(events.into_iter());
-}
-
-fn assert_iterator<I: DoubleEndedIterator + ExactSizeIterator + FusedIterator>(_: I) {}
-
-fn assert_set_operators<T>()
-where
-    T: BitOr<Output = T>
-        + BitOrAssign
-        + BitAnd<Output = T>
-        + BitAndAssign
-        + BitXor<Output = T>
-        + BitXorAssign
-        + Not<Output = T>
-        + Sub<Output = T>
-        + SubAssign,
-{
 }
 
 fn operation_class(operation: Operation) -> &'static str {

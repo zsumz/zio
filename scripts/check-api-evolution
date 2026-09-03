@@ -43,7 +43,7 @@ printf '%s\n' \
   > "$consumer_dir/Cargo.toml"
 
 printf '%s\n' \
-  'use zio::{ArmState, CommitStatus, DeleteError, DescriptorOwnership, Error, Event, Key, Mode, MutationError, Operation, Poll, RecoveryOutcome, RegisterError, Registration, RegistrationInfo, RegistrationState, Wait, WaitReport, Waker};' \
+  'use zio::{ArmState, CommitStatus, DeleteError, DescriptorOwnership, Error, Event, Key, Mode, MutationError, Operation, Poll, RecoveryOutcome, RegisterError, Registration, RegistrationId, RegistrationInfo, RegistrationState, Wait, WaitReport, Waker};' \
   '' \
   'fn main() {' \
   '    assert_eq!(classify_error(&Error::Invariant), 1);' \
@@ -86,6 +86,9 @@ printf '%s\n' \
   '    let _ = MutationError::into_parts as fn(MutationError) -> (Operation, CommitStatus, std::io::Error);' \
   '    let _ = rejected_registration as fn(&Error) -> Option<Registration>;' \
   '    assert_ordered::<Registration>();' \
+  '    let _ = RegistrationId::get as fn(RegistrationId) -> u64;' \
+  '    assert_from::<u64, RegistrationId>();' \
+  '    assert_display::<RegistrationId>();' \
   '    assert_hash::<Event>();' \
   '    assert_hash::<Wait>();' \
   '    assert_display::<Key>();' \
@@ -140,6 +143,8 @@ printf '%s\n' \
   'fn assert_hash<T: std::hash::Hash>() {}' \
   '' \
   'fn assert_display<T: std::fmt::Display>() {}' \
+  '' \
+  'fn assert_from<T: From<U>, U>() {}' \
   '' \
   'fn assert_error_ref<T: AsRef<Error>>() {}' \
   '' \

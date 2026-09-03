@@ -60,6 +60,7 @@ backend registration. Dropping any or all copies does not delete it. Retain a
 copy outside cancellable work when early cleanup matters.
 
 Ordering supports ordered containers; it does not express registration age.
+Registration IDs expose a poller-local numeric value for diagnostics.
 
 Successful deletion retires the generation and makes every copy stale. An
 `Applied` delete failure does the same; `NotApplied` preserves every copy's

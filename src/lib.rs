@@ -52,23 +52,21 @@ mod pending_kqueue_test;
 mod poll;
 mod registration;
 mod registration_borrowed;
+mod registration_id;
 mod registration_ops;
 mod sys;
 mod table;
+#[cfg(feature = "test-support")]
+#[doc(hidden)]
+pub mod test_support;
 mod token;
 mod wait;
 mod wait_report;
 #[cfg(test)]
 mod wait_report_test;
 
-#[cfg(feature = "test-support")]
-#[doc(hidden)]
-pub mod test_support;
-
-pub use error::{
-    CommitStatus, DeleteError, Error, MutationError, Operation, RecoveryFailure, RecoveryOutcome,
-    RegisterError,
-};
+pub use error::{CommitStatus, DeleteError, Error, MutationError, Operation};
+pub use error::{RecoveryFailure, RecoveryOutcome, RegisterError};
 pub use event::{Event, Key, Readiness};
 pub use events::Events;
 pub use interest::Interest;
