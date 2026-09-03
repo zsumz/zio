@@ -32,5 +32,7 @@ mod kqueue_register_native_test;
 #[cfg(test)]
 mod kqueue_register_policy_test;
 mod kqueue_timeout;
+#[cfg(test)]
+mod kqueue_timeout_test;
 
 pub(crate) use backend::{Backend, RawBatch, Wake};
