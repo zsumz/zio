@@ -4,7 +4,7 @@ use std::io;
 
 use crate::{Registration, RegistrationId};
 
-use super::{CommitStatus, Error, MutationError, Operation};
+use super::{CommitStatus, DeleteError, Error, MutationError, Operation, RegisterError};
 
 #[test]
 fn mutation_failure_returns_every_owned_part() {
@@ -47,6 +47,15 @@ fn diagnostics_use_plain_display_names() {
         conflict.to_string(),
         "poller wake key is 3, not requested key 5"
     );
+}
+
+#[test]
+fn capability_errors_borrow_typed_causes() {
+    let register = RegisterError::new(Error::InvalidInterest, None);
+    assert!(core::ptr::eq(register.error(), register.as_ref()));
+
+    let delete = DeleteError::new(Error::Invariant, Registration::test(9));
+    assert!(core::ptr::eq(delete.error(), delete.as_ref()));
 }
 
 #[test]

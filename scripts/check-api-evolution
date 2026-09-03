@@ -80,6 +80,8 @@ printf '%s\n' \
   '    let _ = WaitReport::is_complete as fn(&WaitReport) -> bool;' \
   '    let _ = RegisterError::registration as fn(&RegisterError) -> Option<Registration>;' \
   '    let _ = DeleteError::registration as fn(&DeleteError) -> Registration;' \
+  '    assert_error_ref::<RegisterError>();' \
+  '    assert_error_ref::<DeleteError>();' \
   '    let _ = MutationError::into_parts as fn(MutationError) -> (Operation, CommitStatus, std::io::Error);' \
   '    let _ = rejected_registration as fn(&Error) -> Option<Registration>;' \
   '    assert_ordered::<Registration>();' \
@@ -137,6 +139,8 @@ printf '%s\n' \
   'fn assert_hash<T: std::hash::Hash>() {}' \
   '' \
   'fn assert_display<T: std::fmt::Display>() {}' \
+  '' \
+  'fn assert_error_ref<T: AsRef<Error>>() {}' \
   '' \
   'fn assert_send<T: Send>() {}' \
   '' \

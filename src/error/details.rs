@@ -112,6 +112,12 @@ impl std::error::Error for RegisterError {
     }
 }
 
+impl AsRef<Error> for RegisterError {
+    fn as_ref(&self) -> &Error {
+        self.error()
+    }
+}
+
 /// Delete failure that retains the exact registration handle.
 ///
 /// Every handle copy remains registered after a not-applied failure, is stale
@@ -155,5 +161,11 @@ impl fmt::Display for DeleteError {
 impl std::error::Error for DeleteError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         Some(&self.error)
+    }
+}
+
+impl AsRef<Error> for DeleteError {
+    fn as_ref(&self) -> &Error {
+        self.error()
     }
 }

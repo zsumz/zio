@@ -177,4 +177,4 @@ backend state may remain:
 | `Unknown` | Return uncertain | Mark uncertain | Return uncertain and retryable |
 
 An uncertain outcome is never presented as a successful rollback.
-Capability-bearing errors return copyable registration handles by value.
+Capability-bearing errors return copyable handles and implement `AsRef<Error>`.

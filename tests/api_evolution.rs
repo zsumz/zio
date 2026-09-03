@@ -57,6 +57,8 @@ fn wait_reports_expose_completion() {
 
 #[test]
 fn errors_return_registration_handles() {
+    assert_error_ref::<RegisterError>();
+    assert_error_ref::<DeleteError>();
     let _ = RegisterError::registration as fn(&RegisterError) -> Option<Registration>;
     let _ = DeleteError::registration as fn(&DeleteError) -> Registration;
     let _ = rejected_registration as fn(&Error) -> Option<Registration>;
@@ -185,6 +187,8 @@ fn assert_ordered<T: Ord>() {}
 fn assert_hash<T: core::hash::Hash>() {}
 
 fn assert_display<T: core::fmt::Display>() {}
+
+fn assert_error_ref<T: AsRef<Error>>() {}
 
 fn assert_send<T: Send>() {}
 
