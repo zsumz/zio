@@ -14,13 +14,19 @@ pub const DEFAULT_EVENT_CAPACITY: usize = 1_024;
 /// Default number of registrations retained by one poller.
 pub const DEFAULT_REGISTRATION_CAPACITY: usize = 1_024;
 
-/// Cloneable capability that interrupts its owning poller.
+/// Cloneable cross-thread capability that interrupts its owning poller.
 #[derive(Clone, Debug)]
 pub struct Waker {
     wake: Wake,
+    key: Key,
 }
 
 impl Waker {
+    /// Returns the key carried by this waker's observations.
+    pub const fn key(&self) -> Key {
+        self.key
+    }
+
     /// Makes the poller's configured wake key observable.
     ///
     /// Multiple triggers may coalesce into one wake event. Wake observations
@@ -121,6 +127,7 @@ impl Poll {
         }
         Ok(Waker {
             wake: self.wake.clone(),
+            key,
         })
     }
 }

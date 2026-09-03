@@ -43,7 +43,7 @@ printf '%s\n' \
   > "$consumer_dir/Cargo.toml"
 
 printf '%s\n' \
-  'use zio::{ArmState, CommitStatus, DeleteError, Error, Event, Key, Mode, MutationError, Operation, Poll, RecoveryOutcome, RegisterError, Registration, RegistrationInfo, RegistrationState, Wait};' \
+  'use zio::{ArmState, CommitStatus, DeleteError, Error, Event, Key, Mode, MutationError, Operation, Poll, RecoveryOutcome, RegisterError, Registration, RegistrationInfo, RegistrationState, Wait, Waker};' \
   '' \
   'fn main() {' \
   '    assert_eq!(classify_error(&Error::Invariant), 1);' \
@@ -60,6 +60,8 @@ printf '%s\n' \
   '    let _ = MutationError::into_parts as fn(MutationError) -> (Operation, CommitStatus, std::io::Error);' \
   '    let _ = rejected_registration as fn(&Error) -> Option<Registration>;' \
   '    assert_ordered::<Registration>();' \
+  '    assert_send_sync::<Waker>();' \
+  '    let _ = Waker::key as fn(&Waker) -> Key;' \
   '    let _ = Poll::rearm as fn(&mut Poll, &Registration) -> Result<(), Error>;' \
   '    let _ = Poll::event_capacity as fn(&Poll) -> usize;' \
   '    let _ = Poll::registration_capacity as fn(&Poll) -> usize;' \
@@ -85,6 +87,8 @@ printf '%s\n' \
   '}' \
   '' \
   'fn assert_ordered<T: Ord>() {}' \
+  '' \
+  'fn assert_send_sync<T: Send + Sync>() {}' \
   '' \
   'fn reverse_events(events: &mut zio::Events) {' \
   '    let _ = events.iter().rev();' \

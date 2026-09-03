@@ -21,6 +21,11 @@ pub(crate) fn same_key_clones(scenario: WakeScenario) -> Result<(), WakeFailure>
     let repeated = waker(&mut poll, SAME_KEY, scenario)?;
     let cloned = original.clone();
     let mut events = events(&poll, scenario)?;
+    let keys = [original.key(), repeated.key(), cloned.key()];
+
+    if keys != [SAME_KEY; 3] {
+        return mismatch(scenario, WakeCheck::Configuration, [SAME_KEY; 3], keys);
+    }
 
     for candidate in [&original, &repeated, &cloned] {
         wake_and_drain(&mut poll, &mut events, candidate, SAME_KEY, scenario)?;

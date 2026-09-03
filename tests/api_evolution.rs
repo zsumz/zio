@@ -8,7 +8,7 @@ use core::{
 use zio::{
     ArmState, CommitStatus, DeleteError, Error, Event, Events, Key, Mode, MutationError, Operation,
     Poll, Readiness, RecoveryOutcome, RegisterError, Registration, RegistrationInfo,
-    RegistrationState, Wait,
+    RegistrationState, Wait, Waker,
 };
 
 #[test]
@@ -43,6 +43,12 @@ fn errors_return_registration_handles() {
 #[test]
 fn registration_handles_support_ordered_collections() {
     assert_ordered::<Registration>();
+}
+
+#[test]
+fn wakers_expose_keys_and_cross_thread_traits() {
+    let _ = Waker::key as fn(&Waker) -> Key;
+    assert_send_sync::<Waker>();
 }
 
 #[test]
@@ -88,6 +94,8 @@ fn event_batches_support_immutable_slice_interop() {
 fn assert_event_slice<T: AsRef<[Event]>>() {}
 
 fn assert_ordered<T: Ord>() {}
+
+fn assert_send_sync<T: Send + Sync>() {}
 
 fn assert_event_iterators(events: &mut Events) {
     assert_iterator(events.iter());
