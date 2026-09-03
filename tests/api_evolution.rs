@@ -81,6 +81,7 @@ fn recovery_outcomes_return_registration_handles() {
 #[test]
 fn wait_reports_expose_completion() {
     let _ = WaitReport::is_complete as fn(&WaitReport) -> bool;
+    let _ = WaitReport::into_result as fn(WaitReport) -> Result<(), RecoveryFailure>;
 }
 
 #[test]

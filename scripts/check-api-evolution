@@ -87,6 +87,7 @@ printf '%s\n' \
   '    assert_slice::<RecoveryFailure, RecoveryOutcome>();' \
   '    let _ = iterate_recovery as fn(&RecoveryFailure);' \
   '    let _ = WaitReport::is_complete as fn(&WaitReport) -> bool;' \
+  '    let _ = WaitReport::into_result as fn(WaitReport) -> Result<(), RecoveryFailure>;' \
   '    let _ = RegisterError::registration as fn(&RegisterError) -> Option<Registration>;' \
   '    let _ = DeleteError::registration as fn(&DeleteError) -> Registration;' \
   '    assert_error_ref::<RegisterError>();' \

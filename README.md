@@ -38,9 +38,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for event in events.iter() {
         println!("{event:?}");
     }
-    if let Some(failure) = report.into_recovery() {
-        return Err(failure.into());
-    }
+    report.into_result()?;
     poll.delete(registration)?;
     Ok(())
 }

@@ -45,4 +45,12 @@ impl WaitReport {
     pub fn into_recovery(self) -> Option<RecoveryFailure> {
         self.recovery
     }
+
+    /// Converts this report into a typed recovery result.
+    pub fn into_result(self) -> Result<(), RecoveryFailure> {
+        match self.recovery {
+            Some(recovery) => Err(recovery),
+            None => Ok(()),
+        }
+    }
 }

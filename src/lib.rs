@@ -18,9 +18,7 @@
 //!         println!("{key}: {readiness:?}");
 //!     }
 //! }
-//! if let Some(recovery) = report.into_recovery() {
-//!     return Err(recovery.into());
-//! }
+//! report.into_result()?;
 //! poll.delete(registration)?;
 //! # Ok(())
 //! # }

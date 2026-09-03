@@ -13,7 +13,7 @@ targets = 34
 physical_rust_files = 252
 base_source_contexts = 427
 derived_source_contexts = 0
-source_facts = 72451
+source_facts = 72556
 projection_queries = 0
 projected_facts = 0
 unresolved_bindings = 0
@@ -216,7 +216,7 @@ sha256 = "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
 
 [[gate.input]]
 path = "README.md"
-sha256 = "d97828d194c4b4b9e047aac6ffced804e50ca7140713964f69e870e59247875f"
+sha256 = "51ebb7f0846f42584d0a55c00b2a87daa38a3aebe7fe080a70cf0fcbc715fa97"
 
 [[gate.input]]
 path = "clippy.toml"
@@ -240,7 +240,7 @@ sha256 = "2a4b286bea1a4a7ccba09cfcdc7855595f2a7092f519d440f745e4e7f97ef067"
 
 [[gate.input]]
 path = "docs/contracts.md"
-sha256 = "28d4da64af0326ceb03eab517a144ea7f64c50fd7ed34e46139f92f4ea17bfe6"
+sha256 = "b95b757cac0927830fcfa64b6de0b83c977f4aa89599cd68a14143029c005e83"
 
 [[gate.input]]
 path = "docs/performance.md"
@@ -260,7 +260,7 @@ sha256 = "45e07033c8cd89ed400ee4e96ec608e338e89822233abd6e56c85040ece66520"
 
 [[gate.input]]
 path = "scripts/check-api-evolution"
-sha256 = "9cb0cc815ad2d06de84dd98cbf21f97495549f8f35efb936aa7524f1a241cdea"
+sha256 = "2cf8977707f6dd3e26dbecc6c2f40e5cfe5f78ea2fdb0b5630d65684d1da1e6e"
 
 [[gate.input]]
 path = "scripts/rehearse-release"
@@ -535,11 +535,11 @@ sha256 = "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
 
 [[gate.input]]
 path = "README.md"
-sha256 = "d97828d194c4b4b9e047aac6ffced804e50ca7140713964f69e870e59247875f"
+sha256 = "51ebb7f0846f42584d0a55c00b2a87daa38a3aebe7fe080a70cf0fcbc715fa97"
 
 [[gate.input]]
 path = "docs/contracts.md"
-sha256 = "28d4da64af0326ceb03eab517a144ea7f64c50fd7ed34e46139f92f4ea17bfe6"
+sha256 = "b95b757cac0927830fcfa64b6de0b83c977f4aa89599cd68a14143029c005e83"
 
 [[gate.input]]
 path = "docs/performance.md"
@@ -555,7 +555,7 @@ sha256 = "279d77167cec5426fa80f457cd066dc74a360fbe4e2816f4f3fa01487a918fdc"
 
 [[gate.input]]
 path = "scripts/check-api-evolution"
-sha256 = "9cb0cc815ad2d06de84dd98cbf21f97495549f8f35efb936aa7524f1a241cdea"
+sha256 = "2cf8977707f6dd3e26dbecc6c2f40e5cfe5f78ea2fdb0b5630d65684d1da1e6e"
 
 [[gate.input]]
 path = "scripts/rehearse-release"
