@@ -11,7 +11,6 @@ mod readiness_debug;
 mod readiness_ops;
 
 /// Caller-selected value delivered with an observed event.
-#[repr(transparent)]
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Key(u64);
 
@@ -58,7 +57,6 @@ impl fmt::Display for Key {
 /// hint identifies the operation direction to inspect, not the peer action that
 /// caused it; native backends may conservatively report an additional hint, and
 /// an absent closure hint does not prove that the direction remains open.
-#[repr(transparent)]
 #[derive(Clone, Copy, Default, Eq, Hash, PartialEq)]
 pub struct Readiness(u8);
 

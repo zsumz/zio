@@ -6,7 +6,6 @@ use core::{
 };
 
 /// Backend-neutral readiness interests for one registration.
-#[repr(transparent)]
 #[derive(Clone, Copy, Default, Eq, Hash, PartialEq)]
 pub struct Interest(u8);
 

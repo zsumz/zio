@@ -16,6 +16,8 @@ closed domains; case changes are breaking. Event fields may grow; match with
 Use `Error` accessors for structured details. Match `Error::Capacity` with `..`;
 its diagnostic fields may grow.
 
+Public value layouts and flag encodings are opaque.
+
 ## Registration ownership
 
 `Poll::register` is the safe default. Each successful call retains a distinct
