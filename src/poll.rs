@@ -126,7 +126,7 @@ impl std::os::fd::AsRawFd for Poll {
 }
 
 impl Poll {
-    /// Returns whether this compilation target has a native readiness backend.
+    /// Returns whether this target has a supported epoll or kqueue backend.
     pub const fn has_native_backend() -> bool {
         crate::sys::HAS_NATIVE_BACKEND
     }
