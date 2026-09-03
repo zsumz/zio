@@ -60,7 +60,7 @@ impl std::error::Error for MutationError {
     }
 }
 
-/// Registration failure that preserves any possibly installed registration.
+/// Registration failure preserving an installed or uncertain handle.
 ///
 /// [`Self::registration`] is `None` for preflight failures and mutations proven
 /// not applied. It returns a registered handle for an applied mutation and an

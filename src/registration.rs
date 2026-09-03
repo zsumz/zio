@@ -87,7 +87,7 @@ impl PollOwner {
 /// Copying a handle does not create another registration. Once deletion is
 /// proven applied, the exact generation is retired and every remaining copy is
 /// stale. Dropping one or every handle does not delete the registration. The
-/// Safe registration leaves the poller owning its retained descriptor:
+/// safe tiers retain poller-owned descriptors:
 /// [`Poll::register`](crate::Poll::register) duplicates it and
 /// [`Poll::register_owned`](crate::Poll::register_owned) transfers it. With
 /// [`Poll::register_borrowed`](crate::Poll::register_borrowed), the caller

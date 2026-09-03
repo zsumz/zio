@@ -6,7 +6,7 @@ use crate::Registration;
 
 use super::Error;
 
-/// Owned registration failure with its exact returned capability.
+/// Owned registration failure returning its exact descriptor or handle.
 #[derive(Debug)]
 pub enum RegisterOwnedError {
     /// The poller returned the original descriptor.
