@@ -28,6 +28,18 @@ impl Key {
     }
 }
 
+impl From<u64> for Key {
+    fn from(value: u64) -> Self {
+        Self::new(value)
+    }
+}
+
+impl From<Key> for u64 {
+    fn from(key: Key) -> Self {
+        key.get()
+    }
+}
+
 /// Backend-neutral advisory readiness hints for one resource.
 ///
 /// Hints are a snapshot of what the backend reported, not a promise that a

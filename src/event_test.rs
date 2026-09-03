@@ -10,6 +10,13 @@ fn resource_event_layout_stays_compact() {
 }
 
 #[test]
+fn key_conversions_are_lossless() {
+    let key = Key::from(u64::MAX);
+
+    assert_eq!(u64::from(key), u64::MAX);
+}
+
+#[test]
 fn readiness_union_operators_match_membership() {
     let combined = Readiness::READABLE | Readiness::READ_CLOSED;
     assert!(combined.is_readable());

@@ -142,11 +142,19 @@ fn events_expose_direct_classification_and_readiness() {
     let _ = Event::is_error as fn(Event) -> bool;
 }
 
+#[test]
+fn keys_support_lossless_standard_conversions() {
+    assert_from::<Key, u64>();
+    assert_from::<u64, Key>();
+}
+
 fn assert_event_slice<T: AsRef<[Event]>>() {}
 
 fn assert_ordered<T: Ord>() {}
 
 fn assert_send_sync<T: Send + Sync>() {}
+
+fn assert_from<T: From<U>, U>() {}
 
 fn assert_event_iterators(events: &mut Events) {
     assert_iterator(events.iter());
