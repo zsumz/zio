@@ -6,7 +6,8 @@ use std::{error::Error as StdError, num::NonZeroUsize, os::fd::AsFd, os::unix::n
 
 use crate::{
     ArmState, CommitStatus, Error, Events, Interest, Key, Mode, Readiness, RecoveryOutcome,
-    RegistrationId, RegistrationState, pending_kqueue::PendingResource, table::RegistrationTable,
+    Registration, RegistrationId, RegistrationState, pending_kqueue::PendingResource,
+    table::RegistrationTable,
 };
 
 const ARMED: RegistrationState = RegistrationState::Registered {
@@ -93,6 +94,7 @@ fn finish(
     outcomes: &[RecoveryOutcome],
 ) -> Result<(), Error> {
     let report = crate::observe_recovery::finish(
+        Some(owner()),
         registrations,
         events,
         pending,
@@ -127,6 +129,10 @@ const fn pending(registration: RegistrationId, key: Key) -> PendingResource {
         key,
         readiness: Readiness::READABLE,
     }
+}
+
+const fn owner() -> crate::registration::PollId {
+    Registration::test(1).owner()
 }
 
 const fn outcome(registration: RegistrationId, commit: CommitStatus) -> RecoveryOutcome {

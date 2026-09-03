@@ -73,7 +73,7 @@ pub(crate) fn expect_single_wake(
     scenario: WakeScenario,
 ) -> Result<(), WakeFailure> {
     match events.as_slice() {
-        [Event::Wake { key: actual }] if *actual == key => Ok(()),
+        [Event::Wake { key: actual, .. }] if *actual == key => Ok(()),
         actual => mismatch(
             scenario,
             WakeCheck::Events,

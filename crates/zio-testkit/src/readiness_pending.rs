@@ -104,7 +104,9 @@ pub(crate) fn wait_readiness(
         .wait(events, Wait::For(OBSERVATION_LIMIT))
         .map_err(|error| observed(scenario, ReadinessCheck::Wait, "successful wait", &error))?;
     match events.as_slice() {
-        [Event::Resource { key, readiness }] if *key == RESOURCE_KEY => Ok((*readiness, report)),
+        [Event::Resource { key, readiness, .. }] if *key == RESOURCE_KEY => {
+            Ok((*readiness, report))
+        }
         actual => mismatch(
             scenario,
             ReadinessCheck::Events,

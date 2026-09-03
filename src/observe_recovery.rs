@@ -6,8 +6,8 @@ use core::borrow::Borrow;
 
 use crate::{
     ArmState, CommitStatus, Error, Event, Events, Mode, Operation, RecoveryFailure,
-    RecoveryOutcome, RegistrationState, WaitReport, pending_kqueue::PendingResource,
-    table::RegistrationTable,
+    RecoveryOutcome, Registration, RegistrationState, WaitReport, pending_kqueue::PendingResource,
+    registration::PollId, table::RegistrationTable,
 };
 
 #[allow(
@@ -15,6 +15,7 @@ use crate::{
     reason = "the post-observation boundary keeps each retained contract explicit"
 )]
 pub(crate) fn finish<I>(
+    owner: Option<PollId>,
     registrations: &mut RegistrationTable,
     events: &mut Events,
     pending: &[PendingResource],
@@ -41,6 +42,10 @@ where
     for pending in pending.iter().take(delivered) {
         events
             .try_push(Event::Resource {
+                registration: Registration::from_verified(
+                    owner.ok_or(Error::Invariant)?,
+                    pending.registration,
+                ),
                 key: pending.key,
                 readiness: pending.readiness,
             })

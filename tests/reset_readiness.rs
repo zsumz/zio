@@ -47,7 +47,7 @@ fn verify_abortive_close(mode: Mode) -> Result<(), Box<dyn std::error::Error>> {
     let report = poll.wait(&mut events, Wait::For(DEADLINE))?;
 
     let readiness = match events.as_slice() {
-        [Event::Resource { key, readiness }] if *key == KEY => *readiness,
+        [Event::Resource { key, readiness, .. }] if *key == KEY => *readiness,
         actual => return Err(failure("one abortive-close resource event", actual).into()),
     };
     let required = Readiness::READ_CLOSED.union(Readiness::ERROR);

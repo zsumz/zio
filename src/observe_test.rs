@@ -8,7 +8,7 @@ use std::{
 
 use crate::{
     ArmState, CommitStatus, Error, Event, Events, Interest, Key, Mode, Readiness, RecoveryFailure,
-    RegistrationId, RegistrationState, WaitReport, pending_kqueue::PendingResource,
+    Registration, RegistrationId, RegistrationState, WaitReport, pending_kqueue::PendingResource,
     table::RegistrationTable,
 };
 
@@ -42,6 +42,7 @@ fn recovery_failure_preserves_translated_resource_and_wake_events() -> Result<()
     let mut events = Events::with_capacity(4)?;
 
     let result = crate::observe_recovery::finish(
+        Some(owner()),
         &mut registrations,
         &mut events,
         &pending,
@@ -57,14 +58,17 @@ fn recovery_failure_preserves_translated_resource_and_wake_events() -> Result<()
         events.as_slice(),
         &[
             Event::Resource {
+                registration: handle(applied),
                 key: Key::new(11),
                 readiness: Readiness::READABLE,
             },
             Event::Resource {
+                registration: handle(not_applied),
                 key: Key::new(12),
                 readiness: Readiness::WRITABLE,
             },
             Event::Resource {
+                registration: handle(unknown),
                 key: Key::new(13),
                 readiness: Readiness::READABLE,
             },
@@ -150,6 +154,7 @@ fn incomplete_recovery_outcomes_fail_before_observation_or_state_change()
     let mut events = Events::with_capacity(2)?;
 
     let result = crate::observe_recovery::finish(
+        Some(owner()),
         &mut registrations,
         &mut events,
         &pending,
@@ -179,6 +184,7 @@ fn recovery_source_presence_matches_degraded_outcomes() -> Result<(), Box<dyn St
         let pending = [pending(registration, Key::new(61), Readiness::READABLE)];
         let mut events = Events::with_capacity(1)?;
         let result = crate::observe_recovery::finish(
+            Some(owner()),
             &mut registrations,
             &mut events,
             &pending,
@@ -204,6 +210,7 @@ fn finish_round(
 ) -> Result<Option<RecoveryFailure>, Box<dyn StdError>> {
     let mut events = Events::with_capacity(1)?;
     let result = crate::observe_recovery::finish(
+        Some(owner()),
         registrations,
         &mut events,
         pending,
@@ -216,6 +223,7 @@ fn finish_round(
     assert_eq!(
         events.as_slice(),
         &[Event::Resource {
+            registration: handle(registration),
             key: Key::new(41),
             readiness: Readiness::READABLE,
         }]
@@ -254,6 +262,14 @@ const fn pending(registration: RegistrationId, key: Key, readiness: Readiness) -
         key,
         readiness,
     }
+}
+
+const fn handle(registration: RegistrationId) -> Registration {
+    Registration::test(registration.get())
+}
+
+const fn owner() -> crate::registration::PollId {
+    Registration::test(1).owner()
 }
 
 const fn outcome(registration: RegistrationId, commit: CommitStatus) -> crate::RecoveryOutcome {

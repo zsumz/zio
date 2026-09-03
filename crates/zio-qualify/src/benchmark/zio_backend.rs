@@ -71,17 +71,17 @@ impl Backend for ZioBackend {
             let mut count = 0_usize;
             for event in &self.events {
                 match *event {
-                    Event::Resource { key, readiness } if readiness.is_readable() => {
+                    Event::Resource { key, readiness, .. } if readiness.is_readable() => {
                         observe(usize::try_from(key.get()).map_err(display)?)?;
                         count = count.saturating_add(1);
                     }
-                    Event::Resource { key, readiness } => {
+                    Event::Resource { key, readiness, .. } => {
                         return Err(format!(
                             "zio key {} was not readable: {readiness:?}",
                             key.get()
                         ));
                     }
-                    Event::Wake { key } => {
+                    Event::Wake { key, .. } => {
                         return Err(format!("unexpected zio wake key {}", key.get()));
                     }
                 }
@@ -109,7 +109,7 @@ impl Backend for ZioBackend {
             .wait(&mut self.events, Wait::For(timeout))
             .map_err(display)?;
         let delivery = match self.events.as_slice() {
-            [Event::Wake { key }] if *key == Key::new(u64::MAX) => Ok(1),
+            [Event::Wake { key, .. }] if *key == Key::new(u64::MAX) => Ok(1),
             events => Err(format!("unexpected zio wake observations: {events:?}")),
         };
         finish_wait(delivery, report)

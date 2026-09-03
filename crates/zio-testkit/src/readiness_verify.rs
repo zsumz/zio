@@ -173,7 +173,7 @@ fn single_readiness(
     scenario: ReadinessScenario,
 ) -> Result<Readiness, ReadinessFailure> {
     match events.as_slice() {
-        [Event::Resource { key, readiness }] if *key == RESOURCE_KEY => Ok(*readiness),
+        [Event::Resource { key, readiness, .. }] if *key == RESOURCE_KEY => Ok(*readiness),
         actual => mismatch(
             scenario,
             ReadinessCheck::Events,

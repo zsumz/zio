@@ -1,0 +1,100 @@
+//! Reusable bounded event storage.
+
+use std::num::NonZeroUsize;
+
+use crate::{Error, Event};
+
+/// Fixed-capacity destination preserving native resource order.
+/// A wake follows resource events, and registrations may share a key.
+#[derive(Debug)]
+pub struct Events {
+    capacity: NonZeroUsize,
+    events: Vec<Event>,
+}
+
+impl Events {
+    /// Allocates an empty event destination with the supplied capacity.
+    pub fn with_capacity(capacity: usize) -> Result<Self, Error> {
+        let capacity = NonZeroUsize::new(capacity).ok_or(Error::EventsTooSmall {
+            required: 1,
+            actual: 0,
+        })?;
+        Self::new(capacity)
+    }
+
+    pub(crate) fn new(capacity: NonZeroUsize) -> Result<Self, Error> {
+        let mut events = Vec::new();
+        events
+            .try_reserve_exact(capacity.get())
+            .map_err(|_| Error::Capacity {
+                limit: capacity.get(),
+            })?;
+        Ok(Self { capacity, events })
+    }
+
+    /// Returns the fixed logical capacity.
+    pub const fn capacity(&self) -> usize {
+        self.capacity.get()
+    }
+
+    /// Returns the retained event count.
+    pub fn len(&self) -> usize {
+        self.events.len()
+    }
+
+    /// Returns whether no event is retained.
+    pub fn is_empty(&self) -> bool {
+        self.events.is_empty()
+    }
+
+    /// Borrows retained events in normalized delivery order.
+    pub fn as_slice(&self) -> &[Event] {
+        &self.events
+    }
+
+    /// Borrows the event at `index`, when present.
+    pub fn get(&self, index: usize) -> Option<&Event> {
+        self.events.get(index)
+    }
+
+    /// Iterates over retained events in normalized delivery order.
+    pub fn iter(&self) -> impl ExactSizeIterator<Item = &Event> + '_ {
+        self.events.iter()
+    }
+
+    /// Clears retained events while preserving allocated storage.
+    pub fn clear(&mut self) {
+        self.events.clear();
+    }
+
+    /// Drains all retained events in normalized delivery order.
+    pub fn drain(&mut self) -> impl ExactSizeIterator<Item = Event> + '_ {
+        self.events.drain(..)
+    }
+
+    #[cfg(target_os = "linux")]
+    pub(crate) fn linux_storage(&mut self) -> &mut Vec<Event> {
+        &mut self.events
+    }
+
+    #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
+    pub(crate) fn try_push(&mut self, event: Event) -> Result<(), Error> {
+        if self.events.len() >= self.capacity.get() {
+            return Err(Error::EventsTooSmall {
+                required: self.events.len().saturating_add(1),
+                actual: self.capacity.get(),
+            });
+        }
+        self.events.push(event);
+        Ok(())
+    }
+}
+
+impl<'a> IntoIterator for &'a Events {
+    type Item = &'a Event;
+    type IntoIter = core::slice::Iter<'a, Event>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.events.iter()
+    }
+}

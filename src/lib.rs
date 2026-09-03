@@ -10,12 +10,11 @@
 //! let listener = TcpListener::bind("127.0.0.1:0")?;
 //! listener.set_nonblocking(true)?;
 //! let mut poll = Poll::new()?;
-//! let registration =
-//!     poll.register(&listener, Key::new(7), Interest::READABLE, Mode::Level)?;
+//! let registration = poll.register(&listener, Key::new(7), Interest::READABLE, Mode::Level)?;
 //! let mut events = poll.events()?;
 //! let report = poll.wait(&mut events, Wait::For(Duration::from_millis(100)))?;
 //! for event in &events {
-//!     if let Event::Resource { key, readiness } = event {
+//!     if let Event::Resource { key, readiness, .. } = event {
 //!         println!("{key:?}: {readiness:?}");
 //!     }
 //! }
@@ -35,6 +34,7 @@ mod construction_allocation_test;
 mod descriptor;
 mod error;
 mod event;
+mod events;
 mod interest;
 mod mode;
 mod mutation;
@@ -70,7 +70,8 @@ pub use error::{
     CommitStatus, DeleteError, Error, MutationError, Operation, RecoveryFailure, RecoveryOutcome,
     RegisterError,
 };
-pub use event::{Event, Events, Key, Readiness};
+pub use event::{Event, Key, Readiness};
+pub use events::Events;
 pub use interest::Interest;
 pub use mode::Mode;
 pub use poll::{DEFAULT_EVENT_CAPACITY, DEFAULT_REGISTRATION_CAPACITY, Poll, Waker};

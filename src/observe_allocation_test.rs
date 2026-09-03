@@ -9,7 +9,8 @@ use std::{
 
 use crate::{
     ArmState, CommitStatus, Error, Event, Events, Interest, Key, Mode, Readiness, RecoveryOutcome,
-    RegistrationState, pending_kqueue::PendingResource, table::RegistrationTable,
+    Registration, RegistrationId, RegistrationState, pending_kqueue::PendingResource,
+    table::RegistrationTable,
 };
 
 #[test]
@@ -38,6 +39,7 @@ fn recovery_retains_exactly_one_bounded_allocation() -> Result<(), Box<dyn StdEr
 
     let allocations = allocation_counter::measure(|| {
         result = Some(crate::observe_recovery::finish(
+            Some(owner()),
             &mut registrations,
             &mut events,
             &pending,
@@ -78,14 +80,17 @@ fn recovery_retains_exactly_one_bounded_allocation() -> Result<(), Box<dyn StdEr
         events.as_slice(),
         &[
             Event::Resource {
+                registration: handle(first),
                 key: Key::new(71),
                 readiness: Readiness::READABLE,
             },
             Event::Resource {
+                registration: handle(second),
                 key: Key::new(72),
                 readiness: Readiness::READABLE,
             },
             Event::Resource {
+                registration: handle(third),
                 key: Key::new(73),
                 readiness: Readiness::READABLE,
             },
@@ -109,4 +114,12 @@ const fn pending(registration: crate::RegistrationId, key: Key) -> PendingResour
         key,
         readiness: Readiness::READABLE,
     }
+}
+
+const fn handle(registration: RegistrationId) -> Registration {
+    Registration::test(registration.get())
+}
+
+const fn owner() -> crate::registration::PollId {
+    Registration::test(1).owner()
 }

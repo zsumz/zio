@@ -81,7 +81,7 @@ fn successful_wake_roundtrip_allocates_nothing() -> Result<(), Box<dyn std::erro
     assert_eq!(allocations.bytes_max, 0);
     assert!(matches!(
         events.as_slice(),
-        [Event::Wake { key }] if *key == Key::new(82)
+        [Event::Wake { key, .. }] if *key == Key::new(82)
     ));
     require_no_recovery(report)?;
     Ok(())

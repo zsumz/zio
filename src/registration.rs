@@ -1,12 +1,18 @@
 //! Opaque registration ownership and authoritative state vocabulary.
 
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::{
+    num::NonZeroU64,
+    sync::atomic::{AtomicU64, Ordering},
+};
 
 use crate::{Error, token::EncodedRegistrationId};
 
 static NEXT_POLL_ID: AtomicU64 = AtomicU64::new(1);
 
-/// Opaque identity for one exact registration generation.
+/// Poller-local identity for one exact registration generation.
+///
+/// IDs from different pollers may compare equal. Use [`Registration`] when
+/// poller identity or mutation authority matters.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct RegistrationId(u64);
@@ -23,11 +29,14 @@ impl RegistrationId {
 
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub(crate) struct PollId(u64);
+pub(crate) struct PollId(NonZeroU64);
 
 impl PollId {
-    pub(crate) const fn new(raw: u64) -> Self {
-        Self(raw)
+    const fn new(raw: u64) -> Option<Self> {
+        match NonZeroU64::new(raw) {
+            Some(raw) => Some(Self(raw)),
+            None => None,
+        }
     }
 }
 
@@ -41,11 +50,7 @@ impl PollOwner {
     }
 
     pub(crate) const fn current(&self) -> Option<PollId> {
-        if self.0 == 0 {
-            None
-        } else {
-            Some(PollId::new(self.0))
-        }
+        PollId::new(self.0)
     }
 
     #[inline]
@@ -72,8 +77,9 @@ impl PollOwner {
         if raw == 0 {
             return Err(Error::Invariant);
         }
+        let owner = PollId::new(raw).ok_or(Error::Invariant)?;
         self.0 = raw;
-        Ok(PollId::new(raw))
+        Ok(owner)
     }
 }
 
@@ -98,6 +104,10 @@ impl Registration {
         Self { owner, id }
     }
 
+    pub(crate) const fn from_verified(owner: PollId, id: RegistrationId) -> Self {
+        Self::new(owner, EncodedRegistrationId::from_verified(id))
+    }
+
     pub(crate) const fn owner(&self) -> PollId {
         self.owner
     }
@@ -106,9 +116,14 @@ impl Registration {
         self.id
     }
 
-    /// Returns this handle's exact registration identity.
+    /// Returns this handle's poller-local identity.
     pub const fn id(&self) -> RegistrationId {
         self.id.id()
+    }
+
+    #[cfg(test)]
+    pub(crate) const fn test(id: u64) -> Self {
+        Self::from_verified(PollId(NonZeroU64::MIN), RegistrationId::new(id))
     }
 }
 

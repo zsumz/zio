@@ -60,17 +60,20 @@ impl Poll {
     #[cfg(target_os = "linux")]
     #[inline]
     fn translate_linux(&mut self, observed: usize, events: &mut Events) -> Result<(), Error> {
+        let owner = self.owner.current();
         let registrations = &mut self.registrations;
         self.raw_events
             .translate_linux(events, observed, self.wake_key, |token| {
                 let Some(resource) = registrations.resolve(token) else {
                     return Ok(None);
                 };
+                let registration =
+                    crate::Registration::from_verified(owner.ok_or(Error::Invariant)?, resource.id);
                 let _ = resource.descriptor;
                 if resource.mode == Mode::OneShot {
                     registrations.apply_disarm(resource.id, crate::CommitStatus::Applied)?;
                 }
-                Ok(Some(resource.key))
+                Ok(Some((registration, resource.key)))
             })
     }
 
@@ -80,6 +83,7 @@ impl Poll {
         observed: usize,
         events: &mut Events,
     ) -> Result<WaitReport, Error> {
+        let owner = self.owner.current();
         let mut woke = false;
         for index in 0..observed {
             let raw = self
@@ -104,6 +108,7 @@ impl Poll {
         self.prepare_disarms(delivered)?;
         let recovery = self.backend.submit_disarms(&mut self.raw_events).err();
         crate::observe_recovery::finish(
+            owner,
             &mut self.registrations,
             events,
             self.pending.as_slice(),

@@ -61,7 +61,7 @@ impl RawBatch {
         classify: F,
     ) -> Result<(), crate::Error>
     where
-        F: FnMut(u64) -> Result<Option<crate::Key>, crate::Error>,
+        F: FnMut(u64) -> Result<Option<(crate::Registration, crate::Key)>, crate::Error>,
     {
         self.linux.translate(events, observed, wake_key, classify)
     }

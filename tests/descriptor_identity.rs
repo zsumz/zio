@@ -184,6 +184,7 @@ fn expect_resources(events: &Events, expected: &[Key]) -> io::Result<()> {
                 Event::Resource {
                     key: actual,
                     readiness,
+                    ..
                 } if actual == key && readiness.is_readable()
             )
         });

@@ -19,10 +19,6 @@ fn closed_delivery_and_state_domains_remain_exhaustive() {
     assert_eq!(commit_class(CommitStatus::Unknown), "unknown");
     assert_eq!(arm_class(ArmState::Disarmed), "disarmed");
     assert_eq!(state_class(RegistrationState::Uncertain), "uncertain");
-    assert_eq!(
-        event_class(Event::Wake { key: Key::ZERO }),
-        (Key::ZERO, None)
-    );
 }
 
 fn operation_class(operation: Operation) -> &'static str {
@@ -76,9 +72,13 @@ fn state_class(state: RegistrationState) -> &'static str {
     }
 }
 
+#[allow(
+    dead_code,
+    reason = "compilation proves exhaustive downstream matching"
+)]
 fn event_class(event: Event) -> (Key, Option<Readiness>) {
     match event {
-        Event::Resource { key, readiness } => (key, Some(readiness)),
-        Event::Wake { key } => (key, None),
+        Event::Resource { key, readiness, .. } => (key, Some(readiness)),
+        Event::Wake { key, .. } => (key, None),
     }
 }

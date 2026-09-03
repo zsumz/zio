@@ -3,7 +3,7 @@
 use std::{io, os::fd::BorrowedFd, sync::Arc};
 
 use crate::{
-    ArmState, Error, Events, Interest, Key, Mode, Readiness, Wait,
+    ArmState, Error, Events, Interest, Key, Mode, Readiness, Registration, Wait,
     error::{CommitStatus, Operation},
 };
 
@@ -29,7 +29,7 @@ impl RawBatch {
         classify: F,
     ) -> Result<(), Error>
     where
-        F: FnMut(u64) -> Result<Option<Key>, Error>,
+        F: FnMut(u64) -> Result<Option<(Registration, Key)>, Error>,
     {
         self.raw.translate(events, observed, wake_key, classify)
     }

@@ -146,7 +146,7 @@ fn expect_readable(events: &zio::Events, expected: &[Key]) -> Result<(), std::io
         let found = events.iter().any(|event| {
             matches!(
                 event,
-                Event::Resource { key, readiness }
+                Event::Resource { key, readiness, .. }
                     if key == expected_key && readiness.is_readable()
             )
         });

@@ -77,7 +77,9 @@ impl CandidateSession for ZioBorrowedSession<'_> {
             let mut matched_events = 0_usize;
             for event in &self.events {
                 match *event {
-                    Event::Resource { key, readiness } if key == Key::new(self.spec.key as u64) => {
+                    Event::Resource { key, readiness, .. }
+                        if key == Key::new(self.spec.key as u64) =>
+                    {
                         observation = observation | translate(readiness);
                         matched_events = matched_events.saturating_add(1);
                     }

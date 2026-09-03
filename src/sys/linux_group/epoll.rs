@@ -13,7 +13,7 @@ use std::{
 
 use rustix::event::epoll;
 
-use crate::{Error, Event, Events, Key};
+use crate::{Error, Event, Events, Key, Registration};
 
 #[cfg(test)]
 pub(super) const fn epoll_test_registration_flags(one_shot: bool) -> u32 {
@@ -78,7 +78,7 @@ impl EpollBatch {
         mut classify: F,
     ) -> Result<(), Error>
     where
-        F: FnMut(u64) -> Result<Option<Key>, Error>,
+        F: FnMut(u64) -> Result<Option<(Registration, Key)>, Error>,
     {
         let capacity = self.capacity();
         if self.storage_address == 0
@@ -108,9 +108,9 @@ impl EpollBatch {
                 woke = true;
                 continue;
             }
-            let key = classify(raw.u64)?;
-            if let Some(key) = key {
+            if let Some((registration, key)) = classify(raw.u64)? {
                 let event = Event::Resource {
+                    registration,
                     key,
                     readiness: super::backend::from_epoll_flags(raw.events),
                 };

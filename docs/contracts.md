@@ -8,7 +8,8 @@ matching nonblocking operation is always authoritative.
 `Error` and `Operation` are open diagnostic vocabularies. Downstream matches
 must include a fallback arm. `Event`, `CommitStatus`, `Mode`, `Wait`,
 `ArmState`, and `RegistrationState` are intentionally closed domains; changing
-their cases is a breaking contract change.
+their cases is a breaking contract change. Event fields may grow; match with
+`..`.
 
 ## Registration ownership
 
@@ -16,7 +17,8 @@ their cases is a breaking contract change.
 descriptor duplicate and exact generation, even for repeated registration of
 one source or its duplicated handles. Caller close and numeric descriptor reuse
 cannot redirect later mutations. Handles are poller-scoped; another poller
-rejects them. Keys need not be unique.
+rejects them. Keys need not be unique. Each resource event carries its exact
+registration handle.
 
 ## Borrowed registration
 

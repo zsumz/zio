@@ -5,15 +5,15 @@ producer = "0.0.3-rc.4"
 contract_sha256 = "03e3fbba47efadd3d16dba10012d3cae2905a4d4742063d2f024cceb2c68eba8"
 
 [analysis]
-inventory_sha256 = "c4e0132a518563dc3c38418dd008052ad7fad6c540e238d4c71035abda5932f5"
+inventory_sha256 = "85aca55183b9cfd8771b9acc3f8e63f123796609601c65df5d16f508b735be3c"
 exclusions_sha256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 cargo_lock_sha256 = "c57d02582afe8069129844f4f07aa867b3a1a9391d77b4be4e5ca0013a6d1687"
 packages = 3
 targets = 33
-physical_rust_files = 226
-base_source_contexts = 388
+physical_rust_files = 229
+base_source_contexts = 392
 derived_source_contexts = 0
-source_facts = 64858
+source_facts = 65346
 projection_queries = 0
 projected_facts = 0
 unresolved_bindings = 0
@@ -240,7 +240,7 @@ sha256 = "2a4b286bea1a4a7ccba09cfcdc7855595f2a7092f519d440f745e4e7f97ef067"
 
 [[gate.input]]
 path = "docs/contracts.md"
-sha256 = "3aacdfe831011c0237fe3dc3dc7dbe5768f86a1f8e70e372dbe785e045abf28d"
+sha256 = "9d082284702740a0b25743b5b2be4e34d50d40a3638273cc57c9cb5099f1d999"
 
 [[gate.input]]
 path = "docs/performance.md"
@@ -260,7 +260,7 @@ sha256 = "45e07033c8cd89ed400ee4e96ec608e338e89822233abd6e56c85040ece66520"
 
 [[gate.input]]
 path = "scripts/check-api-evolution"
-sha256 = "844b03037b48fcb02b31e1bf8c6839c0ec7f429fd727c76268a407fee37c7d8e"
+sha256 = "19f09ca14221b3cc58e7359337c276dbdd3e274797957b8d22143be1d80451d1"
 
 [[gate.input]]
 path = "scripts/rehearse-release"
@@ -474,11 +474,11 @@ sha256 = "236989ff4eb38e50951ebd009480feb2bd3ff2baaf0db1e4432b2a2ca1fc207c"
 
 [[gate.input]]
 path = "crates/zio-qualify/src/benchmark/zio_backend.rs"
-sha256 = "25159c06d9132889d72f9b3ff9c55ea8f57a66afa6de3881dc032d22f37b8f71"
+sha256 = "9429756ae10effc33d260300fa97bb16e1beed59f13a9931c99710f2bf552ee6"
 
 [[gate.input]]
 path = "crates/zio-qualify/src/benchmark/zio_borrowed_backend.rs"
-sha256 = "b459192537cd851aa80dc5287ad5ff3bf47b733c1ccb3124abe19c9dfd93173d"
+sha256 = "d150857cd1eb09f366be76277ef0b3c3c2ba45d6dbbf66d59074cf1e9654cc36"
 
 [[gate.input]]
 path = "crates/zio-qualify/src/benchmark/zio_borrowed_backend_test.rs"
@@ -506,7 +506,7 @@ sha256 = "b385c70043b6f897e774dc3bfaa5da72da98f7cd3bf02e7c7de23c8838795cf0"
 
 [[gate.input]]
 path = "crates/zio-qualify/src/zio_borrowed_candidate.rs"
-sha256 = "1bd9c941ca07f27da7932280b108700a40fa15b8d7363d2ed92b2d36401b4b3d"
+sha256 = "34f5ba4813e7e681525c662d3f8230ff387dcf668ad5026e28ed9b1124599b2c"
 
 [[gate.input]]
 path = "docs/performance.md"
@@ -539,7 +539,7 @@ sha256 = "d97828d194c4b4b9e047aac6ffced804e50ca7140713964f69e870e59247875f"
 
 [[gate.input]]
 path = "docs/contracts.md"
-sha256 = "3aacdfe831011c0237fe3dc3dc7dbe5768f86a1f8e70e372dbe785e045abf28d"
+sha256 = "9d082284702740a0b25743b5b2be4e34d50d40a3638273cc57c9cb5099f1d999"
 
 [[gate.input]]
 path = "docs/performance.md"
@@ -555,7 +555,7 @@ sha256 = "279d77167cec5426fa80f457cd066dc74a360fbe4e2816f4f3fa01487a918fdc"
 
 [[gate.input]]
 path = "scripts/check-api-evolution"
-sha256 = "844b03037b48fcb02b31e1bf8c6839c0ec7f429fd727c76268a407fee37c7d8e"
+sha256 = "19f09ca14221b3cc58e7359337c276dbdd3e274797957b8d22143be1d80451d1"
 
 [[gate.input]]
 path = "scripts/rehearse-release"

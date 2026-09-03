@@ -43,12 +43,12 @@ printf '%s\n' \
   > "$consumer_dir/Cargo.toml"
 
 printf '%s\n' \
-  'use zio::{ArmState, CommitStatus, Error, Event, Key, Mode, Operation, RegistrationState, Wait};' \
+  'use zio::{ArmState, CommitStatus, Error, Event, Mode, Operation, RegistrationState, Wait};' \
   '' \
   'fn main() {' \
   '    assert_eq!(classify_error(&Error::Invariant), 1);' \
   '    assert_eq!(classify_operation(Operation::Wait), 1);' \
-  '    assert_eq!(classify_event(Event::Wake { key: Key::ZERO }), 1);' \
+  '    let _ = classify_event as fn(Event) -> u8;' \
   '    assert_eq!(classify_commit(CommitStatus::Unknown), 2);' \
   '    assert_eq!(classify_mode(Mode::OneShot), 1);' \
   '    assert_eq!(classify_wait(Wait::Forever), 2);' \
@@ -166,6 +166,26 @@ printf '%s\n' \
   '}' \
   > "$consumer_dir/examples/operation-without-wildcard.rs"
 
+printf '%s\n' \
+  'use zio::{Event, Key};' \
+  '' \
+  'fn main() {' \
+  '    let _ = Event::Wake { key: Key::ZERO };' \
+  '}' \
+  > "$consumer_dir/examples/construct-wake.rs"
+
+printf '%s\n' \
+  'use zio::{Event, Key, Readiness, Registration};' \
+  '' \
+  'fn main() {' \
+  '    let _ = construct as fn(Registration) -> Event;' \
+  '}' \
+  '' \
+  'fn construct(registration: Registration) -> Event {' \
+  '    Event::Resource { registration, key: Key::ZERO, readiness: Readiness::EMPTY }' \
+  '}' \
+  > "$consumer_dir/examples/construct-resource.rs"
+
 cargo +1.88.0 generate-lockfile \
   --manifest-path "$consumer_dir/Cargo.toml" --offline
 cargo +1.88.0 run \
@@ -194,9 +214,31 @@ assert_non_exhaustive_match() {
     "$stderr_file"
 }
 
+assert_receive_only_variant() {
+  local toolchain="$1"
+  local example="$2"
+  local variant="$3"
+  local stderr_file="$receipt_dir/$example-$toolchain.stderr"
+
+  if CARGO_TERM_COLOR=never cargo "+$toolchain" check \
+    --manifest-path "$consumer_dir/Cargo.toml" \
+    --example "$example" --locked --offline \
+    > /dev/null 2> "$stderr_file"; then
+    echo "Event::$variant unexpectedly allowed downstream construction" >&2
+    exit 1
+  fi
+
+  test "$(grep -Ec '^error\[E[0-9]+\]:' "$stderr_file")" -eq 1
+  grep -Fq 'error[E0639]: cannot create non-exhaustive variant using struct expression' \
+    "$stderr_file"
+  grep -Fq "Event::$variant" "$stderr_file"
+}
+
 for toolchain in 1.88.0 1.97.1; do
   assert_non_exhaustive_match "$toolchain" error-without-wildcard Error zio::Error
   assert_non_exhaustive_match "$toolchain" operation-without-wildcard Operation Operation
+  assert_receive_only_variant "$toolchain" construct-resource Resource
+  assert_receive_only_variant "$toolchain" construct-wake Wake
 done
 
 for receipt in "$receipt_dir"/*.stderr; do
@@ -207,13 +249,21 @@ error_msrv_sha256="$(shasum -a 256 "$receipt_dir/error-without-wildcard-1.88.0.s
 error_current_sha256="$(shasum -a 256 "$receipt_dir/error-without-wildcard-1.97.1.stderr" | awk '{print $1}')"
 operation_msrv_sha256="$(shasum -a 256 "$receipt_dir/operation-without-wildcard-1.88.0.stderr" | awk '{print $1}')"
 operation_current_sha256="$(shasum -a 256 "$receipt_dir/operation-without-wildcard-1.97.1.stderr" | awk '{print $1}')"
+resource_msrv_sha256="$(shasum -a 256 "$receipt_dir/construct-resource-1.88.0.stderr" | awk '{print $1}')"
+resource_current_sha256="$(shasum -a 256 "$receipt_dir/construct-resource-1.97.1.stderr" | awk '{print $1}')"
+wake_msrv_sha256="$(shasum -a 256 "$receipt_dir/construct-wake-1.88.0.stderr" | awk '{print $1}')"
+wake_current_sha256="$(shasum -a 256 "$receipt_dir/construct-wake-1.97.1.stderr" | awk '{print $1}')"
 jq -n \
   --arg version "$version" \
   --arg error_msrv_sha256 "$error_msrv_sha256" \
   --arg error_current_sha256 "$error_current_sha256" \
   --arg operation_msrv_sha256 "$operation_msrv_sha256" \
   --arg operation_current_sha256 "$operation_current_sha256" \
-  '{schema:"zio.public-api-contract.v1", status:"passed", version:$version, toolchains:["1.88.0","1.97.1"], open_enums:["Error","Operation"], closed_enums:["Event","CommitStatus","Mode","Wait","ArmState","RegistrationState"], diagnostics:{error_msrv:$error_msrv_sha256,error_current:$error_current_sha256,operation_msrv:$operation_msrv_sha256,operation_current:$operation_current_sha256}}' \
+  --arg resource_msrv_sha256 "$resource_msrv_sha256" \
+  --arg resource_current_sha256 "$resource_current_sha256" \
+  --arg wake_msrv_sha256 "$wake_msrv_sha256" \
+  --arg wake_current_sha256 "$wake_current_sha256" \
+  '{schema:"zio.public-api-contract.v1", status:"passed", version:$version, toolchains:["1.88.0","1.97.1"], open_enums:["Error","Operation"], closed_enums:["Event","CommitStatus","Mode","Wait","ArmState","RegistrationState"], receive_only_variants:["Event::Resource","Event::Wake"], diagnostics:{error_msrv:$error_msrv_sha256,error_current:$error_current_sha256,operation_msrv:$operation_msrv_sha256,operation_current:$operation_current_sha256,resource_msrv:$resource_msrv_sha256,resource_current:$resource_current_sha256,wake_msrv:$wake_msrv_sha256,wake_current:$wake_current_sha256}}' \
   > "$evidence_dir/public-api-contract.json"
 
 printf 'API evolution contract passed: zio %s\n' "$version"

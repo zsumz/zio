@@ -117,17 +117,17 @@ impl Backend for ZioBorrowedBackend {
             let mut count = 0_usize;
             for event in &self.events {
                 match *event {
-                    Event::Resource { key, readiness } if readiness.is_readable() => {
+                    Event::Resource { key, readiness, .. } if readiness.is_readable() => {
                         observe(usize::try_from(key.get()).map_err(display)?)?;
                         count = count.saturating_add(1);
                     }
-                    Event::Resource { key, readiness } => {
+                    Event::Resource { key, readiness, .. } => {
                         return Err(format!(
                             "zio borrowed key {} was not readable: {readiness:?}",
                             key.get()
                         ));
                     }
-                    Event::Wake { key } => {
+                    Event::Wake { key, .. } => {
                         return Err(format!("unexpected zio borrowed wake key {}", key.get()));
                     }
                 }
@@ -157,7 +157,7 @@ impl Backend for ZioBorrowedBackend {
         };
         let report = result.map_err(|error| self.invalidate(error))?;
         let delivery = match self.events.as_slice() {
-            [Event::Wake { key }] if *key == Key::new(u64::MAX) => Ok(1),
+            [Event::Wake { key, .. }] if *key == Key::new(u64::MAX) => Ok(1),
             events => Err(format!(
                 "unexpected zio borrowed wake observations: {events:?}"
             )),

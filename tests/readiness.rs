@@ -30,6 +30,11 @@ fn one_shot_requires_explicit_rearm() -> Result<(), Box<dyn std::error::Error>> 
     let mut events = poll.events()?;
     let report = poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?;
     assert!(has_key(&events, Key::new(41)));
+    let delivered = events
+        .get(0)
+        .and_then(|event| event.registration())
+        .ok_or_else(|| io::Error::other("missing resource registration"))?;
+    assert_eq!(delivered, registration);
     require_no_recovery(report)?;
     assert_eq!(
         poll.registration_state(&registration)?,
@@ -42,7 +47,7 @@ fn one_shot_requires_explicit_rearm() -> Result<(), Box<dyn std::error::Error>> 
     assert!(events.is_empty());
     require_no_recovery(report)?;
 
-    poll.modify(&registration, Interest::READABLE, Mode::OneShot)?;
+    poll.modify(&delivered, Interest::READABLE, Mode::OneShot)?;
     assert_eq!(
         poll.registration_state(&registration)?,
         RegistrationState::Registered {
@@ -53,7 +58,42 @@ fn one_shot_requires_explicit_rearm() -> Result<(), Box<dyn std::error::Error>> 
     assert!(has_key(&events, Key::new(41)));
     require_no_recovery(report)?;
 
-    poll.delete(registration)?;
+    poll.delete(delivered)?;
+    Ok(())
+}
+
+#[test]
+fn duplicate_keys_preserve_registration_identity() -> Result<(), Box<dyn std::error::Error>> {
+    let (first, mut first_peer) = UnixStream::pair()?;
+    let (second, mut second_peer) = UnixStream::pair()?;
+    let mut poll = Poll::with_capacity(2, 2)?;
+    let key = Key::new(42);
+    let first_registration = poll.register(&first, key, Interest::READABLE, Mode::Level)?;
+    let second_registration = poll.register(&second, key, Interest::READABLE, Mode::Level)?;
+    first_peer.write_all(b"first")?;
+    second_peer.write_all(b"second")?;
+
+    let mut events = poll.events()?;
+    let report = poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?;
+    require_no_recovery(report)?;
+
+    assert_eq!(events.len(), 2);
+    for registration in [first_registration, second_registration] {
+        assert!(events.iter().any(|event| {
+            matches!(
+                event,
+                Event::Resource {
+                    registration: actual,
+                    key: actual_key,
+                    readiness,
+                    ..
+                } if *actual == registration && *actual_key == key && readiness.is_readable()
+            )
+        }));
+    }
+
+    poll.delete(first_registration)?;
+    poll.delete(second_registration)?;
     Ok(())
 }
 
@@ -72,7 +112,7 @@ fn one_shot_coalesces_readable_and_writable_at_capacity_one()
 
     let mut events = poll.events()?;
     let report = poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?;
-    let [Event::Resource { key, readiness }] = events.as_slice() else {
+    let [Event::Resource { key, readiness, .. }] = events.as_slice() else {
         return Err(io::Error::other("expected one coalesced resource event").into());
     };
     assert_eq!(*key, Key::new(42));
@@ -103,7 +143,7 @@ fn one_shot_coalescing_is_complete_with_competing_registrations()
 
     let mut events = poll.events()?;
     let report = poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?;
-    let [Event::Resource { key, readiness }] = events.as_slice() else {
+    let [Event::Resource { key, readiness, .. }] = events.as_slice() else {
         return Err(io::Error::other("expected one coalesced resource event").into());
     };
     assert!(readiness.contains(zio::Readiness::READABLE.union(zio::Readiness::WRITABLE)));
@@ -138,7 +178,7 @@ fn wake_before_wait_is_observable() -> Result<(), Box<dyn std::error::Error>> {
     let report = poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?;
     assert!(matches!(
         events.as_slice(),
-        [Event::Wake { key }] if *key == Key::new(99)
+        [Event::Wake { key, .. }] if *key == Key::new(99)
     ));
     require_no_recovery(report)?;
     Ok(())
@@ -197,5 +237,5 @@ fn has_key(events: &Events, expected: Key) -> bool {
 fn has_wake(events: &Events, expected: Key) -> bool {
     events
         .iter()
-        .any(|event| matches!(event, Event::Wake { key } if *key == expected))
+        .any(|event| matches!(event, Event::Wake { key, .. } if *key == expected))
 }

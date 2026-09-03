@@ -116,7 +116,7 @@ fn observe_event(
     scenario: WakeScenario,
 ) -> Result<(), WakeFailure> {
     match event {
-        Event::Resource { key, readiness }
+        Event::Resource { key, readiness, .. }
             if key == RESOURCE_KEY && readiness.contains(zio::Readiness::READABLE) =>
         {
             if *saw_resource {
@@ -130,7 +130,7 @@ fn observe_event(
             *saw_resource = true;
             Ok(())
         }
-        Event::Wake { key } if key == WAKE_KEY => {
+        Event::Wake { key, .. } if key == WAKE_KEY => {
             if *saw_wake {
                 return mismatch(
                     scenario,
