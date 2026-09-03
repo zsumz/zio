@@ -20,9 +20,9 @@ pub(crate) fn expect_failed_register(
         }
         Err(error) => error,
     };
-    let borrowed = error.registration().map(Registration::id);
-    if borrowed != expected {
-        return mismatch(scenario, ConformanceCheck::Handle, expected, borrowed);
+    let retained = error.registration().map(|registration| registration.id());
+    if retained != expected {
+        return mismatch(scenario, ConformanceCheck::Handle, expected, retained);
     }
     let (cause, registration) = error.into_parts();
     let owned = registration.as_ref().map(Registration::id);

@@ -27,7 +27,10 @@ fn registration_authority_is_poller_local() -> Result<(), Box<dyn std::error::Er
         Interest::READABLE | Interest::WRITABLE,
         Mode::Level,
     );
-    assert!(matches!(result, Err(Error::WrongPoller { .. })));
+    assert!(matches!(
+        result,
+        Err(Error::WrongPoller { registration: rejected }) if rejected == registration
+    ));
 
     owner.delete(registration)?;
     Ok(())

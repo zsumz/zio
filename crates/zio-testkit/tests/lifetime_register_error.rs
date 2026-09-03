@@ -31,18 +31,17 @@ fn verify_error_copy(commit: CommitStatus) -> Result<(), Box<dyn StdError>> {
         ],
     )?;
     let error = register_error(poll.register(&source, KEY, Interest::READABLE, Mode::Level))?;
-    let borrowed = error
+    let retained = error
         .registration()
-        .copied()
         .ok_or_else(|| io::Error::other("register error omitted its retained handle"))?;
-    let second_copy = borrowed;
-    let id = borrowed.id();
+    let second_copy = retained;
+    let id = retained.id();
     let (cause, returned) = error.into_parts();
     let returned = returned
         .ok_or_else(|| io::Error::other("consumed register error omitted its retained handle"))?;
 
     expect_register_mutation(cause, commit)?;
-    check_eq(&borrowed, &returned, "borrowed and returned handles")?;
+    check_eq(&retained, &returned, "accessed and returned handles")?;
     check_eq(&second_copy, &returned, "independent error handle copy")?;
     let expected_state = match commit {
         CommitStatus::Applied => armed(),
@@ -52,9 +51,9 @@ fn verify_error_copy(commit: CommitStatus) -> Result<(), Box<dyn StdError>> {
         }
     };
     check_eq(
-        &poll.registration_state(&borrowed)?,
+        &poll.registration_state(&retained)?,
         &expected_state,
-        "borrowed handle state",
+        "accessed handle state",
     )?;
     check_eq(
         &poll.registration_state(&returned)?,
@@ -68,7 +67,7 @@ fn verify_error_copy(commit: CommitStatus) -> Result<(), Box<dyn StdError>> {
     )?;
 
     poll.delete(second_copy)?;
-    expect_stale(poll.registration_state(&borrowed), id)?;
+    expect_stale(poll.registration_state(&retained), id)?;
     expect_stale(poll.registration_state(&returned), id)?;
     check_eq(&poll.calls().len(), &2, "register error call count")?;
     check_eq(

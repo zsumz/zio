@@ -8,7 +8,7 @@ mod recovery_test;
 
 use std::{fmt, io};
 
-use crate::{Key, RegistrationId};
+use crate::{Key, Registration, RegistrationId};
 
 pub use details::{DeleteError, MutationError, RegisterError};
 pub use recovery::{RecoveryFailure, RecoveryOutcome};
@@ -82,8 +82,8 @@ pub enum Error {
     },
     /// The registration belongs to another poller.
     WrongPoller {
-        /// Rejected registration.
-        registration: RegistrationId,
+        /// Exact rejected registration handle.
+        registration: Registration,
     },
     /// The requested readiness interest is empty or unsupported.
     InvalidInterest,

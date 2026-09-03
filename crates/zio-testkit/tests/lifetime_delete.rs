@@ -126,8 +126,8 @@ fn failed_delete(
     let Err(error) = result else {
         return Err(io::Error::other("deletion unexpectedly succeeded").into());
     };
-    let borrowed = *error.registration();
-    check_eq(&borrowed.id(), &expected_id, "borrowed error handle")?;
+    let retained = error.registration();
+    check_eq(&retained.id(), &expected_id, "retained error handle")?;
     let (cause, returned) = error.into_parts();
     check_eq(&returned.id(), &expected_id, "returned error handle")?;
     match cause {
@@ -141,7 +141,7 @@ fn failed_delete(
         }
         actual => return Err(failure_message("Mutation error", actual).into()),
     }
-    check_eq(&borrowed, &returned, "error handle copies")?;
+    check_eq(&retained, &returned, "error handle copies")?;
     Ok(returned)
 }
 

@@ -132,7 +132,7 @@ fn failed_register(
         return Err(io::Error::other("borrowed registration unexpectedly succeeded").into());
     };
     expect_commit(error.error(), expected)?;
-    let registration = error.registration().copied();
+    let registration = error.registration();
     match registration {
         Some(registration) if registration.id() != id => {
             Err(io::Error::other("register failure returned another generation").into())
@@ -150,7 +150,7 @@ fn failed_delete(
         return Err(io::Error::other("borrowed deletion unexpectedly succeeded").into());
     };
     expect_commit(error.error(), expected)?;
-    let returned = *error.registration();
+    let returned = error.registration();
     ensure(
         returned.id() == id,
         "delete failure returned another generation",

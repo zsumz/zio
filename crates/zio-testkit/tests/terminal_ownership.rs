@@ -35,7 +35,7 @@ fn wrong_poller_delete_returns_exact_handle_to_owner() -> Result<(), Box<dyn Std
     };
     let owner_calls = owner.calls().len();
 
-    let returned = wrong_owner_handle(delete_error(stranger.delete(registration))?, id)?;
+    let returned = wrong_owner_handle(delete_error(stranger.delete(registration))?, registration)?;
     check_eq(&stranger.calls().len(), &0, "stranger call count")?;
     check_eq(&owner.calls().len(), &owner_calls, "owner call count")?;
     check_eq(
@@ -67,17 +67,13 @@ fn wrong_poller_delete_returns_exact_handle_to_owner() -> Result<(), Box<dyn Std
 
 fn wrong_owner_handle(
     error: DeleteError,
-    expected: RegistrationId,
+    expected: Registration,
 ) -> Result<Registration, Box<dyn StdError>> {
     let (cause, registration) = error.into_parts();
-    check_eq(
-        &registration.id(),
-        &expected,
-        "wrong-owner returned capability",
-    )?;
+    check_eq(&registration, &expected, "wrong-owner returned capability")?;
     match cause {
-        Error::WrongPoller { registration: id } => {
-            check_eq(&id, &expected, "wrong-owner error identity")?;
+        Error::WrongPoller { registration } => {
+            check_eq(&registration, &expected, "wrong-owner error identity")?;
         }
         actual => return Err(failure("wrong-owner cause", "WrongPoller", actual).into()),
     }

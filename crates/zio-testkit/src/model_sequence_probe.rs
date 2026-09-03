@@ -47,13 +47,13 @@ pub(crate) fn probe_wrong_poller(context: &mut SequenceContext) -> Result<(), Di
     let calls = context.stranger.calls().len();
     expect_wrong_state(
         context.stranger.registration_state(&registration),
-        registration.id(),
+        registration,
     )?;
     expect_wrong(
         context
             .stranger
             .modify(&registration, Interest::WRITABLE, Mode::Level),
-        registration.id(),
+        registration,
     )?;
     let Err(error) = context.stranger.delete(registration) else {
         return Err(result("wrong-poller delete rejection", "success"));
@@ -62,7 +62,7 @@ pub(crate) fn probe_wrong_poller(context: &mut SequenceContext) -> Result<(), Di
     if returned != registration {
         return Err(handle(registration, returned));
     }
-    expect_wrong(Err(cause), registration.id())?;
+    expect_wrong(Err(cause), registration)?;
     unchanged_calls(calls, context.stranger.calls().len(), "wrong-poller probe")
 }
 
@@ -91,7 +91,7 @@ fn expect_stale(
 
 fn expect_wrong_state(
     result_value: Result<RegistrationState, Error>,
-    expected: RegistrationId,
+    expected: Registration,
 ) -> Result<(), Divergence> {
     match result_value {
         Err(error) => expect_wrong(Err(error), expected),
@@ -99,10 +99,7 @@ fn expect_wrong_state(
     }
 }
 
-fn expect_wrong(
-    result_value: Result<(), Error>,
-    expected: RegistrationId,
-) -> Result<(), Divergence> {
+fn expect_wrong(result_value: Result<(), Error>, expected: Registration) -> Result<(), Divergence> {
     match result_value {
         Err(Error::WrongPoller { registration }) if registration == expected => Ok(()),
         actual => Err(result(

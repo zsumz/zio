@@ -63,10 +63,8 @@ impl std::error::Error for MutationError {
 /// Registration failure that preserves any possibly installed registration.
 ///
 /// [`Self::registration`] is `None` for preflight failures and mutations proven
-/// not applied. It contains a registered handle for an applied mutation and an
-/// uncertain handle when the backend result cannot be proven. Because handles
-/// are copyable, callers can copy the handle borrowed by
-/// [`Self::registration`] before propagating or otherwise consuming the error.
+/// not applied. It returns a registered handle for an applied mutation and an
+/// uncertain handle when the backend result cannot be proven.
 #[derive(Debug)]
 pub struct RegisterError {
     error: Error,
@@ -86,9 +84,9 @@ impl RegisterError {
         &self.error
     }
 
-    /// Borrows the retained applied or uncertain registration, when one exists.
-    pub const fn registration(&self) -> Option<&Registration> {
-        self.registration.as_ref()
+    /// Returns the retained applied or uncertain registration, when one exists.
+    pub const fn registration(&self) -> Option<Registration> {
+        self.registration
     }
 
     /// Splits this failure into the cause and optional registration.
@@ -132,9 +130,9 @@ impl DeleteError {
         &self.error
     }
 
-    /// Borrows the registration returned after failed deletion.
-    pub const fn registration(&self) -> &Registration {
-        &self.registration
+    /// Returns the registration retained after failed deletion.
+    pub const fn registration(&self) -> Registration {
+        self.registration
     }
 
     /// Splits this failure into the cause and returned registration.

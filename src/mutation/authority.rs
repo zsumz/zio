@@ -21,7 +21,7 @@ pub(super) fn require_owner(
         Ok(())
     } else {
         Err(Error::WrongPoller {
-            registration: registration.id(),
+            registration: *registration,
         })
     }
 }

@@ -1,8 +1,8 @@
 //! Downstream matching contracts for open diagnostics and closed domains.
 
 use zio::{
-    ArmState, CommitStatus, Error, Event, Key, Mode, Operation, Readiness, RecoveryOutcome,
-    Registration, RegistrationState, Wait,
+    ArmState, CommitStatus, DeleteError, Error, Event, Key, Mode, Operation, Readiness,
+    RecoveryOutcome, RegisterError, Registration, RegistrationState, Wait,
 };
 
 #[test]
@@ -27,6 +27,13 @@ fn recovery_outcomes_return_registration_handles() {
     let _ = RecoveryOutcome::registration as fn(&RecoveryOutcome) -> Registration;
 }
 
+#[test]
+fn errors_return_registration_handles() {
+    let _ = RegisterError::registration as fn(&RegisterError) -> Option<Registration>;
+    let _ = DeleteError::registration as fn(&DeleteError) -> Registration;
+    let _ = rejected_registration as fn(&Error) -> Option<Registration>;
+}
+
 fn operation_class(operation: Operation) -> &'static str {
     match operation {
         Operation::Wait => "wait",
@@ -38,6 +45,13 @@ fn error_class(error: &Error) -> &'static str {
     match error {
         Error::Invariant => "contract",
         _ => "other",
+    }
+}
+
+fn rejected_registration(error: &Error) -> Option<Registration> {
+    match error {
+        Error::WrongPoller { registration } => Some(*registration),
+        _ => None,
     }
 }
 
