@@ -6,9 +6,9 @@ use std::{
 };
 
 use crate::{
-    CapacityKind, CapacityReason, CommitStatus, DeleteAllError, DeleteError, Error, Interest, Key,
-    Mode, RegisterError, RegisterOwnedError, Registration, RegistrationId, RegistrationInfo,
-    RegistrationState,
+    CapacityKind, CapacityReason, CommitStatus, DeleteAllError, DeleteError, DeleteOwnedError,
+    Error, Interest, Key, Mode, RegisterError, RegisterOwnedError, Registration, RegistrationId,
+    RegistrationInfo, RegistrationState,
     mutation::{
         MutationSession, registration_fd, registration_info, registration_state, registrations,
         set_registration_key,
@@ -123,6 +123,14 @@ impl ScriptedPoll {
     /// Deletes one registration through the next scripted deletion step.
     pub fn delete(&mut self, registration: Registration) -> Result<(), DeleteError> {
         self.mutations().delete(registration)
+    }
+
+    /// Deletes one registration and returns its owned descriptor.
+    pub fn delete_owned(
+        &mut self,
+        registration: Registration,
+    ) -> Result<OwnedFd, DeleteOwnedError> {
+        self.mutations().delete_owned(registration)
     }
 
     /// Deletes registrations through scripted steps until one fails.

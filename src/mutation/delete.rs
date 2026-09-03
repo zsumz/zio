@@ -1,6 +1,11 @@
 //! Descriptor-preserving deletion settlement.
 
-use crate::{CommitStatus, DeleteError, Error, Operation, Registration, descriptor::Descriptor};
+use std::os::fd::OwnedFd;
+
+use crate::{
+    CommitStatus, DeleteError, DeleteOwnedError, DescriptorOwnership, Error, Operation,
+    Registration, descriptor::Descriptor,
+};
 
 use super::{
     DeleteRequest, MutationDriver, MutationSession, authority::require_owner,
@@ -70,6 +75,36 @@ impl<Driver: MutationDriver> MutationSession<'_, Driver> {
         if let Err(error) = require_owner(self.owner.current(), &registration) {
             return Err(DeleteFailure::retained(error, registration));
         }
+        self.delete_preflighted(registration)
+    }
+
+    pub(crate) fn delete_owned(
+        &mut self,
+        registration: Registration,
+    ) -> Result<OwnedFd, DeleteOwnedError> {
+        if let Err(error) = self.require_owned(&registration) {
+            return Err(DeleteOwnedError::retained(error, registration));
+        }
+        self.delete_preflighted(registration)
+            .map(owned_descriptor)
+            .map_err(owned_failure)
+    }
+
+    fn require_owned(&self, registration: &Registration) -> Result<(), Error> {
+        require_owner(self.owner.current(), registration)?;
+        let info = self.registrations.info(registration.id())?;
+        match info.descriptor_ownership() {
+            DescriptorOwnership::Owned => Ok(()),
+            DescriptorOwnership::Borrowed => Err(Error::DescriptorNotOwned {
+                registration: registration.id(),
+            }),
+        }
+    }
+
+    fn delete_preflighted(
+        &mut self,
+        registration: Registration,
+    ) -> Result<Descriptor, DeleteFailure> {
         let id = registration.id();
         let prepared = self
             .registrations
@@ -107,6 +142,22 @@ impl<Driver: MutationDriver> MutationSession<'_, Driver> {
                 Err(DeleteFailure::retained(error, registration))
             }
         }
+    }
+}
+
+fn owned_descriptor(descriptor: Descriptor) -> OwnedFd {
+    descriptor.into_owned()
+}
+
+fn owned_failure(failure: DeleteFailure) -> DeleteOwnedError {
+    match failure {
+        DeleteFailure::Released {
+            error, descriptor, ..
+        } => DeleteOwnedError::returned(error, owned_descriptor(descriptor)),
+        DeleteFailure::Retained {
+            error,
+            registration,
+        } => DeleteOwnedError::retained(error, registration),
     }
 }
 

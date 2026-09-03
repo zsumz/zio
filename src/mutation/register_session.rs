@@ -101,16 +101,10 @@ fn validate_interest(interest: Interest) -> Result<(), Error> {
         .ok_or(Error::InvalidInterest)
 }
 
-#[allow(
-    unsafe_code,
-    reason = "owned registration recovers the exact descriptor transferred at this boundary"
-)]
 fn owned_failure(failure: RegisterFailure) -> RegisterOwnedError {
     match failure {
         RegisterFailure::Released { error, descriptor } => {
-            // SAFETY: `register_owned` supplies `Descriptor::owned`, and the
-            // registration transition returns that exact descriptor.
-            let descriptor = unsafe { descriptor.into_owned() };
+            let descriptor = descriptor.into_owned();
             RegisterOwnedError::returned(error, descriptor)
         }
         RegisterFailure::Retained {

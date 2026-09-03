@@ -3,7 +3,7 @@
 use std::os::fd::{AsFd, BorrowedFd, OwnedFd};
 
 use crate::{
-    DeleteAllError, DeleteError, Error, Interest, Key, Mode, Poll, RegisterError,
+    DeleteAllError, DeleteError, DeleteOwnedError, Error, Interest, Key, Mode, Poll, RegisterError,
     RegisterOwnedError, Registration, RegistrationInfo, RegistrationState,
     mutation::{
         MutationSession, registration_fd, registration_info, registration_state, registrations,
@@ -100,6 +100,18 @@ impl Poll {
     #[inline]
     pub fn delete(&mut self, registration: Registration) -> Result<(), DeleteError> {
         self.mutations().delete(registration)
+    }
+
+    /// Deletes a registration and returns its retained owned descriptor.
+    ///
+    /// Borrowed registrations are rejected without backend work. A
+    /// proven-applied failure returns the descriptor; every other failure
+    /// retains the exact registration handle.
+    pub fn delete_owned(
+        &mut self,
+        registration: Registration,
+    ) -> Result<OwnedFd, DeleteOwnedError> {
+        self.mutations().delete_owned(registration)
     }
 
     /// Deletes retained registrations until one deletion fails.

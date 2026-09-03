@@ -46,7 +46,7 @@ fn registration_info_tracks_committed_configuration() -> Result<(), Box<dyn StdE
 }
 
 #[test]
-fn owned_registration_retains_the_transferred_descriptor() -> Result<(), Box<dyn StdError>> {
+fn owned_registration_round_trips_the_transferred_descriptor() -> Result<(), Box<dyn StdError>> {
     let (source, _peer) = UnixStream::pair()?;
     let descriptor = source.as_fd().try_clone_to_owned()?;
     let raw = descriptor.as_raw_fd();
@@ -57,11 +57,26 @@ fn owned_registration_retains_the_transferred_descriptor() -> Result<(), Box<dyn
     let retained = poll.registration_fd(&registration)?;
 
     assert_eq!(retained.as_raw_fd(), raw);
-    poll.delete(registration)?;
+    let returned = poll.delete_owned(registration)?;
+    assert_eq!(returned.as_raw_fd(), raw);
     assert!(matches!(
         poll.registration_fd(&registration),
         Err(Error::Stale { registration: stale }) if stale == registration.id()
     ));
+    Ok(())
+}
+
+#[test]
+fn duplicated_registration_releases_its_owned_duplicate() -> Result<(), Box<dyn StdError>> {
+    let (source, _peer) = UnixStream::pair()?;
+    let mut poll = Poll::with_capacity(1, 1)?;
+    let registration = poll.register(&source, Key::new(10), Interest::READABLE, Mode::Level)?;
+    let retained = poll.registration_fd(&registration)?.as_raw_fd();
+
+    let returned = poll.delete_owned(registration)?;
+
+    assert_eq!(returned.as_raw_fd(), retained);
+    assert_ne!(returned.as_raw_fd(), source.as_raw_fd());
     Ok(())
 }
 

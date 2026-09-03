@@ -2,6 +2,7 @@
 
 mod accessors;
 mod capacity;
+mod delete_owned;
 mod details;
 #[cfg(test)]
 mod details_test;
@@ -16,6 +17,7 @@ use std::{fmt, io};
 use crate::{Key, Registration, RegistrationId};
 
 pub use capacity::{CapacityKind, CapacityReason};
+pub use delete_owned::DeleteOwnedError;
 pub use details::{DeleteAllError, DeleteError, MutationError, RegisterError};
 pub use recovery::{RecoveryFailure, RecoveryOutcome};
 pub use register_owned::RegisterOwnedError;
@@ -127,6 +129,11 @@ pub enum Error {
         /// Affected registration.
         registration: RegistrationId,
     },
+    /// The registration retains a borrowed descriptor.
+    DescriptorNotOwned {
+        /// Rejected registration.
+        registration: RegistrationId,
+    },
     /// A requested fixed capacity was unavailable.
     #[non_exhaustive]
     Capacity {
@@ -179,6 +186,12 @@ impl fmt::Display for Error {
                 formatter,
                 "registration {registration} has uncertain backend state"
             ),
+            Self::DescriptorNotOwned { registration } => {
+                write!(
+                    formatter,
+                    "registration {registration} does not own its descriptor"
+                )
+            }
             Self::Capacity {
                 kind,
                 limit,

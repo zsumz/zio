@@ -79,6 +79,13 @@ fn diagnostics_use_plain_display_names() {
         "registration 9 has uncertain backend state"
     );
     assert_eq!(
+        Error::DescriptorNotOwned {
+            registration: RegistrationId::new(10),
+        }
+        .to_string(),
+        "registration 10 does not own its descriptor"
+    );
+    assert_eq!(
         Error::Capacity {
             kind: CapacityKind::Event,
             limit: 0,
@@ -149,6 +156,10 @@ fn top_level_accessors_expose_embedded_diagnostics() {
     assert_eq!(Error::Stale { registration: id }.registration(), None);
     assert_eq!(
         Error::Uncertain { registration: id }.registration_id(),
+        Some(id)
+    );
+    assert_eq!(
+        Error::DescriptorNotOwned { registration: id }.registration_id(),
         Some(id)
     );
     let capacity = Error::Capacity {

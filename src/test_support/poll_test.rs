@@ -1,8 +1,14 @@
 //! Scripted registration information regressions.
 
-use std::{io, os::unix::net::UnixStream};
+use std::{
+    io,
+    os::{
+        fd::{AsFd, AsRawFd},
+        unix::net::UnixStream,
+    },
+};
 
-use crate::{CommitStatus, Interest, Key, Mode, RegistrationState};
+use crate::{ArmState, CommitStatus, DeleteOwnedError, Interest, Key, Mode, RegistrationState};
 
 use super::{MutationOutcome, MutationStep, ScriptedPoll};
 
@@ -102,6 +108,75 @@ fn failed_delete_count_follows_commit_status() -> Result<(), Box<dyn std::error:
             poll.remaining_registration_capacity(),
             poll.registration_capacity() - retained
         );
+    }
+    Ok(())
+}
+
+#[test]
+fn owned_delete_returns_the_exact_descriptor() -> Result<(), Box<dyn std::error::Error>> {
+    let (source, _peer) = UnixStream::pair()?;
+    let descriptor = source.as_fd().try_clone_to_owned()?;
+    let raw = descriptor.as_raw_fd();
+    let mut poll = ScriptedPoll::new([
+        MutationStep::Register(MutationOutcome::Success),
+        MutationStep::Delete(MutationOutcome::Success),
+    ])?;
+    let registration =
+        poll.register_owned(descriptor, Key::new(8), Interest::READABLE, Mode::Level)?;
+
+    let returned = poll.delete_owned(registration)?;
+
+    assert_eq!(returned.as_raw_fd(), raw);
+    assert_eq!(poll.registration_count(), 0);
+    poll.finish()?;
+    Ok(())
+}
+
+#[test]
+fn failed_owned_delete_returns_the_live_capability() -> Result<(), Box<dyn std::error::Error>> {
+    for commit in [
+        CommitStatus::NotApplied,
+        CommitStatus::Applied,
+        CommitStatus::Unknown,
+    ] {
+        let (source, _peer) = UnixStream::pair()?;
+        let descriptor = source.as_fd().try_clone_to_owned()?;
+        let raw = descriptor.as_raw_fd();
+        let mut poll = ScriptedPoll::new([
+            MutationStep::Register(MutationOutcome::Success),
+            MutationStep::Delete(failure(commit)),
+        ])?;
+        let registration =
+            poll.register_owned(descriptor, Key::new(9), Interest::READABLE, Mode::Level)?;
+
+        match (commit, poll.delete_owned(registration)) {
+            (CommitStatus::Applied, Err(DeleteOwnedError::Returned { error, descriptor })) => {
+                assert_eq!(error.commit(), Some(commit));
+                assert_eq!(descriptor.as_raw_fd(), raw);
+                assert_eq!(poll.registration_count(), 0);
+            }
+            (
+                CommitStatus::NotApplied | CommitStatus::Unknown,
+                Err(DeleteOwnedError::Retained {
+                    error,
+                    registration: returned,
+                }),
+            ) => {
+                assert_eq!(error.commit(), Some(commit));
+                assert_eq!(returned, registration);
+                assert_eq!(poll.registration_count(), 1);
+                let expected = match commit {
+                    CommitStatus::NotApplied => RegistrationState::Registered {
+                        arm: ArmState::Armed,
+                    },
+                    CommitStatus::Unknown => RegistrationState::Uncertain,
+                    CommitStatus::Applied => unreachable!(),
+                };
+                assert_eq!(poll.registration_state(&returned)?, expected);
+            }
+            _ => return Err(io::Error::other("owned deletion lost its capability").into()),
+        }
+        poll.finish()?;
     }
     Ok(())
 }

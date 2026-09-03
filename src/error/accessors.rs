@@ -29,7 +29,9 @@ impl Error {
     pub const fn registration_id(&self) -> Option<RegistrationId> {
         match self {
             Self::WrongPoller { registration } => Some(registration.id()),
-            Self::Stale { registration } | Self::Uncertain { registration } => Some(*registration),
+            Self::Stale { registration }
+            | Self::Uncertain { registration }
+            | Self::DescriptorNotOwned { registration } => Some(*registration),
             _ => None,
         }
     }

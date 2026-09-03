@@ -24,7 +24,6 @@
 //! # }
 //! ```
 #![deny(unsafe_code)]
-
 mod binding;
 #[cfg(test)]
 mod construction_allocation_test;
@@ -66,7 +65,8 @@ mod wait_report;
 mod wait_report_test;
 
 pub use error::{
-    CapacityKind, CapacityReason, CommitStatus, DeleteAllError, DeleteError, Error, MutationError,
+    CapacityKind, CapacityReason, CommitStatus, DeleteAllError, DeleteError, DeleteOwnedError,
+    Error, MutationError,
 };
 pub use error::{Operation, RecoveryFailure, RecoveryOutcome, RegisterError, RegisterOwnedError};
 pub use event::{Event, Key, Readiness};

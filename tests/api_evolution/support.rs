@@ -6,9 +6,9 @@ use core::{
 };
 
 use zio::{
-    ArmState, CapacityKind, CapacityReason, CommitStatus, DescriptorOwnership, Error, Event,
-    Events, Key, Mode, Operation, Readiness, RecoveryFailure, RecoveryOutcome, RegisterOwnedError,
-    RegistrationState, Wait,
+    ArmState, CapacityKind, CapacityReason, CommitStatus, DeleteOwnedError, DescriptorOwnership,
+    Error, Event, Events, Key, Mode, Operation, Readiness, RecoveryFailure, RecoveryOutcome,
+    RegisterOwnedError, RegistrationState, Wait,
 };
 
 pub(super) fn operation_class(operation: Operation) -> &'static str {
@@ -91,6 +91,13 @@ pub(super) fn owned_register_error_class(error: &RegisterOwnedError) -> &'static
     match error {
         RegisterOwnedError::Returned { .. } => "descriptor",
         RegisterOwnedError::Retained { .. } => "registration",
+    }
+}
+
+pub(super) fn owned_delete_error_class(error: &DeleteOwnedError) -> &'static str {
+    match error {
+        DeleteOwnedError::Returned { .. } => "descriptor",
+        DeleteOwnedError::Retained { .. } => "registration",
     }
 }
 

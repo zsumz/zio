@@ -20,7 +20,8 @@ use std::{
 };
 
 use zio::{
-    ArmState, DescriptorOwnership, Error, Event, Interest, Key, Mode, Poll, RegistrationState, Wait,
+    ArmState, DeleteOwnedError, DescriptorOwnership, Error, Event, Interest, Key, Mode, Poll,
+    RegistrationState, Wait,
 };
 
 use support::require_no_recovery;
@@ -79,6 +80,32 @@ fn dropping_poller_does_not_close_borrowed_source() -> TestResult {
     drop(poll);
     peer.write_all(b"a")?;
     drain_byte(&mut source)?;
+    Ok(())
+}
+
+#[test]
+fn owned_deletion_rejects_a_borrowed_registration() -> TestResult {
+    let (source, _peer) = UnixStream::pair()?;
+    let mut poll = Poll::with_capacity(1, 1)?;
+    // SAFETY: `source` remains open and unchanged through successful deletion.
+    let registration =
+        unsafe { poll.register_borrowed(&source, Key::new(8), Interest::READABLE, Mode::Level)? };
+
+    let Err(DeleteOwnedError::Retained {
+        error,
+        registration: returned,
+    }) = poll.delete_owned(registration)
+    else {
+        return Err("owned deletion accepted a borrowed descriptor".into());
+    };
+
+    assert!(matches!(
+        error,
+        Error::DescriptorNotOwned { registration: id } if id == registration.id()
+    ));
+    assert_eq!(returned, registration);
+    assert!(poll.registration_state(&returned)?.is_registered());
+    poll.delete(returned)?;
     Ok(())
 }
 

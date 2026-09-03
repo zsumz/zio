@@ -2,9 +2,10 @@
 
 use zio::{
     ArmState, CapacityKind, CapacityReason, CommitStatus, DeleteAllError, DeleteError,
-    DescriptorOwnership, Error, Event, Events, Key, Mode, MutationError, Operation, Poll,
-    Readiness, RecoveryFailure, RecoveryOutcome, RegisterError, RegisterOwnedError, Registration,
-    RegistrationId, RegistrationInfo, RegistrationState, Wait, WaitReport, Waker,
+    DeleteOwnedError, DescriptorOwnership, Error, Event, Events, Key, Mode, MutationError,
+    Operation, Poll, Readiness, RecoveryFailure, RecoveryOutcome, RegisterError,
+    RegisterOwnedError, Registration, RegistrationId, RegistrationInfo, RegistrationState, Wait,
+    WaitReport, Waker,
 };
 
 #[path = "api_evolution/support.rs"]
@@ -64,6 +65,7 @@ fn closed_delivery_and_state_domains_remain_exhaustive() {
     assert_eq!(state_class(RegistrationState::Uncertain), "uncertain");
     assert_eq!(ownership_class(DescriptorOwnership::Borrowed), "borrowed");
     let _ = owned_register_error_class as fn(&RegisterOwnedError) -> &'static str;
+    let _ = owned_delete_error_class as fn(&DeleteOwnedError) -> &'static str;
     let _ = Wait::is_nonblocking as fn(Wait) -> bool;
     let _ = RegistrationState::is_registered as fn(RegistrationState) -> bool;
     let _ = RegistrationState::is_uncertain as fn(RegistrationState) -> bool;
@@ -90,11 +92,14 @@ fn errors_return_registration_handles() {
     assert_error_ref::<RegisterError>();
     assert_error_ref::<RegisterOwnedError>();
     assert_error_ref::<DeleteError>();
+    assert_error_ref::<DeleteOwnedError>();
     assert_error_ref::<DeleteAllError>();
     let _ = RegisterError::registration as fn(&RegisterError) -> Option<Registration>;
     let _ =
         RegisterOwnedError::descriptor as fn(&RegisterOwnedError) -> Option<&std::os::fd::OwnedFd>;
     let _ = RegisterOwnedError::registration as fn(&RegisterOwnedError) -> Option<Registration>;
+    let _ = DeleteOwnedError::descriptor as fn(&DeleteOwnedError) -> Option<&std::os::fd::OwnedFd>;
+    let _ = DeleteOwnedError::registration as fn(&DeleteOwnedError) -> Option<Registration>;
     let _ = DeleteError::registration as fn(&DeleteError) -> Registration;
     let _ = DeleteAllError::registration as fn(&DeleteAllError) -> Option<Registration>;
     let _ = Error::registration as fn(&Error) -> Option<Registration>;
@@ -107,6 +112,7 @@ fn public_errors_remain_thread_portable() {
     assert_thread_error::<RegisterError>();
     assert_thread_error::<RegisterOwnedError>();
     assert_thread_error::<DeleteError>();
+    assert_thread_error::<DeleteOwnedError>();
     assert_thread_error::<DeleteAllError>();
     assert_thread_error::<RecoveryFailure>();
 }
@@ -168,6 +174,12 @@ fn poll_exposes_stored_configuration_rearm() {
 #[test]
 fn poll_supports_fail_fast_bulk_deletion() {
     let _ = Poll::delete_all as fn(&mut Poll) -> Result<(), DeleteAllError>;
+}
+
+#[test]
+fn poll_returns_owned_descriptors_on_deletion() {
+    let _ = Poll::delete_owned
+        as fn(&mut Poll, Registration) -> Result<std::os::fd::OwnedFd, DeleteOwnedError>;
 }
 
 #[test]
