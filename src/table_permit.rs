@@ -35,6 +35,29 @@ pub(crate) struct ReusedPermit<'table> {
     pub(super) id: EncodedRegistrationId,
 }
 
+/// Reservation setup failure retaining the uncommitted descriptor.
+#[derive(Debug)]
+pub(crate) struct ReservationFailure {
+    error: Error,
+    descriptor: Descriptor,
+}
+
+impl ReservationFailure {
+    const fn new(error: Error, descriptor: Descriptor) -> Self {
+        Self { error, descriptor }
+    }
+
+    pub(crate) fn into_parts(self) -> (Error, Descriptor) {
+        (self.error, self.descriptor)
+    }
+
+    pub(crate) fn discard_descriptor(self) -> Error {
+        let (error, descriptor) = self.into_parts();
+        drop(descriptor);
+        error
+    }
+}
+
 impl<'table> FreshPermit<'table> {
     #[cfg(test)]
     pub(crate) const fn id(&self) -> RegistrationId {
@@ -54,7 +77,7 @@ impl<'table> FreshPermit<'table> {
         interest: Interest,
         mode: Mode,
         apply: impl for<'descriptor> FnOnce(BorrowedFd<'descriptor>, RegistrationId) -> Output,
-    ) -> Result<(Reservation<'table>, Output), Error> {
+    ) -> Result<(Reservation<'table>, Output), ReservationFailure> {
         let Self {
             slots,
             free_head,
@@ -64,13 +87,21 @@ impl<'table> FreshPermit<'table> {
             free_index,
             id,
         } = self;
-        let next_live = live.checked_add(1).ok_or(Error::Invariant)?;
+        let Some(next_live) = live.checked_add(1) else {
+            return Err(ReservationFailure::new(Error::Invariant, descriptor));
+        };
         slots.push(Slot {
             generation: 1,
             entry: None,
             next_free: FREE_END,
         });
-        let slot = slots.get_mut(slot_index).ok_or(Error::Invariant)?;
+        if slots.len().checked_sub(1) != Some(slot_index) {
+            let _ = slots.pop();
+            return Err(ReservationFailure::new(Error::Invariant, descriptor));
+        }
+        let Some(slot) = slots.last_mut() else {
+            return Err(ReservationFailure::new(Error::Invariant, descriptor));
+        };
         let entry = slot
             .entry
             .insert(Entry::registered(descriptor, key, interest, mode));
@@ -100,7 +131,7 @@ impl<'table> ReusedPermit<'table> {
         interest: Interest,
         mode: Mode,
         apply: impl for<'descriptor> FnOnce(BorrowedFd<'descriptor>, RegistrationId) -> Output,
-    ) -> Result<(Reservation<'table>, Output), Error> {
+    ) -> Result<(Reservation<'table>, Output), ReservationFailure> {
         let Self {
             slot,
             free_head,
@@ -111,11 +142,15 @@ impl<'table> ReusedPermit<'table> {
             next_generation,
             id,
         } = self;
-        let next_live = live.checked_add(1).ok_or(Error::Invariant)?;
-        let entry = occupy(
-            &mut slot.entry,
-            Entry::registered(descriptor, key, interest, mode),
-        )?;
+        let Some(next_live) = live.checked_add(1) else {
+            return Err(ReservationFailure::new(Error::Invariant, descriptor));
+        };
+        if slot.entry.is_some() {
+            return Err(ReservationFailure::new(Error::Invariant, descriptor));
+        }
+        let entry = slot
+            .entry
+            .insert(Entry::registered(descriptor, key, interest, mode));
         *free_head = next_free;
         slot.generation = next_generation;
         *live = next_live;
@@ -152,18 +187,4 @@ impl Reservation<'_> {
     pub(crate) fn mark_uncertain(self) -> Result<(), Error> {
         self.lease.mark_uncertain()
     }
-}
-
-#[inline]
-pub(super) fn occupy(vacancy: &mut Option<Entry>, entry: Entry) -> Result<&mut Entry, Error> {
-    match vacancy {
-        Some(_) => Err(reused_slot_occupied()),
-        None => Ok(vacancy.insert(entry)),
-    }
-}
-
-#[cold]
-#[inline(never)]
-const fn reused_slot_occupied() -> Error {
-    Error::Invariant
 }

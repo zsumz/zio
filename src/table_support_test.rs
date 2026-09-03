@@ -17,14 +17,16 @@ impl RegistrationTable {
         let (id, reservation) = if self.has_reusable_slot() {
             let permit = self.reused_permit()?;
             let id = permit.id();
-            let (reservation, ()) =
-                permit.reserve_with(descriptor, key, interest, mode, |_, _| ())?;
+            let (reservation, ()) = permit
+                .reserve_with(descriptor, key, interest, mode, |_, _| ())
+                .map_err(super::permit::ReservationFailure::discard_descriptor)?;
             (id, reservation)
         } else {
             let permit = self.fresh_permit()?;
             let id = permit.id();
-            let (reservation, ()) =
-                permit.reserve_with(descriptor, key, interest, mode, |_, _| ())?;
+            let (reservation, ()) = permit
+                .reserve_with(descriptor, key, interest, mode, |_, _| ())
+                .map_err(super::permit::ReservationFailure::discard_descriptor)?;
             (id, reservation)
         };
         Ok(reservation.keep(id))

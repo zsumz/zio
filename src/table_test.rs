@@ -115,13 +115,15 @@ fn reservation_carries_the_inserted_descriptor_and_retire_proof() -> Result<(), 
     let raw_descriptor = descriptor.as_raw_fd();
     let permit = table.fresh_permit()?;
     let id = permit.id();
-    let (reservation, observed) = permit.reserve_with(
-        Descriptor::owned(descriptor),
-        Key::new(1),
-        Interest::READABLE,
-        Mode::Level,
-        |descriptor, id| (descriptor.as_raw_fd(), id),
-    )?;
+    let (reservation, observed) = permit
+        .reserve_with(
+            Descriptor::owned(descriptor),
+            Key::new(1),
+            Interest::READABLE,
+            Mode::Level,
+            |descriptor, id| (descriptor.as_raw_fd(), id),
+        )
+        .map_err(super::permit::ReservationFailure::discard_descriptor)?;
     assert_eq!(observed, (raw_descriptor, id));
     reservation.retire()?;
     assert!(matches!(
@@ -139,13 +141,15 @@ fn reservation_releases_the_exact_owned_descriptor() -> Result<(), Box<dyn StdEr
     let raw_descriptor = descriptor.as_raw_fd();
     let permit = table.fresh_permit()?;
     let id = permit.id();
-    let (reservation, ()) = permit.reserve_with(
-        Descriptor::owned(descriptor),
-        Key::new(2),
-        Interest::READABLE,
-        Mode::Level,
-        |_, _| (),
-    )?;
+    let (reservation, ()) = permit
+        .reserve_with(
+            Descriptor::owned(descriptor),
+            Key::new(2),
+            Interest::READABLE,
+            Mode::Level,
+            |_, _| (),
+        )
+        .map_err(super::permit::ReservationFailure::discard_descriptor)?;
 
     let descriptor = reservation.release()?;
     assert_eq!(descriptor.as_raw_fd(), raw_descriptor);

@@ -43,6 +43,7 @@ fn count_overflow_rejects_reservation_before_mutation() -> Result<(), Box<dyn St
     table.live = usize::MAX;
     let permit = table.fresh_permit()?;
     let descriptor = Descriptor::owned(source.as_fd().try_clone_to_owned()?);
+    let raw_descriptor = descriptor.as_raw_fd();
 
     let result = permit.reserve_with(
         descriptor,
@@ -52,7 +53,12 @@ fn count_overflow_rejects_reservation_before_mutation() -> Result<(), Box<dyn St
         |_, _| (),
     );
 
-    assert!(matches!(result, Err(Error::Invariant)));
+    let Err(failure) = result else {
+        return Err(Error::Invariant.into());
+    };
+    let (error, descriptor) = failure.into_parts();
+    assert!(matches!(error, Error::Invariant));
+    assert_eq!(descriptor.as_raw_fd(), raw_descriptor);
     assert!(table.slots.is_empty());
     assert_eq!(table.free_head, FREE_END);
     assert_eq!(table.live, usize::MAX);
@@ -88,24 +94,28 @@ fn reserve(
     let (id, reservation) = if table.has_reusable_slot() {
         let permit = table.reused_permit()?;
         let id = permit.id();
-        let (reservation, ()) = permit.reserve_with(
-            descriptor,
-            Key::ZERO,
-            Interest::READABLE,
-            Mode::Level,
-            |_, _| (),
-        )?;
+        let (reservation, ()) = permit
+            .reserve_with(
+                descriptor,
+                Key::ZERO,
+                Interest::READABLE,
+                Mode::Level,
+                |_, _| (),
+            )
+            .map_err(super::permit::ReservationFailure::discard_descriptor)?;
         (id, reservation)
     } else {
         let permit = table.fresh_permit()?;
         let id = permit.id();
-        let (reservation, ()) = permit.reserve_with(
-            descriptor,
-            Key::ZERO,
-            Interest::READABLE,
-            Mode::Level,
-            |_, _| (),
-        )?;
+        let (reservation, ()) = permit
+            .reserve_with(
+                descriptor,
+                Key::ZERO,
+                Interest::READABLE,
+                Mode::Level,
+                |_, _| (),
+            )
+            .map_err(super::permit::ReservationFailure::discard_descriptor)?;
         (id, reservation)
     };
     Ok(reservation.keep(id))

@@ -79,7 +79,7 @@ fn register_reused<Driver: MutationDriver>(
     );
     let (reservation, native) = match reserved {
         Ok(reserved) => reserved,
-        Err(error) => return register_state_failure(error),
+        Err(failure) => return register_state_failure(failure.discard_descriptor()),
     };
     match native {
         Ok(()) => Ok(reservation.keep(registration)),
@@ -122,7 +122,7 @@ fn register_fresh<Driver: MutationDriver>(
     );
     let (reservation, native) = match reserved {
         Ok(reserved) => reserved,
-        Err(error) => return register_state_failure(error),
+        Err(failure) => return register_state_failure(failure.discard_descriptor()),
     };
     match native {
         Ok(()) => Ok(reservation.keep(registration)),

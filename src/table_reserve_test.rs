@@ -7,12 +7,7 @@
     target_os = "netbsd"
 ))]
 
-use std::{
-    error::Error as StdError,
-    fs::File,
-    num::NonZeroUsize,
-    os::fd::{AsFd, AsRawFd},
-};
+use std::{error::Error as StdError, fs::File, num::NonZeroUsize, os::fd::AsFd};
 
 use crate::{
     Error, Interest, Key, Mode, RegistrationId, RegistrationState,
@@ -20,11 +15,7 @@ use crate::{
     token::{MAX_GENERATION, decode},
 };
 
-use super::{
-    RegistrationTable,
-    permit::occupy,
-    slot::{Entry, FREE_END},
-};
+use super::{RegistrationTable, slot::FREE_END};
 
 #[test]
 fn corrupted_reused_slot_is_rejected_without_table_mutation() -> Result<(), Box<dyn StdError>> {
@@ -90,37 +81,6 @@ fn terminal_reused_head_is_rejected_without_table_mutation() -> Result<(), Box<d
 }
 
 #[test]
-fn occupied_vacancy_rejects_replacement_without_mutation() -> Result<(), Box<dyn StdError>> {
-    let original = File::open("/dev/null")?.as_fd().try_clone_to_owned()?;
-    let replacement = File::open("/dev/null")?.as_fd().try_clone_to_owned()?;
-    let original_descriptor = original.as_raw_fd();
-    let mut vacancy = Some(Entry::registered(
-        Descriptor::owned(original),
-        Key::new(1),
-        Interest::READABLE,
-        Mode::Level,
-    ));
-
-    let result = occupy(
-        &mut vacancy,
-        Entry::registered(
-            Descriptor::owned(replacement),
-            Key::new(2),
-            Interest::WRITABLE,
-            Mode::OneShot,
-        ),
-    );
-
-    assert!(matches!(result, Err(Error::Invariant)));
-    let retained = vacancy.as_ref().ok_or(Error::Invariant)?;
-    assert_eq!(retained.descriptor.as_raw_fd(), original_descriptor);
-    assert_eq!(retained.key, Key::new(1));
-    assert_eq!(retained.interest, Interest::READABLE);
-    assert_eq!(retained.mode, Mode::Level);
-    Ok(())
-}
-
-#[test]
 fn retire_overwrites_stale_occupied_free_link() -> Result<(), Box<dyn StdError>> {
     let mut table = table(2)?;
     let source = File::open("/dev/null")?;
@@ -172,14 +132,16 @@ fn reserve(
     let (id, reservation) = if table.has_reusable_slot() {
         let permit = table.reused_permit()?;
         let id = permit.id();
-        let (reservation, ()) =
-            permit.reserve_with(descriptor, key, Interest::READABLE, Mode::Level, |_, _| ())?;
+        let (reservation, ()) = permit
+            .reserve_with(descriptor, key, Interest::READABLE, Mode::Level, |_, _| ())
+            .map_err(super::permit::ReservationFailure::discard_descriptor)?;
         (id, reservation)
     } else {
         let permit = table.fresh_permit()?;
         let id = permit.id();
-        let (reservation, ()) =
-            permit.reserve_with(descriptor, key, Interest::READABLE, Mode::Level, |_, _| ())?;
+        let (reservation, ()) = permit
+            .reserve_with(descriptor, key, Interest::READABLE, Mode::Level, |_, _| ())
+            .map_err(super::permit::ReservationFailure::discard_descriptor)?;
         (id, reservation)
     };
     Ok(reservation.keep(id))
