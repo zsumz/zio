@@ -102,6 +102,29 @@ fn public_errors_remain_thread_portable() {
 }
 
 #[test]
+fn public_values_remain_thread_portable() {
+    assert_copy_thread_value::<Key>();
+    assert_copy_thread_value::<zio::Interest>();
+    assert_copy_thread_value::<Readiness>();
+    assert_copy_thread_value::<Event>();
+    assert_copy_thread_value::<Mode>();
+    assert_copy_thread_value::<Wait>();
+    assert_copy_thread_value::<Registration>();
+    assert_copy_thread_value::<RegistrationId>();
+    assert_copy_thread_value::<RegistrationInfo>();
+    assert_copy_thread_value::<RecoveryOutcome>();
+    assert_copy_thread_value::<ArmState>();
+    assert_copy_thread_value::<RegistrationState>();
+    assert_copy_thread_value::<DescriptorOwnership>();
+    assert_copy_thread_value::<Operation>();
+    assert_copy_thread_value::<CommitStatus>();
+    assert_copy_thread_value::<CapacityKind>();
+    assert_copy_thread_value::<CapacityReason>();
+    assert_thread_value::<Events>();
+    assert_thread_value::<WaitReport>();
+}
+
+#[test]
 fn registration_handles_support_ordered_collections() {
     assert_ordered::<Registration>();
 }
