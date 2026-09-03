@@ -21,18 +21,17 @@ impl Poll {
     /// generation, including repeated calls for the same source or duplicated
     /// handles for one open-file description.
     ///
-    /// A successful call returns a copyable, exact-generation handle for the
-    /// new registration. A reactor can retain one copy before giving another
-    /// to cancellable work. If the backend reports
-    /// [`CommitStatus::NotApplied`], the reserved slot and retained descriptor
-    /// are released and [`RegisterError::registration`] returns `None`. An
-    /// [`CommitStatus::Applied`] failure returns a registered, armed handle; an
-    /// [`CommitStatus::Unknown`] failure returns a handle whose authoritative
-    /// state is [`RegistrationState::Uncertain`].
+    /// Success returns a copyable exact-generation handle. A reactor can retain
+    /// one copy before giving another to cancellable work.
     ///
-    /// [`CommitStatus::Applied`]: crate::CommitStatus::Applied
-    /// [`CommitStatus::NotApplied`]: crate::CommitStatus::NotApplied
-    /// [`CommitStatus::Unknown`]: crate::CommitStatus::Unknown
+    /// On failure:
+    ///
+    /// - [`CommitStatus::NotApplied`](crate::CommitStatus::NotApplied) releases
+    ///   the slot and duplicate, returning no registration;
+    /// - [`CommitStatus::Applied`](crate::CommitStatus::Applied) returns an
+    ///   armed registration; and
+    /// - [`CommitStatus::Unknown`](crate::CommitStatus::Unknown) returns an
+    ///   uncertain registration.
     pub fn register<F: AsFd + ?Sized>(
         &mut self,
         source: &F,
@@ -60,15 +59,14 @@ impl Poll {
 
     /// Replaces interest and mode, rearming a one-shot registration.
     ///
-    /// A successful call, or a failure classified as
-    /// [`CommitStatus::Applied`], commits the desired interest and mode and
-    /// leaves the registration armed. [`CommitStatus::NotApplied`] preserves
-    /// the complete prior interest, mode, and arm state. An unknown outcome
-    /// makes the registration uncertain and prevents later modification until
-    /// it is explicitly deleted.
+    /// Outcome semantics:
     ///
-    /// [`CommitStatus::Applied`]: crate::CommitStatus::Applied
-    /// [`CommitStatus::NotApplied`]: crate::CommitStatus::NotApplied
+    /// - success or [`Applied`](crate::CommitStatus::Applied) commits the new
+    ///   configuration and leaves it armed;
+    /// - [`NotApplied`](crate::CommitStatus::NotApplied) preserves the complete
+    ///   prior state; and
+    /// - [`Unknown`](crate::CommitStatus::Unknown) makes the registration
+    ///   uncertain, allowing only deletion.
     pub fn modify(
         &mut self,
         registration: &Registration,
@@ -103,17 +101,14 @@ impl Poll {
 
     /// Deletes a registration and releases its retained descriptor state.
     ///
-    /// Success retires the exact generation and makes every remaining handle
-    /// copy stale. Every failed deletion returns the attempted handle through
-    /// [`DeleteError`]. A [`CommitStatus::NotApplied`] failure preserves the
-    /// prior authoritative state for retry; a [`CommitStatus::Applied`]
-    /// failure retires the state, so every copy is stale; an
-    /// [`CommitStatus::Unknown`] failure marks the registration uncertain and
-    /// permits an explicit delete retry from any copy.
+    /// Success retires the exact generation, making every copy stale. Every
+    /// failure returns the attempted handle through [`DeleteError`]:
     ///
-    /// [`CommitStatus::Applied`]: crate::CommitStatus::Applied
-    /// [`CommitStatus::NotApplied`]: crate::CommitStatus::NotApplied
-    /// [`CommitStatus::Unknown`]: crate::CommitStatus::Unknown
+    /// - [`NotApplied`](crate::CommitStatus::NotApplied) preserves its prior
+    ///   state;
+    /// - [`Applied`](crate::CommitStatus::Applied) retires it; and
+    /// - [`Unknown`](crate::CommitStatus::Unknown) marks it uncertain and
+    ///   permits another delete attempt.
     #[inline]
     pub fn delete(&mut self, registration: Registration) -> Result<(), DeleteError> {
         self.mutations().delete(registration)
