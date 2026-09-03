@@ -43,7 +43,7 @@ printf '%s\n' \
   > "$consumer_dir/Cargo.toml"
 
 printf '%s\n' \
-  'use zio::{ArmState, CommitStatus, DeleteError, DescriptorOwnership, Error, Event, Key, Mode, MutationError, Operation, Poll, RecoveryOutcome, RegisterError, Registration, RegistrationId, RegistrationInfo, RegistrationState, Wait, WaitReport, Waker};' \
+  'use zio::{ArmState, CommitStatus, DeleteError, DescriptorOwnership, Error, Event, Key, Mode, MutationError, Operation, Poll, RecoveryFailure, RecoveryOutcome, RegisterError, Registration, RegistrationId, RegistrationInfo, RegistrationState, Wait, WaitReport, Waker};' \
   '' \
   'fn main() {' \
   '    assert_eq!(classify_error(&Error::Invariant), 1);' \
@@ -79,6 +79,8 @@ printf '%s\n' \
   '    let _ = RegistrationState::is_uncertain as fn(RegistrationState) -> bool;' \
   '    let _ = RegistrationState::arm as fn(RegistrationState) -> Option<ArmState>;' \
   '    let _ = RecoveryOutcome::registration as fn(&RecoveryOutcome) -> Registration;' \
+  '    assert_slice::<RecoveryFailure, RecoveryOutcome>();' \
+  '    let _ = iterate_recovery as fn(&RecoveryFailure);' \
   '    let _ = WaitReport::is_complete as fn(&WaitReport) -> bool;' \
   '    let _ = RegisterError::registration as fn(&RegisterError) -> Option<Registration>;' \
   '    let _ = DeleteError::registration as fn(&DeleteError) -> Registration;' \
@@ -148,6 +150,8 @@ printf '%s\n' \
   '' \
   'fn assert_from<T: From<U>, U>() {}' \
   '' \
+  'fn assert_slice<T: AsRef<[U]>, U>() {}' \
+  '' \
   'fn assert_error_ref<T: AsRef<Error>>() {}' \
   '' \
   'fn assert_send<T: Send>() {}' \
@@ -161,6 +165,11 @@ printf '%s\n' \
   '' \
   'fn consume_events(events: zio::Events) {' \
   '    let _ = events.into_iter().rev();' \
+  '}' \
+  '' \
+  'fn iterate_recovery(failure: &RecoveryFailure) {' \
+  '    let _: Option<&RecoveryOutcome> = failure.iter().next();' \
+  '    let _: Option<&RecoveryOutcome> = failure.into_iter().next();' \
   '}' \
   '' \
   'fn classify_error(error: &Error) -> u8 {' \

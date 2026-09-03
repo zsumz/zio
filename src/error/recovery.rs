@@ -104,6 +104,11 @@ impl RecoveryFailure {
         &self.outcomes
     }
 
+    /// Iterates over exact outcomes in observation order.
+    pub fn iter(&self) -> core::slice::Iter<'_, RecoveryOutcome> {
+        self.outcomes.iter()
+    }
+
     /// Returns the first native or receipt-protocol failure in submission order.
     pub const fn source(&self) -> &io::Error {
         &self.source
@@ -113,6 +118,21 @@ impl RecoveryFailure {
     /// first native or receipt-protocol source.
     pub fn into_parts(self) -> (Operation, Vec<RecoveryOutcome>, io::Error) {
         (self.operation, self.outcomes, self.source)
+    }
+}
+
+impl AsRef<[RecoveryOutcome]> for RecoveryFailure {
+    fn as_ref(&self) -> &[RecoveryOutcome] {
+        self.outcomes()
+    }
+}
+
+impl<'a> IntoIterator for &'a RecoveryFailure {
+    type Item = &'a RecoveryOutcome;
+    type IntoIter = core::slice::Iter<'a, RecoveryOutcome>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
     }
 }
 

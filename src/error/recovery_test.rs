@@ -47,6 +47,9 @@ fn recovery_failure_preserves_one_owned_snapshot() {
     assert_eq!(failure.operation(), Operation::Disarm);
     assert_eq!(failure.outcomes().as_ptr(), pointer);
     assert_eq!(failure.outcomes().len(), 2);
+    assert_eq!(failure.as_ref(), failure.outcomes());
+    assert_eq!(failure.iter().len(), 2);
+    assert_eq!(failure.into_iter().len(), 2);
     assert_eq!(failure.source().raw_os_error(), Some(5));
     assert_eq!(
         failure.to_string(),

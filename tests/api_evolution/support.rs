@@ -5,9 +5,9 @@ use core::{
     ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not, Sub, SubAssign},
 };
 
-use zio::{Error, Event, Events};
+use zio::{Error, Events, RecoveryFailure, RecoveryOutcome};
 
-pub(super) fn assert_event_slice<T: AsRef<[Event]>>() {}
+pub(super) fn assert_slice<T: AsRef<[U]>, U>() {}
 
 pub(super) fn assert_ordered<T: Ord>() {}
 
@@ -30,6 +30,12 @@ pub(super) fn assert_event_iterators(events: &mut Events) {
 
 pub(super) fn assert_owned_event_iterator(events: Events) {
     assert_iterator(events.into_iter());
+}
+
+pub(super) fn assert_recovery_iterator(failure: &RecoveryFailure) {
+    assert_iterator(failure.iter());
+    assert_iterator(failure.into_iter());
+    let _: Option<&RecoveryOutcome> = failure.into_iter().next();
 }
 
 fn assert_iterator<I: DoubleEndedIterator + ExactSizeIterator + FusedIterator>(_: I) {}

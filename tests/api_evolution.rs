@@ -2,8 +2,8 @@
 
 use zio::{
     ArmState, CommitStatus, DeleteError, DescriptorOwnership, Error, Event, Events, Key, Mode,
-    MutationError, Operation, Poll, Readiness, RecoveryOutcome, RegisterError, Registration,
-    RegistrationId, RegistrationInfo, RegistrationState, Wait, WaitReport, Waker,
+    MutationError, Operation, Poll, Readiness, RecoveryFailure, RecoveryOutcome, RegisterError,
+    Registration, RegistrationId, RegistrationInfo, RegistrationState, Wait, WaitReport, Waker,
 };
 
 #[path = "api_evolution/support.rs"]
@@ -48,6 +48,8 @@ fn closed_delivery_and_state_domains_remain_exhaustive() {
 #[test]
 fn recovery_outcomes_return_registration_handles() {
     let _ = RecoveryOutcome::registration as fn(&RecoveryOutcome) -> Registration;
+    assert_slice::<RecoveryFailure, RecoveryOutcome>();
+    let _ = assert_recovery_iterator as fn(&RecoveryFailure);
 }
 
 #[test]
@@ -166,7 +168,7 @@ fn event_and_wait_values_are_hashable() {
 
 #[test]
 fn event_batches_support_standard_iteration() {
-    assert_event_slice::<Events>();
+    assert_slice::<Events, Event>();
     let _ = assert_event_iterators as fn(&mut Events);
     let _ = assert_owned_event_iterator as fn(Events);
 }
