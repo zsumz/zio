@@ -142,7 +142,9 @@ printf '%s\n' \
   '    let _ = Poll::modify_with_key as fn(&mut Poll, &Registration, Key, zio::Interest, Mode) -> Result<(), Error>;' \
   '    let _ = Poll::delete_all as fn(&mut Poll) -> Result<(), DeleteAllError>;' \
   '    let _ = Poll::delete_owned as fn(&mut Poll, Registration) -> Result<std::os::fd::OwnedFd, DeleteOwnedError>;' \
+  '    let _ = Poll::register::<std::os::fd::OwnedFd> as fn(&mut Poll, &std::os::fd::OwnedFd, Key, zio::Interest, Mode) -> Result<Registration, RegisterError>;' \
   '    let _ = Poll::register_owned as fn(&mut Poll, std::os::fd::OwnedFd, Key, zio::Interest, Mode) -> Result<Registration, RegisterOwnedError>;' \
+  '    let _ = Poll::register_borrowed::<std::os::fd::OwnedFd> as unsafe fn(&mut Poll, &std::os::fd::OwnedFd, Key, zio::Interest, Mode) -> Result<Registration, RegisterError>;' \
   '    let _ = Poll::registration_fd as for<'\''poll, '\''registration> fn(&'\''poll Poll, &'\''registration Registration) -> Result<std::os::fd::BorrowedFd<'\''poll>, Error>;' \
   '    let _ = Poll::registrations as fn(&Poll) -> Result<Vec<Registration>, Error>;' \
   '    let _ = iterate_registrations as fn(&Poll) -> Result<(), Error>;' \

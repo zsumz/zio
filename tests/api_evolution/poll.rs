@@ -2,7 +2,7 @@
 
 use zio::{
     DeleteAllError, DeleteOwnedError, DescriptorOwnership, Error, Key, Mode, Poll, PollBuilder,
-    RegisterOwnedError, Registration, RegistrationInfo, RegistrationState,
+    RegisterError, RegisterOwnedError, Registration, RegistrationInfo, RegistrationState,
 };
 
 use super::support::*;
@@ -24,7 +24,15 @@ fn poll_returns_owned_descriptors_on_deletion() {
 }
 
 #[test]
-fn poll_accepts_owned_descriptors_without_duplication() {
+fn poll_exposes_descriptor_registration_tiers() {
+    let _ = Poll::register::<std::os::fd::OwnedFd>
+        as fn(
+            &mut Poll,
+            &std::os::fd::OwnedFd,
+            Key,
+            zio::Interest,
+            Mode,
+        ) -> Result<Registration, RegisterError>;
     let _ = Poll::register_owned
         as fn(
             &mut Poll,
@@ -33,6 +41,14 @@ fn poll_accepts_owned_descriptors_without_duplication() {
             zio::Interest,
             Mode,
         ) -> Result<Registration, RegisterOwnedError>;
+    let _ = Poll::register_borrowed::<std::os::fd::OwnedFd>
+        as unsafe fn(
+            &mut Poll,
+            &std::os::fd::OwnedFd,
+            Key,
+            zio::Interest,
+            Mode,
+        ) -> Result<Registration, RegisterError>;
 }
 
 #[test]
