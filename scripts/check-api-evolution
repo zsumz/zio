@@ -93,15 +93,23 @@ printf '%s\n' \
   '    let _ = iterate_recovery as fn(&RecoveryFailure);' \
   '    let _ = WaitReport::is_complete as fn(&WaitReport) -> bool;' \
   '    let _ = WaitReport::into_result as fn(WaitReport) -> Result<(), RecoveryFailure>;' \
+  '    let _ = RegisterError::error as fn(&RegisterError) -> &Error;' \
   '    let _ = RegisterError::registration as fn(&RegisterError) -> Option<Registration>;' \
+  '    let _ = RegisterError::into_parts as fn(RegisterError) -> (Error, Option<Registration>);' \
+  '    let _ = RegisterOwnedError::error as fn(&RegisterOwnedError) -> &Error;' \
   '    let _ = RegisterOwnedError::descriptor as fn(&RegisterOwnedError) -> Option<&std::os::fd::OwnedFd>;' \
   '    let _ = RegisterOwnedError::registration as fn(&RegisterOwnedError) -> Option<Registration>;' \
   '    let _ = classify_owned_register_error as fn(&RegisterOwnedError) -> u8;' \
+  '    let _ = DeleteError::error as fn(&DeleteError) -> &Error;' \
   '    let _ = DeleteError::registration as fn(&DeleteError) -> Registration;' \
+  '    let _ = DeleteError::into_parts as fn(DeleteError) -> (Error, Registration);' \
+  '    let _ = DeleteOwnedError::error as fn(&DeleteOwnedError) -> &Error;' \
   '    let _ = DeleteOwnedError::descriptor as fn(&DeleteOwnedError) -> Option<&std::os::fd::OwnedFd>;' \
   '    let _ = DeleteOwnedError::registration as fn(&DeleteOwnedError) -> Option<Registration>;' \
   '    let _ = classify_owned_delete_error as fn(&DeleteOwnedError) -> u8;' \
+  '    let _ = DeleteAllError::error as fn(&DeleteAllError) -> &Error;' \
   '    let _ = DeleteAllError::registration as fn(&DeleteAllError) -> Option<Registration>;' \
+  '    let _ = DeleteAllError::into_parts as fn(DeleteAllError) -> (Error, Option<Registration>);' \
   '    assert_error_ref::<RegisterError>();' \
   '    assert_error_ref::<RegisterOwnedError>();' \
   '    assert_error_ref::<DeleteError>();' \
@@ -115,6 +123,9 @@ printf '%s\n' \
   '    assert_thread_error::<DeleteOwnedError>();' \
   '    assert_thread_error::<DeleteAllError>();' \
   '    assert_thread_error::<RecoveryFailure>();' \
+  '    let _ = MutationError::operation as fn(&MutationError) -> Operation;' \
+  '    let _ = MutationError::commit as fn(&MutationError) -> CommitStatus;' \
+  '    let _ = MutationError::source as fn(&MutationError) -> &std::io::Error;' \
   '    let _ = MutationError::into_parts as fn(MutationError) -> (Operation, CommitStatus, std::io::Error);' \
   '    assert_ordered::<Registration>();' \
   '    assert_display::<RegistrationId>();' \

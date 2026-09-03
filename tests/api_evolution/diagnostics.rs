@@ -69,14 +69,22 @@ fn errors_return_registration_handles() {
     assert_error_ref::<DeleteError>();
     assert_error_ref::<DeleteOwnedError>();
     assert_error_ref::<DeleteAllError>();
+    let _ = RegisterError::error as fn(&RegisterError) -> &Error;
     let _ = RegisterError::registration as fn(&RegisterError) -> Option<Registration>;
+    let _ = RegisterError::into_parts as fn(RegisterError) -> (Error, Option<Registration>);
+    let _ = RegisterOwnedError::error as fn(&RegisterOwnedError) -> &Error;
     let _ =
         RegisterOwnedError::descriptor as fn(&RegisterOwnedError) -> Option<&std::os::fd::OwnedFd>;
     let _ = RegisterOwnedError::registration as fn(&RegisterOwnedError) -> Option<Registration>;
+    let _ = DeleteError::error as fn(&DeleteError) -> &Error;
+    let _ = DeleteError::into_parts as fn(DeleteError) -> (Error, Registration);
+    let _ = DeleteOwnedError::error as fn(&DeleteOwnedError) -> &Error;
     let _ = DeleteOwnedError::descriptor as fn(&DeleteOwnedError) -> Option<&std::os::fd::OwnedFd>;
     let _ = DeleteOwnedError::registration as fn(&DeleteOwnedError) -> Option<Registration>;
     let _ = DeleteError::registration as fn(&DeleteError) -> Registration;
+    let _ = DeleteAllError::error as fn(&DeleteAllError) -> &Error;
     let _ = DeleteAllError::registration as fn(&DeleteAllError) -> Option<Registration>;
+    let _ = DeleteAllError::into_parts as fn(DeleteAllError) -> (Error, Option<Registration>);
     let _ = Error::registration as fn(&Error) -> Option<Registration>;
 }
 
@@ -94,6 +102,9 @@ fn public_errors_remain_thread_portable() {
 
 #[test]
 fn mutation_errors_return_every_owned_detail() {
+    let _ = MutationError::operation as fn(&MutationError) -> Operation;
+    let _ = MutationError::commit as fn(&MutationError) -> CommitStatus;
+    let _ = MutationError::source as fn(&MutationError) -> &std::io::Error;
     let _ =
         MutationError::into_parts as fn(MutationError) -> (Operation, CommitStatus, std::io::Error);
 }
