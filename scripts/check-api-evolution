@@ -43,7 +43,7 @@ printf '%s\n' \
   > "$consumer_dir/Cargo.toml"
 
 printf '%s\n' \
-  'use zio::{ArmState, CapacityKind, CapacityReason, CommitStatus, DeleteError, DescriptorOwnership, Error, Event, Key, Mode, MutationError, Operation, Poll, RecoveryFailure, RecoveryOutcome, RegisterError, RegisterOwnedError, Registration, RegistrationId, RegistrationInfo, RegistrationState, Wait, WaitReport, Waker};' \
+  'use zio::{ArmState, CapacityKind, CapacityReason, CommitStatus, DeleteAllError, DeleteError, DeleteOwnedError, DescriptorOwnership, Error, Event, Events, Key, Mode, MutationError, Operation, Poll, PollBuilder, RecoveryFailure, RecoveryOutcome, RegisterError, RegisterOwnedError, Registration, RegistrationId, RegistrationInfo, RegistrationState, Wait, WaitReport, Waker};' \
   '' \
   'fn main() {' \
   '    assert_eq!(classify_error(&Error::Invariant), 1);' \
@@ -62,6 +62,7 @@ printf '%s\n' \
   '    let _ = Error::capacity_reason as fn(&Error) -> Option<CapacityReason>;' \
   '    let _ = Error::event_capacity_mismatch as fn(&Error) -> Option<(usize, usize)>;' \
   '    let _ = Error::io_error as fn(&Error) -> Option<&std::io::Error>;' \
+  '    let _ = Error::is_wait_interrupted as fn(&Error) -> bool;' \
   '    let _ = classify_event as fn(Event) -> u8;' \
   '    let _ = Event::is_resource as fn(Event) -> bool;' \
   '    let _ = Event::is_wake as fn(Event) -> bool;' \
@@ -93,14 +94,22 @@ printf '%s\n' \
   '    let _ = RegisterOwnedError::registration as fn(&RegisterOwnedError) -> Option<Registration>;' \
   '    let _ = classify_owned_register_error as fn(&RegisterOwnedError) -> u8;' \
   '    let _ = DeleteError::registration as fn(&DeleteError) -> Registration;' \
+  '    let _ = DeleteOwnedError::descriptor as fn(&DeleteOwnedError) -> Option<&std::os::fd::OwnedFd>;' \
+  '    let _ = DeleteOwnedError::registration as fn(&DeleteOwnedError) -> Option<Registration>;' \
+  '    let _ = classify_owned_delete_error as fn(&DeleteOwnedError) -> u8;' \
+  '    let _ = DeleteAllError::registration as fn(&DeleteAllError) -> Option<Registration>;' \
   '    assert_error_ref::<RegisterError>();' \
   '    assert_error_ref::<RegisterOwnedError>();' \
   '    assert_error_ref::<DeleteError>();' \
+  '    assert_error_ref::<DeleteOwnedError>();' \
+  '    assert_error_ref::<DeleteAllError>();' \
   '    assert_thread_error::<Error>();' \
   '    assert_thread_error::<MutationError>();' \
   '    assert_thread_error::<RegisterError>();' \
   '    assert_thread_error::<RegisterOwnedError>();' \
   '    assert_thread_error::<DeleteError>();' \
+  '    assert_thread_error::<DeleteOwnedError>();' \
+  '    assert_thread_error::<DeleteAllError>();' \
   '    assert_thread_error::<RecoveryFailure>();' \
   '    let _ = MutationError::into_parts as fn(MutationError) -> (Operation, CommitStatus, std::io::Error);' \
   '    assert_ordered::<Registration>();' \
@@ -111,6 +120,8 @@ printf '%s\n' \
   '    assert_hash::<Wait>();' \
   '    assert_from::<Wait, std::time::Duration>();' \
   '    assert_from::<Wait, Option<std::time::Duration>>();' \
+  '    let _: Result<Key, std::num::TryFromIntError> = Key::try_from(0_usize);' \
+  '    let _: Result<usize, std::num::TryFromIntError> = usize::try_from(Key::ZERO);' \
   '    assert_display::<Key>();' \
   '    assert_display::<Operation>();' \
   '    assert_display::<CommitStatus>();' \
@@ -121,15 +132,29 @@ printf '%s\n' \
   '    assert_send::<Poll>();' \
   '    assert_send_sync::<Waker>();' \
   '    let _ = Waker::key as fn(&Waker) -> Key;' \
+  '    let _ = Waker::will_wake as fn(&Waker, &Waker) -> bool;' \
   '    let _ = Poll::waker_key as fn(&Poll) -> Option<Key>;' \
+  '    let _ = Poll::builder as fn() -> PollBuilder;' \
+  '    let _ = PollBuilder::new as fn() -> PollBuilder;' \
+  '    let _ = PollBuilder::event_capacity as fn(PollBuilder, usize) -> PollBuilder;' \
+  '    let _ = PollBuilder::registration_capacity as fn(PollBuilder, usize) -> PollBuilder;' \
+  '    let _ = PollBuilder::build as fn(PollBuilder) -> Result<Poll, Error>;' \
+  '    let _ = PollBuilder::build_with_events as fn(PollBuilder) -> Result<(Poll, Events), Error>;' \
   '    let _ = Poll::rearm as fn(&mut Poll, &Registration) -> Result<(), Error>;' \
+  '    let _ = Poll::modify_with_key as fn(&mut Poll, &Registration, Key, zio::Interest, Mode) -> Result<(), Error>;' \
+  '    let _ = Poll::delete_all as fn(&mut Poll) -> Result<(), DeleteAllError>;' \
+  '    let _ = Poll::delete_owned as fn(&mut Poll, Registration) -> Result<std::os::fd::OwnedFd, DeleteOwnedError>;' \
   '    let _ = Poll::register_owned as fn(&mut Poll, std::os::fd::OwnedFd, Key, zio::Interest, Mode) -> Result<Registration, RegisterOwnedError>;' \
   '    let _ = Poll::registration_fd as for<'\''poll, '\''registration> fn(&'\''poll Poll, &'\''registration Registration) -> Result<std::os::fd::BorrowedFd<'\''poll>, Error>;' \
   '    let _ = Poll::registrations as fn(&Poll) -> Result<Vec<Registration>, Error>;' \
+  '    let _ = iterate_registrations as fn(&Poll) -> Result<(), Error>;' \
   '    let _ = Poll::event_capacity as fn(&Poll) -> usize;' \
   '    let _ = Poll::registration_capacity as fn(&Poll) -> usize;' \
   '    let _ = Poll::registration_count as fn(&Poll) -> usize;' \
   '    let _ = Poll::remaining_registration_capacity as fn(&Poll) -> usize;' \
+  '    let _ = Poll::contains as fn(&Poll, &Registration) -> bool;' \
+  '    let _ = Poll::is_empty as fn(&Poll) -> bool;' \
+  '    let _ = Poll::is_full as fn(&Poll) -> bool;' \
   '    let _ = Poll::registration_info as fn(&Poll, &Registration) -> Result<RegistrationInfo, Error>;' \
   '    let _ = Poll::set_key as fn(&mut Poll, &Registration, Key) -> Result<(), Error>;' \
   '    let _ = RegistrationInfo::key as fn(&RegistrationInfo) -> Key;' \
@@ -137,6 +162,7 @@ printf '%s\n' \
   '    let _ = RegistrationInfo::mode as fn(&RegistrationInfo) -> Mode;' \
   '    let _ = RegistrationInfo::state as fn(&RegistrationInfo) -> RegistrationState;' \
   '    let _ = RegistrationInfo::descriptor_ownership as fn(&RegistrationInfo) -> DescriptorOwnership;' \
+  '    let _ = Poll::wait_until as fn(&mut Poll, &mut Events, std::time::Instant) -> Result<WaitReport, Error>;' \
   '    let mut interest = zio::Interest::READABLE;' \
   '    let _ = zio::Interest::ALL;' \
   '    let _ = interest.symmetric_difference(zio::Interest::ALL);' \
@@ -160,6 +186,8 @@ printf '%s\n' \
   '    let _ = readiness;' \
   '    let _ = reverse_events as fn(&mut zio::Events);' \
   '    let _ = consume_events as fn(zio::Events);' \
+  '    let _ = Events::remaining_capacity as fn(&Events) -> usize;' \
+  '    let _ = Events::is_full as fn(&Events) -> bool;' \
   '}' \
   '' \
   'fn assert_ordered<T: Ord>() {}' \
@@ -194,6 +222,11 @@ printf '%s\n' \
   '    let _: Option<&RecoveryOutcome> = failure.into_iter().next();' \
   '}' \
   '' \
+  'fn iterate_registrations(poll: &Poll) -> Result<(), Error> {' \
+  '    let _ = poll.iter_registrations()?;' \
+  '    Ok(())' \
+  '}' \
+  '' \
   'fn classify_error(error: &Error) -> u8 {' \
   '    match error {' \
   '        Error::Invariant => 1,' \
@@ -205,6 +238,13 @@ printf '%s\n' \
   '    match error {' \
   '        RegisterOwnedError::Returned { .. } => 0,' \
   '        RegisterOwnedError::Retained { .. } => 1,' \
+  '    }' \
+  '}' \
+  '' \
+  'fn classify_owned_delete_error(error: &DeleteOwnedError) -> u8 {' \
+  '    match error {' \
+  '        DeleteOwnedError::Returned { .. } => 0,' \
+  '        DeleteOwnedError::Retained { .. } => 1,' \
   '    }' \
   '}' \
   '' \
@@ -508,7 +548,7 @@ jq -n \
   --arg resource_current_sha256 "$resource_current_sha256" \
   --arg wake_msrv_sha256 "$wake_msrv_sha256" \
   --arg wake_current_sha256 "$wake_current_sha256" \
-  '{schema:"zio.public-api-contract.v1", status:"passed", version:$version, toolchains:["1.88.0","1.97.1"], open_enums:["Error","Operation","CapacityKind","CapacityReason"], closed_enums:["Event","CommitStatus","DescriptorOwnership","Mode","Wait","ArmState","RegistrationState"], field_extensible_variants:["Error::Capacity"], receive_only_variants:["Event::Resource","Event::Wake"], diagnostics:{error_msrv:$error_msrv_sha256,error_current:$error_current_sha256,operation_msrv:$operation_msrv_sha256,operation_current:$operation_current_sha256,capacity_kind_msrv:$capacity_kind_msrv_sha256,capacity_kind_current:$capacity_kind_current_sha256,capacity_reason_msrv:$capacity_reason_msrv_sha256,capacity_reason_current:$capacity_reason_current_sha256,capacity_msrv:$capacity_msrv_sha256,capacity_current:$capacity_current_sha256,resource_msrv:$resource_msrv_sha256,resource_current:$resource_current_sha256,wake_msrv:$wake_msrv_sha256,wake_current:$wake_current_sha256}}' \
+  '{schema:"zio.public-api-contract.v1", status:"passed", version:$version, toolchains:["1.88.0","1.97.1"], open_enums:["Error","Operation","CapacityKind","CapacityReason"], closed_enums:["Event","CommitStatus","DescriptorOwnership","Mode","Wait","ArmState","RegistrationState","RegisterOwnedError","DeleteOwnedError"], field_extensible_variants:["Error::Capacity"], receive_only_variants:["Event::Resource","Event::Wake"], diagnostics:{error_msrv:$error_msrv_sha256,error_current:$error_current_sha256,operation_msrv:$operation_msrv_sha256,operation_current:$operation_current_sha256,capacity_kind_msrv:$capacity_kind_msrv_sha256,capacity_kind_current:$capacity_kind_current_sha256,capacity_reason_msrv:$capacity_reason_msrv_sha256,capacity_reason_current:$capacity_reason_current_sha256,capacity_msrv:$capacity_msrv_sha256,capacity_current:$capacity_current_sha256,resource_msrv:$resource_msrv_sha256,resource_current:$resource_current_sha256,wake_msrv:$wake_msrv_sha256,wake_current:$wake_current_sha256}}' \
   > "$evidence_dir/public-api-contract.json"
 
 printf 'API evolution contract passed: zio %s\n' "$version"
