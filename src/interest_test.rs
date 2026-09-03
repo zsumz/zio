@@ -32,6 +32,11 @@ fn intersection_and_difference_match_membership() {
 }
 
 #[test]
+fn all_contains_every_supported_interest() {
+    assert_eq!(Interest::ALL, Interest::READABLE | Interest::WRITABLE);
+}
+
+#[test]
 fn debug_uses_symbolic_flag_names() {
     assert_eq!(format!("{:?}", Interest::EMPTY), "EMPTY");
     assert_eq!(

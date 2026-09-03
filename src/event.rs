@@ -81,6 +81,8 @@ impl Readiness {
     /// This flag contains no error code. Inspect the nonblocking operation and,
     /// for sockets where appropriate, the pending socket error.
     pub const ERROR: Self = Self(1 << 4);
+    /// Every supported readiness hint.
+    pub const ALL: Self = Self(0b1_1111);
 
     /// Returns whether no readiness hint is present.
     pub const fn is_empty(self) -> bool {

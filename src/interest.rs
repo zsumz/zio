@@ -17,6 +17,8 @@ impl Interest {
     pub const READABLE: Self = Self(1 << 0);
     /// Observe writable progress.
     pub const WRITABLE: Self = Self(1 << 1);
+    /// Every supported readiness interest.
+    pub const ALL: Self = Self::READABLE.union(Self::WRITABLE);
 
     /// Returns whether no readiness interest is present.
     pub const fn is_empty(self) -> bool {

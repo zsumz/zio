@@ -128,6 +128,11 @@ fn poll_exposes_authoritative_registration_info() {
 
 #[test]
 fn flag_sets_support_standard_set_operators() {
+    assert_eq!(
+        zio::Interest::ALL,
+        zio::Interest::READABLE | zio::Interest::WRITABLE
+    );
+    assert!(Readiness::ALL.contains(Readiness::ERROR));
     assert_set_operators::<zio::Interest>();
     assert_set_operators::<Readiness>();
 }

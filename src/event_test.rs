@@ -46,6 +46,18 @@ fn readiness_intersection_and_difference_match_membership() {
 }
 
 #[test]
+fn all_contains_every_supported_readiness() {
+    assert_eq!(
+        Readiness::ALL,
+        Readiness::READABLE
+            | Readiness::WRITABLE
+            | Readiness::READ_CLOSED
+            | Readiness::WRITE_CLOSED
+            | Readiness::ERROR
+    );
+}
+
+#[test]
 fn readiness_debug_uses_symbolic_flag_names() {
     assert_eq!(format!("{:?}", Readiness::EMPTY), "EMPTY");
     assert_eq!(
