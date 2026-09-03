@@ -37,7 +37,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut events = poll.events()?;
     let report = poll.wait(&mut events, Wait::NoBlock)?;
-    for event in events.iter() {
+    for event in &events {
         println!("{event:?}");
     }
     report.into_result()?;
