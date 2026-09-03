@@ -29,6 +29,7 @@ fn top_level_accessors_expose_embedded_diagnostics() {
     assert_eq!(io.operation(), Some(Operation::Wait));
     assert_eq!(io.commit(), None);
     assert_eq!(io.registration_id(), None);
+    assert_eq!(io.waker_key_conflict(), None);
     assert_eq!(io.capacity_limit(), None);
     assert_eq!(io.event_capacity_mismatch(), None);
     assert_eq!(io.io_error().and_then(io::Error::raw_os_error), Some(5));
@@ -67,6 +68,14 @@ fn top_level_accessors_expose_embedded_diagnostics() {
         Some(id)
     );
     assert_eq!(Error::Capacity { limit: 17 }.capacity_limit(), Some(17));
+    assert_eq!(
+        Error::WakerAlreadyConfigured {
+            existing: crate::Key::new(3),
+            requested: crate::Key::new(5),
+        }
+        .waker_key_conflict(),
+        Some((crate::Key::new(3), crate::Key::new(5)))
+    );
     assert_eq!(
         Error::EventsTooSmall {
             required: 11,
