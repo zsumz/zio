@@ -1,6 +1,6 @@
 //! Named poller construction.
 
-use crate::Error;
+use crate::{Error, Events};
 
 use super::{DEFAULT_EVENT_CAPACITY, DEFAULT_REGISTRATION_CAPACITY, Poll};
 
@@ -36,6 +36,13 @@ impl PollBuilder {
     /// Builds a poller and validates both capacities.
     pub fn build(self) -> Result<Poll, Error> {
         Poll::with_capacity(self.event_capacity, self.registration_capacity)
+    }
+
+    /// Builds a poller and a matching empty event destination.
+    pub fn build_with_events(self) -> Result<(Poll, Events), Error> {
+        let poll = self.build()?;
+        let events = poll.events()?;
+        Ok((poll, events))
     }
 }
 

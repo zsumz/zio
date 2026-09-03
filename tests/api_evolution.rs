@@ -219,6 +219,7 @@ fn poll_exposes_capacity_and_retained_count() {
     let _ = PollBuilder::event_capacity as fn(PollBuilder, usize) -> PollBuilder;
     let _ = PollBuilder::registration_capacity as fn(PollBuilder, usize) -> PollBuilder;
     let _ = PollBuilder::build as fn(PollBuilder) -> Result<Poll, Error>;
+    let _ = PollBuilder::build_with_events as fn(PollBuilder) -> Result<(Poll, Events), Error>;
     let _ = Poll::event_capacity as fn(&Poll) -> usize;
     let _ = Poll::registration_capacity as fn(&Poll) -> usize;
     let _ = Poll::registration_count as fn(&Poll) -> usize;
