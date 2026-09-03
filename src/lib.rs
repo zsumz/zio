@@ -4,7 +4,7 @@
 //!
 //! ```no_run
 //! use std::{net::TcpListener, time::Duration};
-//! use zio::{Event, Interest, Key, Mode, Poll, Wait};
+//! use zio::{Interest, Key, Mode, Poll, Wait};
 //!
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! let listener = TcpListener::bind("127.0.0.1:0")?;
@@ -14,15 +14,15 @@
 //! let mut events = poll.events()?;
 //! let report = poll.wait(&mut events, Wait::For(Duration::from_millis(100)))?;
 //! for event in &events {
-//!     if let Event::Resource { key, readiness, .. } = event {
-//!         println!("{key}: {readiness:?}");
-//!     }
+//!     println!("{}: {:?}", event.key(), event.readiness());
 //! }
 //! report.into_result()?;
 //! poll.delete(registration)?;
 //! # Ok(())
 //! # }
 //! ```
+//!
+//! Readiness is advisory; perform nonblocking I/O until it returns `WouldBlock`.
 #![deny(unsafe_code)]
 mod binding;
 #[cfg(test)]
