@@ -171,7 +171,9 @@ operating-system internals are outside this guarantee.
 collapse to nonblocking; `Wait::is_nonblocking` recognizes both forms. A backend
 may round up to its supported resolution, and scheduling may delay return. Linux
 rounds up to milliseconds. Kqueue uses nanosecond fields. Large limits are
-clamped to the backend integer range. An interrupted wait returns `Error::Io`.
+clamped to the backend integer range. `Poll::wait_until` computes a monotonic
+remaining duration at entry; a reached deadline is nonblocking. An interrupted
+wait returns `Error::Io`.
 
 Use nonblocking descriptors and perform I/O until it would block.
 

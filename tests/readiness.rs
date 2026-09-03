@@ -13,7 +13,7 @@ use std::{
     io::{self, Write},
     os::unix::net::UnixStream,
     thread,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use zio::{
@@ -31,7 +31,7 @@ fn one_shot_requires_explicit_rearm() -> Result<(), Box<dyn std::error::Error>> 
     peer.write_all(b"still readable")?;
 
     let mut events = poll.events()?;
-    let report = poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?;
+    let report = poll.wait_until(&mut events, Instant::now() + Duration::from_secs(1))?;
     assert!(has_key(&events, Key::new(41)));
     let delivered = events
         .get(0)
@@ -62,6 +62,18 @@ fn one_shot_requires_explicit_rearm() -> Result<(), Box<dyn std::error::Error>> 
     require_no_recovery(report)?;
 
     poll.delete(delivered)?;
+    Ok(())
+}
+
+#[test]
+fn reached_deadline_is_nonblocking() -> Result<(), Box<dyn std::error::Error>> {
+    let mut poll = Poll::new()?;
+    let mut events = poll.events()?;
+
+    let report = poll.wait_until(&mut events, Instant::now())?;
+
+    assert!(events.is_empty());
+    require_no_recovery(report)?;
     Ok(())
 }
 

@@ -2,6 +2,7 @@
 
 #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
 use std::os::fd::AsRawFd;
+use std::time::Instant;
 
 use crate::{Error, Events, Operation, Poll, Wait, WaitReport};
 
@@ -20,6 +21,19 @@ impl Poll {
             events.clear();
         }
         result
+    }
+
+    /// Replaces `events` with one observation bounded by `deadline`.
+    ///
+    /// A reached deadline is nonblocking. Backend interruption remains an
+    /// [`Error::Io`] failure.
+    pub fn wait_until(
+        &mut self,
+        events: &mut Events,
+        deadline: Instant,
+    ) -> Result<WaitReport, Error> {
+        let remaining = deadline.saturating_duration_since(Instant::now());
+        self.wait(events, Wait::For(remaining))
     }
 
     fn observe(&mut self, events: &mut Events, wait: Wait) -> Result<WaitReport, Error> {
