@@ -160,6 +160,8 @@ fn flag_sets_support_standard_set_operators() {
 fn event_and_wait_values_are_hashable() {
     assert_hash::<Event>();
     assert_hash::<Wait>();
+    assert_from::<Wait, core::time::Duration>();
+    assert_from::<Wait, Option<core::time::Duration>>();
 }
 
 #[test]

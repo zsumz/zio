@@ -91,6 +91,8 @@ printf '%s\n' \
   '    assert_display::<RegistrationId>();' \
   '    assert_hash::<Event>();' \
   '    assert_hash::<Wait>();' \
+  '    assert_from::<Wait, std::time::Duration>();' \
+  '    assert_from::<Wait, Option<std::time::Duration>>();' \
   '    assert_display::<Key>();' \
   '    assert_display::<Operation>();' \
   '    assert_display::<CommitStatus>();' \

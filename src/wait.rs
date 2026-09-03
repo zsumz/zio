@@ -40,6 +40,21 @@ impl Wait {
     }
 }
 
+impl From<Duration> for Wait {
+    fn from(duration: Duration) -> Self {
+        Self::For(duration)
+    }
+}
+
+impl From<Option<Duration>> for Wait {
+    fn from(timeout: Option<Duration>) -> Self {
+        match timeout {
+            Some(duration) => Self::For(duration),
+            None => Self::Forever,
+        }
+    }
+}
+
 #[cfg(test)]
 #[path = "wait_test.rs"]
 mod tests;
