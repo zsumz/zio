@@ -30,3 +30,12 @@ fn intersection_and_difference_match_membership() {
     assigned -= Interest::WRITABLE;
     assert_eq!(assigned, Interest::EMPTY);
 }
+
+#[test]
+fn debug_uses_symbolic_flag_names() {
+    assert_eq!(format!("{:?}", Interest::EMPTY), "EMPTY");
+    assert_eq!(
+        format!("{:?}", Interest::READABLE | Interest::WRITABLE),
+        "READABLE | WRITABLE"
+    );
+}

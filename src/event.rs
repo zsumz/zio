@@ -3,6 +3,9 @@ use core::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Sub, SubAssign};
 
 use crate::Registration;
 
+#[path = "readiness_debug.rs"]
+mod readiness_debug;
+
 /// Caller-selected value delivered with an observed event.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -34,7 +37,7 @@ impl Key {
 /// caused it; native backends may conservatively report an additional hint, and
 /// an absent closure hint does not prove that the direction remains open.
 #[repr(transparent)]
-#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Default, Eq, Hash, PartialEq)]
 pub struct Readiness(u8);
 
 impl Readiness {

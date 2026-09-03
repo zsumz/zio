@@ -36,3 +36,15 @@ fn readiness_intersection_and_difference_match_membership() {
     assigned -= Readiness::READ_CLOSED;
     assert_eq!(assigned, Readiness::EMPTY);
 }
+
+#[test]
+fn readiness_debug_uses_symbolic_flag_names() {
+    assert_eq!(format!("{:?}", Readiness::EMPTY), "EMPTY");
+    assert_eq!(
+        format!(
+            "{:?}",
+            Readiness::READABLE | Readiness::READ_CLOSED | Readiness::ERROR
+        ),
+        "READABLE | READ_CLOSED | ERROR"
+    );
+}

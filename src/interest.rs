@@ -1,10 +1,13 @@
 //! Portable readiness interests.
 
-use core::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Sub, SubAssign};
+use core::{
+    fmt,
+    ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Sub, SubAssign},
+};
 
 /// Backend-neutral readiness interests for one registration.
 #[repr(transparent)]
-#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Default, Eq, Hash, PartialEq)]
 pub struct Interest(u8);
 
 impl Interest {
@@ -98,6 +101,26 @@ impl Sub for Interest {
 impl SubAssign for Interest {
     fn sub_assign(&mut self, rhs: Self) {
         *self = self.difference(rhs);
+    }
+}
+
+impl fmt::Debug for Interest {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.is_empty() {
+            return formatter.write_str("EMPTY");
+        }
+        let mut separator = "";
+        for (present, name) in [
+            (self.is_readable(), "READABLE"),
+            (self.is_writable(), "WRITABLE"),
+        ] {
+            if present {
+                formatter.write_str(separator)?;
+                formatter.write_str(name)?;
+                separator = " | ";
+            }
+        }
+        Ok(())
     }
 }
 
