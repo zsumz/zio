@@ -171,7 +171,9 @@ fn one_shot_coalescing_is_complete_with_competing_registrations()
 #[test]
 fn wake_before_wait_is_observable() -> Result<(), Box<dyn std::error::Error>> {
     let mut poll = Poll::new()?;
+    assert_eq!(poll.waker_key(), None);
     let waker = poll.waker(Key::new(99))?;
+    assert_eq!(poll.waker_key(), Some(Key::new(99)));
     waker.wake()?;
 
     let mut events = poll.events()?;

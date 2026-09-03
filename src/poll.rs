@@ -109,6 +109,11 @@ impl Poll {
         self.registrations.len()
     }
 
+    /// Returns the configured wake key, when one is bound.
+    pub const fn waker_key(&self) -> Option<Key> {
+        self.wake_key
+    }
+
     /// Returns a cloneable wake capability associated with `key`.
     ///
     /// The first successful call fixes the poller's wake key. Later calls with

@@ -152,7 +152,7 @@ Use nonblocking descriptors and perform I/O until it would block.
 
 A poller binds its wake source to one key. Same-key requests and clones share
 it, and each `Waker` reports that key. A conflicting key is rejected without
-replacing the original.
+replacing the original. `Poll::waker_key` reports the current binding.
 
 Triggers may coalesce. One observation consumes the pending notification, and a
 later trigger remains observable. Wake and resource events share the fixed event

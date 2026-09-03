@@ -55,6 +55,7 @@ fn registration_handles_support_ordered_collections() {
 #[test]
 fn wakers_expose_keys_and_cross_thread_traits() {
     let _ = Waker::key as fn(&Waker) -> Key;
+    let _ = Poll::waker_key as fn(&Poll) -> Option<Key>;
     assert_send_sync::<Waker>();
 }
 
