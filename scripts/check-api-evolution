@@ -131,6 +131,7 @@ printf '%s\n' \
   '    assert_eq!(classify_capacity_reason(CapacityReason::Zero), 0);' \
   '    assert_send::<Poll>();' \
   '    assert_send_sync::<Waker>();' \
+  '    let _ = Poll::has_native_backend as fn() -> bool;' \
   '    let _ = Waker::key as fn(&Waker) -> Key;' \
   '    let _ = Waker::will_wake as fn(&Waker, &Waker) -> bool;' \
   '    let _ = Poll::waker_key as fn(&Poll) -> Option<Key>;' \

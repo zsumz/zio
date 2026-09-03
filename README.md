@@ -17,6 +17,8 @@ an async runtime.
 | 64-bit macOS | kqueue + `EVFILT_USER` | Native-qualified |
 | 64-bit FreeBSD, NetBSD | kqueue + `EVFILT_USER` | Native CI, experimental |
 
+`Poll::has_native_backend()` reports availability without constructing a poller.
+
 Requires Rust 1.88 or newer.
 
 ## Use

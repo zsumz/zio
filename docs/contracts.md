@@ -153,6 +153,7 @@ readiness is pending.
 
 ## Allocation contract
 
+Unsupported targets reject poll construction before capacity validation or allocation.
 Poll construction retains native-event, coalescing, mutation, receipt, and
 ownership scratch. Successful waits reuse it without growing zio-owned heap
 storage. Wake, observation, registration iteration, and successful bulk

@@ -10,6 +10,13 @@ use super::{
     wake::Wake,
 };
 
+pub(crate) const HAS_NATIVE_BACKEND: bool = cfg!(any(
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "freebsd",
+    target_os = "netbsd"
+));
+
 /// Target-selected selector with no dynamic dispatch.
 #[derive(Debug)]
 pub(crate) struct Backend {

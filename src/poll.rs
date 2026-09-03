@@ -113,6 +113,11 @@ impl std::os::fd::AsRawFd for Poll {
 }
 
 impl Poll {
+    /// Returns whether this compilation target has a native readiness backend.
+    pub const fn has_native_backend() -> bool {
+        crate::sys::HAS_NATIVE_BACKEND
+    }
+
     /// Creates a poller with the default fixed capacities.
     pub fn new() -> Result<Self, Error> {
         Self::with_capacity(DEFAULT_EVENT_CAPACITY, DEFAULT_REGISTRATION_CAPACITY)
@@ -120,6 +125,9 @@ impl Poll {
 
     /// Creates a poller with fixed event and registration capacities.
     pub fn with_capacity(events: usize, registrations: usize) -> Result<Self, Error> {
+        if !Self::has_native_backend() {
+            return Err(Error::UnsupportedPlatform);
+        }
         let event_capacity = NonZeroUsize::new(events).ok_or(Error::Capacity {
             kind: CapacityKind::Event,
             limit: events,

@@ -2,6 +2,35 @@
 
 use crate::{CapacityKind, CapacityReason, Error, Key, Poll};
 
+const HAS_NATIVE_BACKEND: bool = Poll::has_native_backend();
+
+#[test]
+fn native_backend_query_matches_target_selection() {
+    assert_eq!(
+        HAS_NATIVE_BACKEND,
+        cfg!(any(
+            target_os = "linux",
+            target_os = "macos",
+            target_os = "freebsd",
+            target_os = "netbsd"
+        ))
+    );
+}
+
+#[cfg(not(any(
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "freebsd",
+    target_os = "netbsd"
+)))]
+#[test]
+fn unsupported_target_rejects_construction_before_capacity_validation() {
+    assert!(matches!(
+        Poll::with_capacity(0, 0),
+        Err(Error::UnsupportedPlatform)
+    ));
+}
+
 #[test]
 fn zero_capacities_report_their_kind() {
     assert!(matches!(

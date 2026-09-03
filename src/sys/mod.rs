@@ -16,6 +16,6 @@ mod unsupported;
 mod wake;
 
 pub(crate) use failure::MutationFailure;
-pub(crate) use platform::Backend;
+pub(crate) use platform::{Backend, HAS_NATIVE_BACKEND};
 pub(crate) use raw_batch::RawBatch;
 pub(crate) use wake::Wake;
