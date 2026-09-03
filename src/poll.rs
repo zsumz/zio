@@ -1,6 +1,6 @@
 //! Poll ownership, registration mutation, and wake capabilities.
 
-use std::{fmt, num::NonZeroUsize};
+use std::{cell::Cell, fmt, marker::PhantomData, num::NonZeroUsize, panic::RefUnwindSafe};
 
 use crate::{
     CapacityKind, CapacityReason, Error, Events, Key, Operation,
@@ -64,8 +64,8 @@ impl Waker {
 
 /// Owner-local portable readiness poller.
 ///
-/// Pollers move between threads; operations require exclusive access. Zio does
-/// not change descriptor blocking modes. Dropping one closes every owned
+/// Pollers are `Send` but not `Sync`; operations require exclusive access. Zio
+/// does not change descriptor blocking modes. Dropping one closes every owned
 /// retained resource descriptor; borrowed descriptors remain caller-owned.
 pub struct Poll {
     pub(crate) owner: PollOwner,
@@ -76,7 +76,13 @@ pub struct Poll {
     pub(crate) wake: Wake,
     pub(crate) wake_key: Option<Key>,
     pub(crate) pending: crate::pending::PendingBatch,
+    _owner_local: OwnerLocal,
 }
+
+struct OwnerLocal(PhantomData<Cell<()>>);
+
+// The marker has no state; `Cell` is used only to opt out of `Sync`.
+impl RefUnwindSafe for OwnerLocal {}
 
 impl fmt::Debug for Poll {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -165,6 +171,7 @@ impl Poll {
             wake,
             wake_key: None,
             pending: crate::pending::PendingBatch::new(event_capacity, registration_capacity)?,
+            _owner_local: OwnerLocal(PhantomData),
         })
     }
 

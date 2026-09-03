@@ -189,7 +189,7 @@ Use nonblocking descriptors and perform I/O until it would block.
 
 ## Wake behavior
 
-A `Poll` is movable between threads. A `Waker` is `Send + Sync`.
+`Poll` is `Send` but not `Sync`. `Waker` is `Send + Sync`.
 
 A poller binds its wake source to one key. Same-key requests and clones share
 it, and each `Waker` reports that key. A conflicting key is rejected without
