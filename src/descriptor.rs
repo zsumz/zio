@@ -57,6 +57,18 @@ impl Descriptor {
             DescriptorOwnership::Borrowed
         }
     }
+
+    /// Reconstructs the owned descriptor consumed by [`Self::owned`].
+    ///
+    /// # Safety
+    ///
+    /// This value must have been constructed by [`Self::owned`].
+    pub(crate) unsafe fn into_owned(self) -> OwnedFd {
+        let descriptor = std::mem::ManuallyDrop::new(self);
+        // SAFETY: the caller proves that `owned` consumed this exact descriptor,
+        // and `ManuallyDrop` prevents its close obligation from running twice.
+        unsafe { OwnedFd::from_raw_fd(descriptor.as_raw_fd()) }
+    }
 }
 
 impl fmt::Debug for Descriptor {

@@ -7,10 +7,11 @@ use std::{
 
 use crate::{
     CapacityKind, CapacityReason, CommitStatus, DeleteError, Error, Interest, Key, Mode,
-    RegisterError, Registration, RegistrationId, RegistrationInfo, RegistrationState,
+    RegisterError, RegisterOwnedError, Registration, RegistrationId, RegistrationInfo,
+    RegistrationState,
     mutation::{
-        MutationSession, RegisterFailure, registration_fd, registration_info, registration_state,
-        registrations, set_registration_key,
+        MutationSession, registration_fd, registration_info, registration_state, registrations,
+        set_registration_key,
     },
     poll::DEFAULT_REGISTRATION_CAPACITY,
     registration::PollOwner,
@@ -74,10 +75,8 @@ impl ScriptedPoll {
         key: Key,
         interest: Interest,
         mode: Mode,
-    ) -> Result<Registration, RegisterError> {
-        self.mutations()
-            .register_owned(source, key, interest, mode)
-            .map_err(RegisterFailure::discard_released)
+    ) -> Result<Registration, RegisterOwnedError> {
+        self.mutations().register_owned(source, key, interest, mode)
     }
 
     /// Registers one descriptor without duplicating it through the next step.

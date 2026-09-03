@@ -3,11 +3,11 @@
 use std::os::fd::{AsFd, BorrowedFd, OwnedFd};
 
 use crate::{
-    DeleteError, Error, Interest, Key, Mode, Poll, RegisterError, Registration, RegistrationInfo,
-    RegistrationState,
+    DeleteError, Error, Interest, Key, Mode, Poll, RegisterError, RegisterOwnedError, Registration,
+    RegistrationInfo, RegistrationState,
     mutation::{
-        MutationSession, RegisterFailure, registration_fd, registration_info, registration_state,
-        registrations, set_registration_key,
+        MutationSession, registration_fd, registration_info, registration_state, registrations,
+        set_registration_key,
     },
 };
 
@@ -42,19 +42,17 @@ impl Poll {
 
     /// Registers one descriptor by transferring ownership to the poller.
     ///
-    /// This avoids descriptor duplication. The source is consumed on every
-    /// outcome. A handle-bearing failure retains it in the poller; every other
-    /// failure closes it before returning.
+    /// This avoids descriptor duplication. A rejected or proven-not-applied
+    /// call returns the original descriptor. Every other failure returns the
+    /// handle under which the poller retained it.
     pub fn register_owned(
         &mut self,
         source: OwnedFd,
         key: Key,
         interest: Interest,
         mode: Mode,
-    ) -> Result<Registration, RegisterError> {
-        self.mutations()
-            .register_owned(source, key, interest, mode)
-            .map_err(RegisterFailure::discard_released)
+    ) -> Result<Registration, RegisterOwnedError> {
+        self.mutations().register_owned(source, key, interest, mode)
     }
 
     /// Replaces interest and mode, rearming a one-shot registration.

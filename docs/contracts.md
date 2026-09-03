@@ -7,9 +7,9 @@ matching nonblocking operation is always authoritative.
 
 `Error`, `Operation`, `CapacityKind`, and `CapacityReason` are open diagnostic vocabularies.
 Downstream matches must include a fallback arm. `Event`, `CommitStatus`,
-`DescriptorOwnership`, `Mode`, `Wait`, `ArmState`, and `RegistrationState` are
-closed domains; case changes are breaking. Event fields may grow; match with
-`..`.
+`DescriptorOwnership`, `Mode`, `Wait`, `ArmState`, `RegistrationState`, and
+`RegisterOwnedError` are closed domains; case changes are breaking. Event fields
+may grow; match with `..`.
 
 `Operation` names only failures a current backend can report.
 
@@ -29,8 +29,9 @@ cannot redirect later mutations. Handles are poller-scoped; another poller
 rejects them. Keys need not be unique. Each resource event carries its exact
 registration handle.
 
-`Poll::register_owned` transfers an `OwnedFd` without duplication. A
-handle-bearing failure retains it; every other failure closes it.
+`Poll::register_owned` transfers an `OwnedFd` without duplication. Rejected and
+`NotApplied` calls return it; `Applied` and `Unknown` failures return the
+retained registration.
 `Poll::registration_fd` safely borrows any retained resource descriptor,
 including one in uncertain backend state.
 `Poll::registrations` returns a bounded snapshot with unspecified order.

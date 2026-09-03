@@ -3,7 +3,8 @@
 use std::os::fd::{AsFd, OwnedFd};
 
 use crate::{
-    Error, Interest, Key, Mode, Operation, RegisterError, Registration, descriptor::Descriptor,
+    Error, Interest, Key, Mode, Operation, RegisterError, RegisterOwnedError, Registration,
+    descriptor::Descriptor,
 };
 
 use super::{
@@ -39,12 +40,12 @@ impl<Driver: MutationDriver> MutationSession<'_, Driver> {
         key: Key,
         interest: Interest,
         mode: Mode,
-    ) -> Result<Registration, RegisterFailure> {
-        let descriptor = Descriptor::owned(source);
+    ) -> Result<Registration, RegisterOwnedError> {
         if let Err(error) = validate_interest(interest) {
-            return Err(RegisterFailure::released(error, descriptor));
+            return Err(RegisterOwnedError::returned(error, source));
         }
-        self.register_descriptor(descriptor, key, interest, mode)
+        self.register_descriptor(Descriptor::owned(source), key, interest, mode)
+            .map_err(owned_failure)
     }
 
     /// Registers after erasing the source borrow into the retained table.
@@ -98,4 +99,23 @@ fn validate_interest(interest: Interest) -> Result<(), Error> {
     (!interest.is_empty())
         .then_some(())
         .ok_or(Error::InvalidInterest)
+}
+
+#[allow(
+    unsafe_code,
+    reason = "owned registration recovers the exact descriptor transferred at this boundary"
+)]
+fn owned_failure(failure: RegisterFailure) -> RegisterOwnedError {
+    match failure {
+        RegisterFailure::Released { error, descriptor } => {
+            // SAFETY: `register_owned` supplies `Descriptor::owned`, and the
+            // registration transition returns that exact descriptor.
+            let descriptor = unsafe { descriptor.into_owned() };
+            RegisterOwnedError::returned(error, descriptor)
+        }
+        RegisterFailure::Retained {
+            error,
+            registration,
+        } => RegisterOwnedError::retained(error, registration),
+    }
 }

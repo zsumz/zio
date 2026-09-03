@@ -11,4 +11,3 @@ pub(crate) use authority::{
 };
 pub(crate) use driver::{DeleteRequest, ModifyRequest, MutationDriver, RegisterRequest};
 pub(crate) use machine::MutationSession;
-pub(crate) use register::RegisterFailure;

@@ -49,7 +49,8 @@ and wait behavior. Successful waits reuse fixed zio-owned storage.
 
 ## Contracts
 
-- Pollers retain descriptor duplicates by default; unsafe borrowing skips them.
+- Pollers duplicate descriptors by default.
+- Owned transfer returns rejected descriptors; unsafe borrowing skips duplication.
 - Level delivery repeats; one-shot delivery requires explicit rearming.
 - Readiness is advisory. Nonblocking I/O remains the source of truth.
 - Wake signals are bounded, coalesced, drainable, and observable.

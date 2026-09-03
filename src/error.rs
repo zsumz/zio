@@ -6,6 +6,7 @@ mod details;
 #[cfg(test)]
 mod details_test;
 mod recovery;
+mod register_owned;
 
 #[cfg(test)]
 mod recovery_test;
@@ -17,6 +18,7 @@ use crate::{Key, Registration, RegistrationId};
 pub use capacity::{CapacityKind, CapacityReason};
 pub use details::{DeleteError, MutationError, RegisterError};
 pub use recovery::{RecoveryFailure, RecoveryOutcome};
+pub use register_owned::RegisterOwnedError;
 
 /// Poller or backend operation associated with a failure.
 ///

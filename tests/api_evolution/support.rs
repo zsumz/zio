@@ -7,8 +7,8 @@ use core::{
 
 use zio::{
     ArmState, CapacityKind, CapacityReason, CommitStatus, DescriptorOwnership, Error, Event,
-    Events, Key, Mode, Operation, Readiness, RecoveryFailure, RecoveryOutcome, RegistrationState,
-    Wait,
+    Events, Key, Mode, Operation, Readiness, RecoveryFailure, RecoveryOutcome, RegisterOwnedError,
+    RegistrationState, Wait,
 };
 
 pub(super) fn operation_class(operation: Operation) -> &'static str {
@@ -84,6 +84,13 @@ pub(super) fn ownership_class(ownership: DescriptorOwnership) -> &'static str {
     match ownership {
         DescriptorOwnership::Owned => "owned",
         DescriptorOwnership::Borrowed => "borrowed",
+    }
+}
+
+pub(super) fn owned_register_error_class(error: &RegisterOwnedError) -> &'static str {
+    match error {
+        RegisterOwnedError::Returned { .. } => "descriptor",
+        RegisterOwnedError::Retained { .. } => "registration",
     }
 }
 

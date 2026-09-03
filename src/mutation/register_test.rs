@@ -8,8 +8,9 @@ use std::{
 };
 
 use crate::{
-    ArmState, CommitStatus, Error, Interest, Key, Mode, RegistrationState, descriptor::Descriptor,
-    registration::PollOwner, sys::MutationFailure, table::RegistrationTable,
+    ArmState, CommitStatus, Error, Interest, Key, Mode, RegisterOwnedError, RegistrationState,
+    descriptor::Descriptor, registration::PollOwner, sys::MutationFailure,
+    table::RegistrationTable,
 };
 
 use super::{RegisterFailure, register_descriptor};
@@ -35,7 +36,7 @@ fn owned_preflight_failure_releases_the_exact_descriptor() -> TestResult {
         Mode::Level,
     );
 
-    let Err(RegisterFailure::Released { error, descriptor }) = result else {
+    let Err(RegisterOwnedError::Returned { error, descriptor }) = result else {
         return Err(Error::Invariant.into());
     };
     assert!(matches!(error, Error::InvalidInterest));

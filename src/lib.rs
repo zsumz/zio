@@ -66,7 +66,7 @@ mod wait_report;
 mod wait_report_test;
 
 pub use error::{CapacityKind, CapacityReason, CommitStatus, DeleteError, Error, MutationError};
-pub use error::{Operation, RecoveryFailure, RecoveryOutcome, RegisterError};
+pub use error::{Operation, RecoveryFailure, RecoveryOutcome, RegisterError, RegisterOwnedError};
 pub use event::{Event, Key, Readiness};
 pub use events::Events;
 pub use interest::Interest;

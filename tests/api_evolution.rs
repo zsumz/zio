@@ -3,8 +3,8 @@
 use zio::{
     ArmState, CapacityKind, CapacityReason, CommitStatus, DeleteError, DescriptorOwnership, Error,
     Event, Events, Key, Mode, MutationError, Operation, Poll, Readiness, RecoveryFailure,
-    RecoveryOutcome, RegisterError, Registration, RegistrationId, RegistrationInfo,
-    RegistrationState, Wait, WaitReport, Waker,
+    RecoveryOutcome, RegisterError, RegisterOwnedError, Registration, RegistrationId,
+    RegistrationInfo, RegistrationState, Wait, WaitReport, Waker,
 };
 
 #[path = "api_evolution/support.rs"]
@@ -63,6 +63,7 @@ fn closed_delivery_and_state_domains_remain_exhaustive() {
     assert_eq!(arm_class(ArmState::Disarmed), "disarmed");
     assert_eq!(state_class(RegistrationState::Uncertain), "uncertain");
     assert_eq!(ownership_class(DescriptorOwnership::Borrowed), "borrowed");
+    let _ = owned_register_error_class as fn(&RegisterOwnedError) -> &'static str;
     let _ = Wait::is_nonblocking as fn(Wait) -> bool;
     let _ = RegistrationState::is_registered as fn(RegistrationState) -> bool;
     let _ = RegistrationState::is_uncertain as fn(RegistrationState) -> bool;
@@ -87,8 +88,12 @@ fn wait_reports_expose_completion() {
 #[test]
 fn errors_return_registration_handles() {
     assert_error_ref::<RegisterError>();
+    assert_error_ref::<RegisterOwnedError>();
     assert_error_ref::<DeleteError>();
     let _ = RegisterError::registration as fn(&RegisterError) -> Option<Registration>;
+    let _ =
+        RegisterOwnedError::descriptor as fn(&RegisterOwnedError) -> Option<&std::os::fd::OwnedFd>;
+    let _ = RegisterOwnedError::registration as fn(&RegisterOwnedError) -> Option<Registration>;
     let _ = DeleteError::registration as fn(&DeleteError) -> Registration;
     let _ = Error::registration as fn(&Error) -> Option<Registration>;
 }
@@ -98,6 +103,7 @@ fn public_errors_remain_thread_portable() {
     assert_thread_error::<Error>();
     assert_thread_error::<MutationError>();
     assert_thread_error::<RegisterError>();
+    assert_thread_error::<RegisterOwnedError>();
     assert_thread_error::<DeleteError>();
     assert_thread_error::<RecoveryFailure>();
 }
@@ -165,7 +171,7 @@ fn poll_accepts_owned_descriptors_without_duplication() {
             Key,
             zio::Interest,
             Mode,
-        ) -> Result<Registration, RegisterError>;
+        ) -> Result<Registration, RegisterOwnedError>;
 }
 
 #[test]

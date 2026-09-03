@@ -8,7 +8,10 @@ use std::{
     },
 };
 
-use crate::{ArmState, DescriptorOwnership, Error, Interest, Key, Mode, Poll, RegistrationState};
+use crate::{
+    ArmState, DescriptorOwnership, Error, Interest, Key, Mode, Poll, RegisterOwnedError,
+    RegistrationState,
+};
 
 #[test]
 fn registration_info_tracks_committed_configuration() -> Result<(), Box<dyn StdError>> {
@@ -59,6 +62,27 @@ fn owned_registration_retains_the_transferred_descriptor() -> Result<(), Box<dyn
         poll.registration_fd(&registration),
         Err(Error::Stale { registration: stale }) if stale == registration.id()
     ));
+    Ok(())
+}
+
+#[test]
+fn rejected_owned_registration_returns_the_transferred_descriptor() -> Result<(), Box<dyn StdError>>
+{
+    let (source, _peer) = UnixStream::pair()?;
+    let descriptor = source.as_fd().try_clone_to_owned()?;
+    let raw = descriptor.as_raw_fd();
+    let mut poll = Poll::with_capacity(1, 1)?;
+
+    let Err(RegisterOwnedError::Returned { error, descriptor }) =
+        poll.register_owned(descriptor, Key::new(9), Interest::EMPTY, Mode::Level)
+    else {
+        return Err("empty interest did not return the owned descriptor".into());
+    };
+
+    assert!(matches!(error, Error::InvalidInterest));
+    assert_eq!(descriptor.as_raw_fd(), raw);
+    assert!(poll.owner.current().is_none());
+    assert_eq!(poll.registration_count(), 0);
     Ok(())
 }
 

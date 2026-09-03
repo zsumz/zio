@@ -43,7 +43,7 @@ printf '%s\n' \
   > "$consumer_dir/Cargo.toml"
 
 printf '%s\n' \
-  'use zio::{ArmState, CapacityKind, CapacityReason, CommitStatus, DeleteError, DescriptorOwnership, Error, Event, Key, Mode, MutationError, Operation, Poll, RecoveryFailure, RecoveryOutcome, RegisterError, Registration, RegistrationId, RegistrationInfo, RegistrationState, Wait, WaitReport, Waker};' \
+  'use zio::{ArmState, CapacityKind, CapacityReason, CommitStatus, DeleteError, DescriptorOwnership, Error, Event, Key, Mode, MutationError, Operation, Poll, RecoveryFailure, RecoveryOutcome, RegisterError, RegisterOwnedError, Registration, RegistrationId, RegistrationInfo, RegistrationState, Wait, WaitReport, Waker};' \
   '' \
   'fn main() {' \
   '    assert_eq!(classify_error(&Error::Invariant), 1);' \
@@ -89,12 +89,17 @@ printf '%s\n' \
   '    let _ = WaitReport::is_complete as fn(&WaitReport) -> bool;' \
   '    let _ = WaitReport::into_result as fn(WaitReport) -> Result<(), RecoveryFailure>;' \
   '    let _ = RegisterError::registration as fn(&RegisterError) -> Option<Registration>;' \
+  '    let _ = RegisterOwnedError::descriptor as fn(&RegisterOwnedError) -> Option<&std::os::fd::OwnedFd>;' \
+  '    let _ = RegisterOwnedError::registration as fn(&RegisterOwnedError) -> Option<Registration>;' \
+  '    let _ = classify_owned_register_error as fn(&RegisterOwnedError) -> u8;' \
   '    let _ = DeleteError::registration as fn(&DeleteError) -> Registration;' \
   '    assert_error_ref::<RegisterError>();' \
+  '    assert_error_ref::<RegisterOwnedError>();' \
   '    assert_error_ref::<DeleteError>();' \
   '    assert_thread_error::<Error>();' \
   '    assert_thread_error::<MutationError>();' \
   '    assert_thread_error::<RegisterError>();' \
+  '    assert_thread_error::<RegisterOwnedError>();' \
   '    assert_thread_error::<DeleteError>();' \
   '    assert_thread_error::<RecoveryFailure>();' \
   '    let _ = MutationError::into_parts as fn(MutationError) -> (Operation, CommitStatus, std::io::Error);' \
@@ -118,7 +123,7 @@ printf '%s\n' \
   '    let _ = Waker::key as fn(&Waker) -> Key;' \
   '    let _ = Poll::waker_key as fn(&Poll) -> Option<Key>;' \
   '    let _ = Poll::rearm as fn(&mut Poll, &Registration) -> Result<(), Error>;' \
-  '    let _ = Poll::register_owned as fn(&mut Poll, std::os::fd::OwnedFd, Key, zio::Interest, Mode) -> Result<Registration, RegisterError>;' \
+  '    let _ = Poll::register_owned as fn(&mut Poll, std::os::fd::OwnedFd, Key, zio::Interest, Mode) -> Result<Registration, RegisterOwnedError>;' \
   '    let _ = Poll::registration_fd as for<'\''poll, '\''registration> fn(&'\''poll Poll, &'\''registration Registration) -> Result<std::os::fd::BorrowedFd<'\''poll>, Error>;' \
   '    let _ = Poll::registrations as fn(&Poll) -> Result<Vec<Registration>, Error>;' \
   '    let _ = Poll::event_capacity as fn(&Poll) -> usize;' \
@@ -193,6 +198,13 @@ printf '%s\n' \
   '    match error {' \
   '        Error::Invariant => 1,' \
   '        _ => 0,' \
+  '    }' \
+  '}' \
+  '' \
+  'fn classify_owned_register_error(error: &RegisterOwnedError) -> u8 {' \
+  '    match error {' \
+  '        RegisterOwnedError::Returned { .. } => 0,' \
+  '        RegisterOwnedError::Retained { .. } => 1,' \
   '    }' \
   '}' \
   '' \
