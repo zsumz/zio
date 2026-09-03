@@ -25,8 +25,8 @@ impl Poll {
 
     /// Replaces `events` with one observation bounded by `deadline`.
     ///
-    /// A reached deadline is nonblocking. Backend interruption remains an
-    /// [`Error::Io`] failure.
+    /// Uses [`Self::wait`] semantics. A reached deadline is nonblocking;
+    /// backend interruption remains an [`Error::Io`] failure.
     pub fn wait_until(
         &mut self,
         events: &mut Events,
