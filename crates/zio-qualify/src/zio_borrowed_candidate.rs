@@ -40,7 +40,7 @@ impl Candidate for ZioBorrowedCandidate {
         let registration = unsafe {
             poll.register_borrowed(
                 source,
-                Key::from(spec.key as u64),
+                Key::try_from(spec.key).map_err(display)?,
                 interest(spec.interest),
                 mode(spec.profile),
             )
@@ -74,7 +74,7 @@ impl CandidateSession for ZioBorrowedSession<'_> {
         let delivery = (|| {
             let mut observation = Observation::EMPTY;
             let mut matched_events = 0_usize;
-            let expected = Key::from(self.spec.key as u64);
+            let expected = Key::try_from(self.spec.key).map_err(display)?;
             for event in &self.events {
                 if !event.is_resource() || event.key() != expected {
                     return Err(format!("unexpected zio borrowed event: {event:?}"));

@@ -64,17 +64,13 @@ impl Backend for ZioBorrowedBackend {
         key: usize,
         profile: Profile,
     ) -> Result<Self::Registration<'source>, String> {
-        let key = u64::try_from(key).map_err(|error| self.invalidate(error))?;
+        let key = Key::try_from(key).map_err(|error| self.invalidate(error))?;
         // SAFETY: every workload keeps `source` alive and unchanged through a
         // proven successful delete before it drops the candidate poller. On
         // failure, `invalidate` drops the poller before this borrow can end.
         let result = unsafe {
-            self.poll_mut()?.register_borrowed(
-                source,
-                Key::from(key),
-                zio::Interest::READABLE,
-                mode(profile),
-            )
+            self.poll_mut()?
+                .register_borrowed(source, key, zio::Interest::READABLE, mode(profile))
         };
         let registration = result.map_err(|error| self.invalidate(error))?;
         Ok(ZioBorrowedRegistration {
@@ -117,7 +113,7 @@ impl Backend for ZioBorrowedBackend {
             for event in &self.events {
                 match *event {
                     Event::Resource { key, readiness, .. } if readiness.is_readable() => {
-                        observe(usize::try_from(u64::from(key)).map_err(display)?)?;
+                        observe(usize::try_from(key).map_err(display)?)?;
                         count = count.saturating_add(1);
                     }
                     Event::Resource { key, readiness, .. } => {

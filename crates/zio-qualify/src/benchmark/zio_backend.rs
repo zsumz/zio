@@ -32,14 +32,9 @@ impl Backend for ZioBackend {
         key: usize,
         profile: Profile,
     ) -> Result<Self::Registration<'source>, String> {
-        let key = u64::try_from(key).map_err(display)?;
+        let key = Key::try_from(key).map_err(display)?;
         self.poll
-            .register(
-                source,
-                Key::from(key),
-                zio::Interest::READABLE,
-                mode(profile),
-            )
+            .register(source, key, zio::Interest::READABLE, mode(profile))
             .map_err(display)
     }
 
@@ -71,7 +66,7 @@ impl Backend for ZioBackend {
             for event in &self.events {
                 match *event {
                     Event::Resource { key, readiness, .. } if readiness.is_readable() => {
-                        observe(usize::try_from(u64::from(key)).map_err(display)?)?;
+                        observe(usize::try_from(key).map_err(display)?)?;
                         count = count.saturating_add(1);
                     }
                     Event::Resource { key, readiness, .. } => {
