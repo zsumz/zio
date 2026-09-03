@@ -140,6 +140,15 @@ impl Error {
         }
     }
 
+    /// Returns the associated poller-local registration ID, when present.
+    pub const fn registration_id(&self) -> Option<RegistrationId> {
+        match self {
+            Self::WrongPoller { registration } => Some(registration.id()),
+            Self::Stale { registration } | Self::Uncertain { registration } => Some(*registration),
+            _ => None,
+        }
+    }
+
     /// Returns the underlying I/O error, when present.
     pub const fn io_error(&self) -> Option<&io::Error> {
         match self {

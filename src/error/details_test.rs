@@ -2,6 +2,8 @@
 
 use std::io;
 
+use crate::{Registration, RegistrationId};
+
 use super::{CommitStatus, Error, MutationError, Operation};
 
 #[test]
@@ -26,6 +28,7 @@ fn top_level_accessors_expose_embedded_diagnostics() {
     };
     assert_eq!(io.operation(), Some(Operation::Wait));
     assert_eq!(io.commit(), None);
+    assert_eq!(io.registration_id(), None);
     assert_eq!(io.io_error().and_then(io::Error::raw_os_error), Some(5));
 
     let mutation = Error::Mutation(MutationError::new(
@@ -45,4 +48,20 @@ fn top_level_accessors_expose_embedded_diagnostics() {
         Some(Operation::UnsupportedPlatform)
     );
     assert!(Error::Invariant.io_error().is_none());
+    assert_eq!(Error::Invariant.registration_id(), None);
+
+    let registration = Registration::test(7);
+    assert_eq!(
+        Error::WrongPoller { registration }.registration_id(),
+        Some(registration.id())
+    );
+    let id = RegistrationId::new(8);
+    assert_eq!(
+        Error::Stale { registration: id }.registration_id(),
+        Some(id)
+    );
+    assert_eq!(
+        Error::Uncertain { registration: id }.registration_id(),
+        Some(id)
+    );
 }

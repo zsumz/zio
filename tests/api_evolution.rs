@@ -23,6 +23,7 @@ fn open_diagnostics_support_forward_compatible_fallbacks() {
 fn errors_expose_common_diagnostics_without_matching() {
     let _ = Error::operation as fn(&Error) -> Option<Operation>;
     let _ = Error::commit as fn(&Error) -> Option<CommitStatus>;
+    let _ = Error::registration_id as fn(&Error) -> Option<zio::RegistrationId>;
     let _ = Error::io_error as fn(&Error) -> Option<&std::io::Error>;
 }
 

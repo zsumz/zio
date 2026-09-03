@@ -51,6 +51,7 @@ printf '%s\n' \
   '    assert_eq!(classify_operation(Operation::Wait), 1);' \
   '    let _ = Error::operation as fn(&Error) -> Option<Operation>;' \
   '    let _ = Error::commit as fn(&Error) -> Option<CommitStatus>;' \
+  '    let _ = Error::registration_id as fn(&Error) -> Option<zio::RegistrationId>;' \
   '    let _ = Error::io_error as fn(&Error) -> Option<&std::io::Error>;' \
   '    let _ = classify_event as fn(Event) -> u8;' \
   '    let _ = Event::is_resource as fn(Event) -> bool;' \
