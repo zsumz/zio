@@ -57,6 +57,7 @@ report may allocate one bounded snapshot.
 - Unsafe borrowing skips duplication and remains caller-owned.
 - Level delivery repeats; one-shot delivery requires explicit rearming.
 - Readiness is advisory. Nonblocking I/O remains the source of truth.
+- Pollers are `Send`, not `Sync`; wakers are `Send + Sync`.
 - Wake signals coalesce, drain on observation, and remain reusable.
 - Mutation and recovery failures report whether backend state changed.
 
