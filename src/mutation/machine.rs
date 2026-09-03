@@ -1,7 +1,7 @@
 //! Portable mutation state transitions over a static driver.
 
 use crate::{
-    ArmState, CommitStatus, Error, Interest, Mode, MutationError, Operation, Registration,
+    ArmState, CommitStatus, Error, Interest, Key, Mode, MutationError, Operation, Registration,
     RegistrationState, registration::PollOwner, table::RegistrationTable,
 };
 
@@ -33,6 +33,26 @@ impl<'state, Driver: MutationDriver> MutationSession<'state, Driver> {
         interest: Interest,
         mode: Mode,
     ) -> Result<(), Error> {
+        self.modify_configuration(registration, None, interest, mode)
+    }
+
+    pub(crate) fn modify_with_key(
+        &mut self,
+        registration: &Registration,
+        key: Key,
+        interest: Interest,
+        mode: Mode,
+    ) -> Result<(), Error> {
+        self.modify_configuration(registration, Some(key), interest, mode)
+    }
+
+    fn modify_configuration(
+        &mut self,
+        registration: &Registration,
+        key: Option<Key>,
+        interest: Interest,
+        mode: Mode,
+    ) -> Result<(), Error> {
         require_owner(self.owner.current(), registration)?;
         if interest.is_empty() {
             return Err(Error::InvalidInterest);
@@ -59,7 +79,7 @@ impl<'state, Driver: MutationDriver> MutationSession<'state, Driver> {
                 CommitStatus::NotApplied => {}
                 CommitStatus::Applied => {
                     self.registrations
-                        .commit_modify(registration.id(), interest, mode)?;
+                        .commit_modify(registration.id(), key, interest, mode)?;
                 }
                 CommitStatus::Unknown => {
                     self.registrations.mark_uncertain(registration.id())?;
@@ -68,7 +88,7 @@ impl<'state, Driver: MutationDriver> MutationSession<'state, Driver> {
             return Err(mutation_error(Operation::Modify, failure));
         }
         self.registrations
-            .commit_modify(registration.id(), interest, mode)
+            .commit_modify(registration.id(), key, interest, mode)
     }
 
     pub(crate) fn rearm(&mut self, registration: &Registration) -> Result<(), Error> {

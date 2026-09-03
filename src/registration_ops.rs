@@ -78,6 +78,21 @@ impl Poll {
         self.mutations().modify(registration, interest, mode)
     }
 
+    /// Replaces key, interest, and mode, rearming a one-shot registration.
+    ///
+    /// Successful and `Applied` outcomes commit all three values. `NotApplied`
+    /// preserves them; `Unknown` preserves the snapshot and marks it uncertain.
+    pub fn modify_with_key(
+        &mut self,
+        registration: &Registration,
+        key: Key,
+        interest: Interest,
+        mode: Mode,
+    ) -> Result<(), Error> {
+        self.mutations()
+            .modify_with_key(registration, key, interest, mode)
+    }
+
     /// Ensures a registration is armed without changing its interest or mode.
     ///
     /// A disarmed one-shot registration is modified and rearmed. Already-armed

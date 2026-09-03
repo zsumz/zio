@@ -45,6 +45,7 @@ Full means no slot is reservable. Remaining capacity excludes live and
 generation-exhausted slots.
 
 `Poll::set_key` changes only future resource-event routing and does no backend work.
+`Poll::modify_with_key` settles key, interest, and mode under one commit outcome.
 `RegistrationState::arm` returns `None` when backend state is uncertain.
 On supported targets, `Poll` implements `AsFd` and `AsRawFd`; selector
 readability means a nonblocking wait may observe an event.

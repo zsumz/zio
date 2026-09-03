@@ -133,10 +133,14 @@ impl RegistrationTable {
     pub(crate) fn commit_modify(
         &mut self,
         id: RegistrationId,
+        key: Option<Key>,
         interest: Interest,
         mode: Mode,
     ) -> Result<(), Error> {
         let entry = self.entry_mut(id)?;
+        if let Some(key) = key {
+            entry.key = key;
+        }
         entry.interest = interest;
         entry.mode = mode;
         entry.state = RegistrationState::Registered {

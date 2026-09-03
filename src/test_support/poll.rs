@@ -2,6 +2,8 @@
 
 #[path = "poll_membership.rs"]
 mod membership;
+#[path = "poll_modify.rs"]
+mod modify;
 
 use std::{
     num::NonZeroUsize,
@@ -106,21 +108,6 @@ impl ScriptedPoll {
             self.mutations()
                 .register_borrowed(source, key, interest, mode)
         }
-    }
-
-    /// Modifies one registration through the next scripted modification step.
-    pub fn modify(
-        &mut self,
-        registration: &Registration,
-        interest: Interest,
-        mode: Mode,
-    ) -> Result<(), Error> {
-        self.mutations().modify(registration, interest, mode)
-    }
-
-    /// Rearms a disarmed one-shot registration through the next modify step.
-    pub fn rearm(&mut self, registration: &Registration) -> Result<(), Error> {
-        self.mutations().rearm(registration)
     }
 
     /// Deletes one registration through the next scripted deletion step.

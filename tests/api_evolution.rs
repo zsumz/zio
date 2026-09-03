@@ -237,6 +237,8 @@ fn poll_exposes_authoritative_registration_info() {
     let _ = RegistrationInfo::state as fn(&RegistrationInfo) -> RegistrationState;
     let _ = RegistrationInfo::descriptor_ownership as fn(&RegistrationInfo) -> DescriptorOwnership;
     let _ = Poll::set_key as fn(&mut Poll, &Registration, Key) -> Result<(), Error>;
+    let _ = Poll::modify_with_key
+        as fn(&mut Poll, &Registration, Key, zio::Interest, Mode) -> Result<(), Error>;
 }
 
 #[test]

@@ -37,6 +37,12 @@ fn registration_info_tracks_committed_configuration() -> Result<(), Box<dyn StdE
     assert_eq!(modified.interest(), Interest::WRITABLE);
     assert_eq!(modified.mode(), Mode::OneShot);
 
+    poll.modify_with_key(&registration, Key::new(8), Interest::READABLE, Mode::Level)?;
+    let replaced = poll.registration_info(&registration)?;
+    assert_eq!(replaced.key(), Key::new(8));
+    assert_eq!(replaced.interest(), Interest::READABLE);
+    assert_eq!(replaced.mode(), Mode::Level);
+
     poll.delete(registration)?;
     assert!(matches!(
         poll.registration_info(&registration),
