@@ -90,6 +90,11 @@ printf '%s\n' \
   '    let _ = DeleteError::registration as fn(&DeleteError) -> Registration;' \
   '    assert_error_ref::<RegisterError>();' \
   '    assert_error_ref::<DeleteError>();' \
+  '    assert_thread_error::<Error>();' \
+  '    assert_thread_error::<MutationError>();' \
+  '    assert_thread_error::<RegisterError>();' \
+  '    assert_thread_error::<DeleteError>();' \
+  '    assert_thread_error::<RecoveryFailure>();' \
   '    let _ = MutationError::into_parts as fn(MutationError) -> (Operation, CommitStatus, std::io::Error);' \
   '    assert_ordered::<Registration>();' \
   '    let _ = RegistrationId::get as fn(RegistrationId) -> u64;' \
@@ -159,6 +164,8 @@ printf '%s\n' \
   'fn assert_slice<T: AsRef<[U]>, U>() {}' \
   '' \
   'fn assert_error_ref<T: AsRef<Error>>() {}' \
+  '' \
+  "fn assert_thread_error<T: std::error::Error + Send + Sync + 'static>() {}" \
   '' \
   'fn assert_send<T: Send>() {}' \
   '' \

@@ -17,6 +17,8 @@ pub(super) fn assert_display<T: core::fmt::Display>() {}
 
 pub(super) fn assert_error_ref<T: AsRef<Error>>() {}
 
+pub(super) fn assert_thread_error<T: std::error::Error + Send + Sync + 'static>() {}
+
 pub(super) fn assert_send<T: Send>() {}
 
 pub(super) fn assert_send_sync<T: Send + Sync>() {}

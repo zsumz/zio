@@ -82,6 +82,15 @@ fn errors_return_registration_handles() {
 }
 
 #[test]
+fn public_errors_remain_thread_portable() {
+    assert_thread_error::<Error>();
+    assert_thread_error::<MutationError>();
+    assert_thread_error::<RegisterError>();
+    assert_thread_error::<DeleteError>();
+    assert_thread_error::<RecoveryFailure>();
+}
+
+#[test]
 fn registration_handles_support_ordered_collections() {
     assert_ordered::<Registration>();
 }
