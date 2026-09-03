@@ -6,9 +6,33 @@ use core::borrow::Borrow;
 
 use crate::{
     ArmState, CommitStatus, Error, Event, Events, Mode, Operation, RecoveryFailure,
-    RecoveryOutcome, Registration, RegistrationState, WaitReport, pending_kqueue::PendingResource,
-    registration::PollId, table::RegistrationTable,
+    RecoveryOutcome, Registration, RegistrationId, RegistrationState, WaitReport,
+    pending_kqueue::PendingResource, registration::PollId, table::RegistrationTable,
 };
+
+/// Allocation-free result retained until post-observation state reduction.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct DisarmOutcome {
+    registration: RegistrationId,
+    commit: CommitStatus,
+}
+
+impl DisarmOutcome {
+    pub(crate) const fn new(registration: RegistrationId, commit: CommitStatus) -> Self {
+        Self {
+            registration,
+            commit,
+        }
+    }
+
+    pub(crate) const fn registration(self) -> RegistrationId {
+        self.registration
+    }
+
+    pub(crate) const fn commit(self) -> CommitStatus {
+        self.commit
+    }
+}
 
 #[allow(
     clippy::too_many_arguments,
@@ -28,7 +52,7 @@ pub(crate) fn finish<I>(
 where
     I: IntoIterator,
     I::IntoIter: Clone + ExactSizeIterator,
-    I::Item: Borrow<RecoveryOutcome>,
+    I::Item: Borrow<DisarmOutcome>,
 {
     let outcomes = outcomes.into_iter();
     validate(
@@ -63,11 +87,14 @@ where
         let registration = outcome.registration();
         let commit = outcome.commit();
         let state = registrations.apply_disarm(registration, commit)?;
-        if outcome.state() != state {
+        let registration =
+            Registration::from_verified(owner.ok_or(Error::Invariant)?, registration);
+        let public = RecoveryOutcome::new(registration, commit);
+        if public.state() != state {
             return Err(Error::Invariant);
         }
         if let Some(snapshot) = &mut snapshot {
-            snapshot.push(outcome);
+            snapshot.push(public);
         }
     }
     if let Some(source) = source {
@@ -89,7 +116,7 @@ fn validate<I>(
 ) -> Result<(), Error>
 where
     I: Clone + ExactSizeIterator,
-    I::Item: Borrow<RecoveryOutcome>,
+    I::Item: Borrow<DisarmOutcome>,
 {
     let delivered = pending.get(..delivered).ok_or(Error::Invariant)?;
     let mut observed_outcomes = outcomes.clone();

@@ -43,7 +43,7 @@ printf '%s\n' \
   > "$consumer_dir/Cargo.toml"
 
 printf '%s\n' \
-  'use zio::{ArmState, CommitStatus, Error, Event, Mode, Operation, RegistrationState, Wait};' \
+  'use zio::{ArmState, CommitStatus, Error, Event, Mode, Operation, RecoveryOutcome, Registration, RegistrationState, Wait};' \
   '' \
   'fn main() {' \
   '    assert_eq!(classify_error(&Error::Invariant), 1);' \
@@ -54,6 +54,7 @@ printf '%s\n' \
   '    assert_eq!(classify_wait(Wait::Forever), 2);' \
   '    assert_eq!(classify_arm(ArmState::Disarmed), 1);' \
   '    assert_eq!(classify_state(RegistrationState::Uncertain), 2);' \
+  '    let _ = RecoveryOutcome::registration as fn(&RecoveryOutcome) -> Registration;' \
   '}' \
   '' \
   'fn classify_error(error: &Error) -> u8 {' \

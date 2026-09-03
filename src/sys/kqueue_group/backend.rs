@@ -7,8 +7,8 @@ use std::{
 };
 
 use crate::{
-    ArmState, Interest, Mode, Readiness, RecoveryOutcome, RegistrationId, RegistrationState, Wait,
-    error::Operation,
+    ArmState, Interest, Mode, Readiness, RegistrationId, RegistrationState, Wait, error::Operation,
+    observe_recovery::DisarmOutcome,
 };
 
 use super::super::{
@@ -65,7 +65,7 @@ impl RawBatch {
 
     pub(crate) fn disarm_outcomes(
         &self,
-    ) -> impl Clone + ExactSizeIterator<Item = RecoveryOutcome> + '_ {
+    ) -> impl Clone + ExactSizeIterator<Item = DisarmOutcome> + '_ {
         self.disarms.outcomes()
     }
 

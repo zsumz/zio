@@ -2,7 +2,7 @@
 
 use std::{io, os::fd::RawFd};
 
-use crate::{CommitStatus, Interest, RecoveryOutcome, RegistrationId};
+use crate::{CommitStatus, Interest, RegistrationId, observe_recovery::DisarmOutcome};
 
 use super::kqueue_change::{Action, Change, Filter};
 
@@ -55,8 +55,8 @@ impl Plan {
         Some(Change::new(self.descriptor, filter, Action::Disable, 0))
     }
 
-    fn outcome(self) -> RecoveryOutcome {
-        RecoveryOutcome::new(self.registration, self.commit)
+    fn outcome(self) -> DisarmOutcome {
+        DisarmOutcome::new(self.registration, self.commit)
     }
 }
 
@@ -160,7 +160,7 @@ impl DisarmBatch {
         }
     }
 
-    pub(super) fn outcomes(&self) -> impl Clone + ExactSizeIterator<Item = RecoveryOutcome> + '_ {
+    pub(super) fn outcomes(&self) -> impl Clone + ExactSizeIterator<Item = DisarmOutcome> + '_ {
         self.plans.iter().copied().map(Plan::outcome)
     }
 

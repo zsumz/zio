@@ -1,7 +1,8 @@
 //! Downstream matching contracts for open diagnostics and closed domains.
 
 use zio::{
-    ArmState, CommitStatus, Error, Event, Key, Mode, Operation, Readiness, RegistrationState, Wait,
+    ArmState, CommitStatus, Error, Event, Key, Mode, Operation, Readiness, RecoveryOutcome,
+    Registration, RegistrationState, Wait,
 };
 
 #[test]
@@ -19,6 +20,11 @@ fn closed_delivery_and_state_domains_remain_exhaustive() {
     assert_eq!(commit_class(CommitStatus::Unknown), "unknown");
     assert_eq!(arm_class(ArmState::Disarmed), "disarmed");
     assert_eq!(state_class(RegistrationState::Uncertain), "uncertain");
+}
+
+#[test]
+fn recovery_outcomes_return_registration_handles() {
+    let _ = RecoveryOutcome::registration as fn(&RecoveryOutcome) -> Registration;
 }
 
 fn operation_class(operation: Operation) -> &'static str {

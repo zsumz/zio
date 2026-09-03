@@ -2,7 +2,10 @@
 
 use std::{fmt, io};
 
-use crate::registration::{ArmState, RegistrationId, RegistrationState};
+use crate::{
+    Registration,
+    registration::{ArmState, RegistrationState},
+};
 
 use super::{CommitStatus, Operation};
 
@@ -11,11 +14,11 @@ use super::{CommitStatus, Operation};
 /// The commit status and authoritative state always agree: applied recovery
 /// leaves a one-shot registration disarmed, proven-not-applied recovery leaves
 /// it armed, and an unprovable recovery leaves it uncertain. This is an owned
-/// historical snapshot for the exact generation; later poller mutations do not
-/// change it.
+/// historical snapshot with its actionable handle; later poller mutations do
+/// not change it.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct RecoveryOutcome {
-    registration: RegistrationId,
+    registration: Registration,
     commit: CommitStatus,
     state: RegistrationState,
 }
@@ -25,7 +28,7 @@ impl RecoveryOutcome {
         dead_code,
         reason = "only kqueue targets construct wait-time recovery outcomes"
     )]
-    pub(crate) const fn new(registration: RegistrationId, commit: CommitStatus) -> Self {
+    pub(crate) const fn new(registration: Registration, commit: CommitStatus) -> Self {
         let state = match commit {
             CommitStatus::Applied => RegistrationState::Registered {
                 arm: ArmState::Disarmed,
@@ -42,8 +45,8 @@ impl RecoveryOutcome {
         }
     }
 
-    /// Returns the exact attempted registration generation.
-    pub const fn registration(&self) -> RegistrationId {
+    /// Returns the exact attempted registration handle.
+    pub const fn registration(&self) -> Registration {
         self.registration
     }
 

@@ -109,7 +109,7 @@ impl RawBatch {
     #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
     pub(crate) fn disarm_outcomes(
         &self,
-    ) -> impl Clone + ExactSizeIterator<Item = crate::RecoveryOutcome> + '_ {
+    ) -> impl Clone + ExactSizeIterator<Item = crate::observe_recovery::DisarmOutcome> + '_ {
         self.kqueue.disarm_outcomes()
     }
 

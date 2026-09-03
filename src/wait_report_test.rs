@@ -2,9 +2,7 @@
 
 use std::io;
 
-use crate::{
-    CommitStatus, Operation, RecoveryFailure, RecoveryOutcome, RegistrationId, WaitReport,
-};
+use crate::{CommitStatus, Operation, RecoveryFailure, RecoveryOutcome, Registration, WaitReport};
 
 #[test]
 fn complete_report_contains_no_recovery() {
@@ -17,7 +15,7 @@ fn complete_report_contains_no_recovery() {
 #[test]
 fn recovery_report_exposes_and_returns_its_owned_failure() -> Result<(), Box<dyn std::error::Error>>
 {
-    let registration = RegistrationId::new(7);
+    let registration = Registration::test(7);
     let report = WaitReport::new(Some(RecoveryFailure::new(
         Operation::Disarm,
         vec![RecoveryOutcome::new(registration, CommitStatus::Unknown)],

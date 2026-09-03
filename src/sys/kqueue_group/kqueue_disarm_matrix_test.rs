@@ -2,7 +2,7 @@
 
 use std::io;
 
-use crate::{CommitStatus, Interest, RecoveryOutcome, RegistrationId};
+use crate::{CommitStatus, Interest, RegistrationId, observe_recovery::DisarmOutcome};
 
 use super::{
     kqueue::{KeventBatch, Kqueue},
@@ -169,6 +169,6 @@ const fn change(descriptor: i32, filter: Filter) -> Change {
     Change::new(descriptor, filter, Action::Disable, 0)
 }
 
-const fn outcome(registration: u64, commit: CommitStatus) -> RecoveryOutcome {
-    RecoveryOutcome::new(RegistrationId::new(registration), commit)
+const fn outcome(registration: u64, commit: CommitStatus) -> DisarmOutcome {
+    DisarmOutcome::new(RegistrationId::new(registration), commit)
 }

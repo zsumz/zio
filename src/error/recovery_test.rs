@@ -3,17 +3,17 @@
 use std::io;
 
 use crate::{
-    ArmState, CommitStatus, Operation, RegistrationId, RegistrationState,
+    ArmState, CommitStatus, Operation, Registration, RegistrationState,
     error::{RecoveryFailure, RecoveryOutcome},
 };
 
 #[test]
 fn recovery_outcomes_enforce_commit_state_pairs() {
-    let applied = RecoveryOutcome::new(RegistrationId::new(11), CommitStatus::Applied);
-    let not_applied = RecoveryOutcome::new(RegistrationId::new(12), CommitStatus::NotApplied);
-    let unknown = RecoveryOutcome::new(RegistrationId::new(13), CommitStatus::Unknown);
+    let applied = RecoveryOutcome::new(registration(11), CommitStatus::Applied);
+    let not_applied = RecoveryOutcome::new(registration(12), CommitStatus::NotApplied);
+    let unknown = RecoveryOutcome::new(registration(13), CommitStatus::Unknown);
 
-    assert_eq!(applied.registration(), RegistrationId::new(11));
+    assert_eq!(applied.registration(), registration(11));
     assert_eq!(applied.commit(), CommitStatus::Applied);
     assert_eq!(
         applied.state(),
@@ -35,8 +35,8 @@ fn recovery_outcomes_enforce_commit_state_pairs() {
 #[test]
 fn recovery_failure_preserves_one_owned_snapshot() {
     let outcomes = vec![
-        RecoveryOutcome::new(RegistrationId::new(21), CommitStatus::Applied),
-        RecoveryOutcome::new(RegistrationId::new(22), CommitStatus::Unknown),
+        RecoveryOutcome::new(registration(21), CommitStatus::Applied),
+        RecoveryOutcome::new(registration(22), CommitStatus::Unknown),
     ];
     let pointer = outcomes.as_ptr();
     let capacity = outcomes.capacity();
@@ -68,7 +68,7 @@ fn retained_recovery_snapshots_are_independent() {
     let first = RecoveryFailure::new(
         Operation::Disarm,
         vec![RecoveryOutcome::new(
-            RegistrationId::new(31),
+            registration(31),
             CommitStatus::NotApplied,
         )],
         io::Error::from_raw_os_error(5),
@@ -76,15 +76,19 @@ fn retained_recovery_snapshots_are_independent() {
     let second = RecoveryFailure::new(
         Operation::Disarm,
         vec![RecoveryOutcome::new(
-            RegistrationId::new(32),
+            registration(32),
             CommitStatus::Unknown,
         )],
         io::Error::from_raw_os_error(6),
     );
 
     assert_ne!(first.outcomes().as_ptr(), second.outcomes().as_ptr());
-    assert_eq!(first.outcomes()[0].registration(), RegistrationId::new(31));
-    assert_eq!(second.outcomes()[0].registration(), RegistrationId::new(32));
+    assert_eq!(first.outcomes()[0].registration(), registration(31));
+    assert_eq!(second.outcomes()[0].registration(), registration(32));
     assert_eq!(first.source().raw_os_error(), Some(5));
     assert_eq!(second.source().raw_os_error(), Some(6));
+}
+
+const fn registration(id: u64) -> Registration {
+    Registration::test(id)
 }

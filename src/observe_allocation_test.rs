@@ -9,8 +9,8 @@ use std::{
 
 use crate::{
     ArmState, CommitStatus, Error, Event, Events, Interest, Key, Mode, Readiness, RecoveryOutcome,
-    Registration, RegistrationId, RegistrationState, pending_kqueue::PendingResource,
-    table::RegistrationTable,
+    Registration, RegistrationId, RegistrationState, observe_recovery::DisarmOutcome,
+    pending_kqueue::PendingResource, table::RegistrationTable,
 };
 
 #[test]
@@ -29,9 +29,9 @@ fn recovery_retains_exactly_one_bounded_allocation() -> Result<(), Box<dyn StdEr
         pending(third, Key::new(73)),
     ];
     let outcomes = [
-        RecoveryOutcome::new(first, CommitStatus::Applied),
-        RecoveryOutcome::new(second, CommitStatus::NotApplied),
-        RecoveryOutcome::new(third, CommitStatus::Unknown),
+        DisarmOutcome::new(first, CommitStatus::Applied),
+        DisarmOutcome::new(second, CommitStatus::NotApplied),
+        DisarmOutcome::new(third, CommitStatus::Unknown),
     ];
     let mut events = Events::with_capacity(3)?;
     let native_error = io::Error::from_raw_os_error(5);
@@ -62,7 +62,14 @@ fn recovery_retains_exactly_one_bounded_allocation() -> Result<(), Box<dyn StdEr
     assert_eq!(allocations.bytes_total, snapshot_bytes);
     assert_eq!(allocations.bytes_current, i64::try_from(snapshot_bytes)?);
     assert_eq!(allocations.bytes_max, snapshot_bytes);
-    assert_eq!(failure.outcomes(), outcomes);
+    assert_eq!(
+        failure.outcomes(),
+        &[
+            RecoveryOutcome::new(handle(first), CommitStatus::Applied),
+            RecoveryOutcome::new(handle(second), CommitStatus::NotApplied),
+            RecoveryOutcome::new(handle(third), CommitStatus::Unknown),
+        ]
+    );
     assert_eq!(
         registrations.state(first)?,
         RegistrationState::Registered {
