@@ -13,7 +13,7 @@ targets = 34
 physical_rust_files = 234
 base_source_contexts = 398
 derived_source_contexts = 0
-source_facts = 67728
+source_facts = 67770
 projection_queries = 0
 projected_facts = 0
 unresolved_bindings = 0
@@ -260,7 +260,7 @@ sha256 = "45e07033c8cd89ed400ee4e96ec608e338e89822233abd6e56c85040ece66520"
 
 [[gate.input]]
 path = "scripts/check-api-evolution"
-sha256 = "f708b5d8e993bc32b2ebbaae288357868f60242369386d93694b35e8d7b3bdd2"
+sha256 = "c03eee53393865e60d1f5cce9af9ca9c6785562b3776f8c68c84ca7bc29aaf7c"
 
 [[gate.input]]
 path = "scripts/rehearse-release"
@@ -555,7 +555,7 @@ sha256 = "279d77167cec5426fa80f457cd066dc74a360fbe4e2816f4f3fa01487a918fdc"
 
 [[gate.input]]
 path = "scripts/check-api-evolution"
-sha256 = "f708b5d8e993bc32b2ebbaae288357868f60242369386d93694b35e8d7b3bdd2"
+sha256 = "c03eee53393865e60d1f5cce9af9ca9c6785562b3776f8c68c84ca7bc29aaf7c"
 
 [[gate.input]]
 path = "scripts/rehearse-release"

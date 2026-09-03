@@ -1,6 +1,9 @@
 //! Downstream matching contracts for open diagnostics and closed domains.
 
-use core::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Sub, SubAssign};
+use core::{
+    iter::FusedIterator,
+    ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Sub, SubAssign},
+};
 
 use zio::{
     ArmState, CommitStatus, DeleteError, Error, Event, Events, Key, Mode, MutationError, Operation,
@@ -73,9 +76,17 @@ fn flag_sets_support_standard_set_operators() {
 #[test]
 fn event_batches_support_immutable_slice_interop() {
     assert_event_slice::<Events>();
+    let _ = assert_event_iterators as fn(&mut Events);
 }
 
 fn assert_event_slice<T: AsRef<[Event]>>() {}
+
+fn assert_event_iterators(events: &mut Events) {
+    assert_iterator(events.iter());
+    assert_iterator(events.drain());
+}
+
+fn assert_iterator<I: DoubleEndedIterator + ExactSizeIterator + FusedIterator>(_: I) {}
 
 fn assert_set_operators<T>()
 where

@@ -79,6 +79,12 @@ printf '%s\n' \
   '    readiness &= zio::Readiness::READ_CLOSED | zio::Readiness::ERROR;' \
   '    readiness -= zio::Readiness::ERROR;' \
   '    let _ = readiness;' \
+  '    let _ = reverse_events as fn(&mut zio::Events);' \
+  '}' \
+  '' \
+  'fn reverse_events(events: &mut zio::Events) {' \
+  '    let _ = events.iter().rev();' \
+  '    let _ = events.drain().rev();' \
   '}' \
   '' \
   'fn classify_error(error: &Error) -> u8 {' \

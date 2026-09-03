@@ -1,6 +1,6 @@
 //! Reusable bounded event storage.
 
-use std::num::NonZeroUsize;
+use std::{iter::FusedIterator, num::NonZeroUsize};
 
 use crate::{Error, Event};
 
@@ -57,8 +57,10 @@ impl Events {
         self.events.get(index)
     }
 
-    /// Iterates over retained events in normalized delivery order.
-    pub fn iter(&self) -> impl ExactSizeIterator<Item = &Event> + '_ {
+    /// Iterates from either end of the normalized delivery order.
+    pub fn iter(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = &Event> + ExactSizeIterator + FusedIterator + '_ {
         self.events.iter()
     }
 
@@ -67,8 +69,10 @@ impl Events {
         self.events.clear();
     }
 
-    /// Drains all retained events in normalized delivery order.
-    pub fn drain(&mut self) -> impl ExactSizeIterator<Item = Event> + '_ {
+    /// Drains retained events from either end of normalized delivery order.
+    pub fn drain(
+        &mut self,
+    ) -> impl DoubleEndedIterator<Item = Event> + ExactSizeIterator + FusedIterator + '_ {
         self.events.drain(..)
     }
 
