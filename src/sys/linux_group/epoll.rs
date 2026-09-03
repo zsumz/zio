@@ -15,6 +15,7 @@ use rustix::event::epoll;
 
 use crate::{Error, Event, Events, Key, Registration};
 
+#[allow(clippy::manual_is_multiple_of, reason = "Rust 1.88 compatibility")]
 const _: () = assert!(
     size_of::<Event>() >= size_of::<libc::epoll_event>()
         && align_of::<Event>() >= align_of::<libc::epoll_event>()
@@ -192,8 +193,7 @@ pub(super) struct Epoll(OwnedFd);
 
 impl Epoll {
     pub(super) fn new() -> io::Result<Self> {
-        let descriptor = epoll::create(epoll::CreateFlags::CLOEXEC)?;
-        Ok(Self(descriptor))
+        Ok(Self(epoll::create(epoll::CreateFlags::CLOEXEC)?))
     }
 
     pub(super) fn as_fd(&self) -> BorrowedFd<'_> {

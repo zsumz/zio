@@ -8,7 +8,7 @@ use super::RegistrationTable;
 
 impl RegistrationTable {
     pub(crate) const fn validate_capacity(limit: NonZeroUsize) -> Result<(), Error> {
-        if limit.get() > MAX_REGISTRATIONS {
+        if limit.get().saturating_sub(MAX_REGISTRATIONS) != 0 {
             return Err(Error::Capacity {
                 kind: CapacityKind::Registration,
                 limit: limit.get(),
