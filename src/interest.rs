@@ -1,6 +1,6 @@
 //! Portable readiness interests.
 
-use core::ops::BitOr;
+use core::ops::{BitOr, BitOrAssign};
 
 /// Backend-neutral readiness interests for one registration.
 #[repr(transparent)]
@@ -49,3 +49,13 @@ impl BitOr for Interest {
         self.union(rhs)
     }
 }
+
+impl BitOrAssign for Interest {
+    fn bitor_assign(&mut self, rhs: Self) {
+        *self = self.union(rhs);
+    }
+}
+
+#[cfg(test)]
+#[path = "interest_test.rs"]
+mod tests;

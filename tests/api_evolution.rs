@@ -1,5 +1,7 @@
 //! Downstream matching contracts for open diagnostics and closed domains.
 
+use core::ops::{BitOr, BitOrAssign};
+
 use zio::{
     ArmState, CommitStatus, DeleteError, Error, Event, Key, Mode, Operation, Poll, Readiness,
     RecoveryOutcome, RegisterError, Registration, RegistrationState, Wait,
@@ -44,6 +46,14 @@ fn poll_exposes_both_fixed_capacities() {
     let _ = Poll::event_capacity as fn(&Poll) -> usize;
     let _ = Poll::registration_capacity as fn(&Poll) -> usize;
 }
+
+#[test]
+fn flag_sets_support_standard_union_operators() {
+    assert_union::<zio::Interest>();
+    assert_union::<Readiness>();
+}
+
+fn assert_union<T: BitOr<Output = T> + BitOrAssign>() {}
 
 fn operation_class(operation: Operation) -> &'static str {
     match operation {

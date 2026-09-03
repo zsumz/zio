@@ -1,4 +1,6 @@
 //! Caller keys and portable readiness observations.
+use core::ops::{BitOr, BitOrAssign};
+
 use crate::Registration;
 
 /// Caller-selected value delivered with an observed event.
@@ -102,6 +104,20 @@ impl Readiness {
     /// Returns whether an error hint is present.
     pub const fn is_error(self) -> bool {
         self.contains(Self::ERROR)
+    }
+}
+
+impl BitOr for Readiness {
+    type Output = Self;
+
+    fn bitor(self, rhs: Self) -> Self::Output {
+        self.union(rhs)
+    }
+}
+
+impl BitOrAssign for Readiness {
+    fn bitor_assign(&mut self, rhs: Self) {
+        *self = self.union(rhs);
     }
 }
 
