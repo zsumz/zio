@@ -64,7 +64,7 @@ impl Waker {
 
 /// Owner-local portable readiness poller.
 ///
-/// Pollers are `Send` but not `Sync`; operations require exclusive access. Zio
+/// Pollers are `Send` but not `Sync`; operations require exclusive access. zio
 /// does not change descriptor blocking modes. Dropping one closes every owned
 /// retained resource descriptor; borrowed descriptors remain caller-owned.
 pub struct Poll {

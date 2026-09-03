@@ -24,7 +24,7 @@ pub use register_owned::RegisterOwnedError;
 
 /// Poller or backend operation associated with a failure.
 ///
-/// This diagnostic vocabulary may grow as Zio gains backend operations.
+/// This diagnostic vocabulary may grow as zio gains backend operations.
 /// Downstream matches must include a fallback arm.
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]

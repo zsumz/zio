@@ -244,11 +244,11 @@ sha256 = "e8a9fe4049f4c61500030983a463a45a8ffbe268922ea7ba3950b3d1a78fbc0c"
 
 [[gate.input]]
 path = "docs/performance.md"
-sha256 = "cc7cf806384969f8d290c1fa828184d080b7dc49cc7f4da548f1ba41802e506c"
+sha256 = "998bf896d4831ac04a9268cab70c0ff3efabee0cefcd2872e471707028c378bc"
 
 [[gate.input]]
 path = "docs/qualification.md"
-sha256 = "4437ac6e4822042cb2080634c94d74973db8be0e24d19aa525e231e646b9ed3e"
+sha256 = "b9dd9e02c62c52dd75e5c5e8ad5000d87e13daf85021be58d8647033d959700b"
 
 [[gate.input]]
 path = "rust-toolchain.toml"
@@ -510,7 +510,7 @@ sha256 = "0319b0581714b8097dd2116da70879969ada2d8067c8bdaf3ddfd85160ad438c"
 
 [[gate.input]]
 path = "docs/performance.md"
-sha256 = "cc7cf806384969f8d290c1fa828184d080b7dc49cc7f4da548f1ba41802e506c"
+sha256 = "998bf896d4831ac04a9268cab70c0ff3efabee0cefcd2872e471707028c378bc"
 
 [[gate.input]]
 path = "rust-toolchain.toml"
@@ -543,11 +543,11 @@ sha256 = "e8a9fe4049f4c61500030983a463a45a8ffbe268922ea7ba3950b3d1a78fbc0c"
 
 [[gate.input]]
 path = "docs/performance.md"
-sha256 = "cc7cf806384969f8d290c1fa828184d080b7dc49cc7f4da548f1ba41802e506c"
+sha256 = "998bf896d4831ac04a9268cab70c0ff3efabee0cefcd2872e471707028c378bc"
 
 [[gate.input]]
 path = "docs/qualification.md"
-sha256 = "4437ac6e4822042cb2080634c94d74973db8be0e24d19aa525e231e646b9ed3e"
+sha256 = "b9dd9e02c62c52dd75e5c5e8ad5000d87e13daf85021be58d8647033d959700b"
 
 [[gate.input]]
 path = "rust-toolchain.toml"
