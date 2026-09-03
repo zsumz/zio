@@ -9,9 +9,9 @@ use crate::{Error, Events, Operation, Poll, Wait, WaitReport};
 impl Poll {
     /// Replaces `events` with one bounded readiness observation.
     ///
-    /// The destination is cleared on entry. An error leaves it empty. A
-    /// successful report can carry post-delivery one-shot recovery trouble;
-    /// process every delivered event before reconciling that report.
+    /// `events` must match or exceed [`Self::event_capacity`]. It is cleared on
+    /// entry and left empty on error. A successful report may carry one-shot
+    /// recovery trouble; process every event before reconciling it.
     pub fn wait(&mut self, events: &mut Events, wait: Wait) -> Result<WaitReport, Error> {
         events.clear();
         self.pending.clear();
