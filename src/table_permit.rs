@@ -139,7 +139,13 @@ impl Reservation<'_> {
 
     #[inline]
     pub(crate) fn retire(self) -> Result<(), Error> {
-        self.lease.retire()
+        drop(self.release()?);
+        Ok(())
+    }
+
+    #[inline]
+    pub(crate) fn release(self) -> Result<Descriptor, Error> {
+        self.lease.release()
     }
 
     #[inline]

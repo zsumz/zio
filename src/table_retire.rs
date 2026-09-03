@@ -3,6 +3,7 @@
 use crate::{
     Error, RegistrationId, RegistrationState,
     binding::Binding,
+    descriptor::Descriptor,
     token::{EncodedRegistrationId, MAX_GENERATION},
 };
 
@@ -56,20 +57,23 @@ impl<'table> SlotLease<'table> {
     pub(super) fn keep(self) {}
 
     #[inline]
-    pub(super) fn retire(self) -> Result<(), Error> {
+    pub(super) fn release(self) -> Result<Descriptor, Error> {
         let live = self.live.checked_sub(1).ok_or(Error::Invariant)?;
-        if self.slot.generation == MAX_GENERATION {
-            let exhausted = self.exhausted.checked_add(1).ok_or(Error::Invariant)?;
-            self.slot.entry = None;
+        let exhausted = if self.slot.generation == MAX_GENERATION {
+            Some(self.exhausted.checked_add(1).ok_or(Error::Invariant)?)
+        } else {
+            None
+        };
+        let entry = self.slot.entry.take().ok_or(Error::Invariant)?;
+        if let Some(exhausted) = exhausted {
             self.slot.next_free = super::slot::FREE_END;
             *self.exhausted = exhausted;
         } else {
-            self.slot.entry = None;
             self.slot.next_free = *self.free_head;
             *self.free_head = self.free_index;
         }
         *self.live = live;
-        Ok(())
+        Ok(entry.descriptor)
     }
 
     #[inline]
@@ -102,7 +106,8 @@ impl PreparedRetire<'_> {
 
     #[inline]
     pub(crate) fn retire(self) -> Result<(), Error> {
-        self.lease.retire()
+        drop(self.lease.release()?);
+        Ok(())
     }
 
     #[inline]

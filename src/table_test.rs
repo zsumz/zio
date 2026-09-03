@@ -16,7 +16,7 @@ use std::{
 };
 
 use crate::{
-    Error, Interest, Key, Mode,
+    DescriptorOwnership, Error, Interest, Key, Mode,
     descriptor::Descriptor,
     token::{MAX_GENERATION, decode},
 };
@@ -124,6 +124,32 @@ fn reservation_carries_the_inserted_descriptor_and_retire_proof() -> Result<(), 
     )?;
     assert_eq!(observed, (raw_descriptor, id));
     reservation.retire()?;
+    assert!(matches!(
+        table.state(id),
+        Err(Error::Stale { registration }) if registration == id
+    ));
+    Ok(())
+}
+
+#[test]
+fn reservation_releases_the_exact_owned_descriptor() -> Result<(), Box<dyn StdError>> {
+    let mut table = table(1)?;
+    let source = File::open("/dev/null")?;
+    let descriptor = source.as_fd().try_clone_to_owned()?;
+    let raw_descriptor = descriptor.as_raw_fd();
+    let permit = table.fresh_permit()?;
+    let id = permit.id();
+    let (reservation, ()) = permit.reserve_with(
+        Descriptor::owned(descriptor),
+        Key::new(2),
+        Interest::READABLE,
+        Mode::Level,
+        |_, _| (),
+    )?;
+
+    let descriptor = reservation.release()?;
+    assert_eq!(descriptor.as_raw_fd(), raw_descriptor);
+    assert_eq!(descriptor.ownership(), DescriptorOwnership::Owned);
     assert!(matches!(
         table.state(id),
         Err(Error::Stale { registration }) if registration == id
