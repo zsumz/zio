@@ -21,6 +21,35 @@ fn mutation_failure_returns_every_owned_part() {
 }
 
 #[test]
+fn diagnostics_use_plain_display_names() {
+    assert_eq!(Operation::RegisterWaker.to_string(), "register waker");
+    assert_eq!(CommitStatus::NotApplied.to_string(), "not applied");
+
+    let mutation = MutationError::new(
+        Operation::Modify,
+        CommitStatus::Unknown,
+        io::Error::other("native failure"),
+    );
+    assert_eq!(
+        mutation.to_string(),
+        "modify failed with unknown commit status: native failure"
+    );
+    let wait = Error::Io {
+        operation: Operation::Wait,
+        source: io::Error::other("native failure"),
+    };
+    assert_eq!(wait.to_string(), "wait failed: native failure");
+    let conflict = Error::WakerAlreadyConfigured {
+        existing: crate::Key::new(3),
+        requested: crate::Key::new(5),
+    };
+    assert_eq!(
+        conflict.to_string(),
+        "poller wake key is 3, not requested key 5"
+    );
+}
+
+#[test]
 fn top_level_accessors_expose_embedded_diagnostics() {
     let io = Error::Io {
         operation: Operation::Wait,

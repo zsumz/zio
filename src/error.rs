@@ -49,6 +49,25 @@ pub enum Operation {
     UnsupportedPlatform,
 }
 
+impl fmt::Display for Operation {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(match self {
+            Self::CreatePoller => "create poller",
+            Self::CreateWaker => "create waker",
+            Self::RegisterWaker => "register waker",
+            Self::Register => "register",
+            Self::Modify => "modify",
+            Self::Delete => "delete",
+            Self::Wait => "wait",
+            Self::TriggerWake => "trigger wake",
+            Self::AcknowledgeWake => "acknowledge wake",
+            Self::Disarm => "disarm",
+            Self::Recover => "recover",
+            Self::UnsupportedPlatform => "unsupported platform",
+        })
+    }
+}
+
 /// What a failed synchronous mutation changed in the backend.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum CommitStatus {
@@ -58,6 +77,16 @@ pub enum CommitStatus {
     Applied,
     /// The resulting backend state cannot be proven.
     Unknown,
+}
+
+impl fmt::Display for CommitStatus {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(match self {
+            Self::NotApplied => "not applied",
+            Self::Applied => "applied",
+            Self::Unknown => "unknown",
+        })
+    }
 }
 
 /// Portable poller failure.
@@ -125,14 +154,14 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Io { operation, source } => write!(formatter, "{operation:?} failed: {source}"),
+            Self::Io { operation, source } => write!(formatter, "{operation} failed: {source}"),
             Self::Mutation(error) => error.fmt(formatter),
             Self::WakerAlreadyConfigured {
                 existing,
                 requested,
             } => write!(
                 formatter,
-                "poller wake key is {existing:?}, not requested key {requested:?}"
+                "poller wake key is {existing}, not requested key {requested}"
             ),
             Self::WrongPoller { registration } => {
                 write!(

@@ -51,7 +51,7 @@ fn recovery_failure_preserves_one_owned_snapshot() {
     assert_eq!(
         failure.to_string(),
         format!(
-            "Disarm recovery failed for 2 registrations: {}",
+            "disarm recovery failed for 2 registrations: {}",
             failure.source()
         )
     );

@@ -53,7 +53,7 @@ impl fmt::Display for MutationError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             formatter,
-            "{:?} failed with {:?} commit status: {}",
+            "{} failed with {} commit status: {}",
             self.operation, self.commit, self.source
         )
     }

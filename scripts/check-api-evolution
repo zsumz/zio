@@ -50,6 +50,8 @@ printf '%s\n' \
   '    assert_eq!(u64::from(Key::from(9_u64)), 9);' \
   '    assert_eq!(Key::new(9).to_string(), "9");' \
   '    assert_eq!(classify_operation(Operation::Wait), 1);' \
+  '    assert_eq!(Operation::Wait.to_string(), "wait");' \
+  '    assert_eq!(CommitStatus::Unknown.to_string(), "unknown");' \
   '    let _ = Error::operation as fn(&Error) -> Option<Operation>;' \
   '    let _ = Error::commit as fn(&Error) -> Option<CommitStatus>;' \
   '    let _ = Error::registration_id as fn(&Error) -> Option<zio::RegistrationId>;' \
@@ -84,6 +86,8 @@ printf '%s\n' \
   '    assert_hash::<Event>();' \
   '    assert_hash::<Wait>();' \
   '    assert_display::<Key>();' \
+  '    assert_display::<Operation>();' \
+  '    assert_display::<CommitStatus>();' \
   '    assert_send::<Poll>();' \
   '    assert_send_sync::<Waker>();' \
   '    let _ = Waker::key as fn(&Waker) -> Key;' \

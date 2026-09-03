@@ -120,7 +120,7 @@ impl fmt::Display for RecoveryFailure {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             formatter,
-            "{:?} recovery failed for {} registrations: {}",
+            "{} recovery failed for {} registrations: {}",
             self.operation,
             self.outcomes.len(),
             self.source

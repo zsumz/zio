@@ -13,6 +13,8 @@ use zio::{
 
 #[test]
 fn open_diagnostics_support_forward_compatible_fallbacks() {
+    assert_display::<Operation>();
+    assert_display::<CommitStatus>();
     assert_eq!(operation_class(Operation::Wait), "wait");
     assert_eq!(operation_class(Operation::Delete), "other");
     assert_eq!(error_class(&Error::Invariant), "contract");
