@@ -114,7 +114,7 @@ pub enum Error {
         /// Exact rejected registration handle.
         registration: Registration,
     },
-    /// The requested readiness interest is empty or unsupported.
+    /// The requested readiness interest is empty.
     InvalidInterest,
     /// The registration generation is no longer retained.
     Stale {
