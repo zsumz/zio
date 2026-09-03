@@ -10,7 +10,8 @@
 use std::{hash::Hash, io, os::unix::net::UnixStream};
 
 use zio::{
-    ArmState, DeleteError, Error, Interest, Key, Mode, Poll, Registration, RegistrationState,
+    ArmState, DeleteError, DeleteOwnedError, Error, Interest, Key, Mode, Poll, Registration,
+    RegistrationState,
 };
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
@@ -62,6 +63,59 @@ fn successful_delete_stales_every_surviving_copy() -> TestResult {
         "stale delete returned another handle",
     )?;
     expect_stale_error(cause, retired)?;
+    Ok(())
+}
+
+#[test]
+fn owned_delete_returns_a_stale_handle_without_a_descriptor() -> TestResult {
+    let (source, _peer) = UnixStream::pair()?;
+    let mut poll = Poll::with_capacity(1, 1)?;
+    let registration = poll.register(&source, Key::new(905), Interest::READABLE, Mode::Level)?;
+    poll.delete(registration)?;
+
+    let Err(DeleteOwnedError::Retained {
+        error,
+        registration: returned,
+    }) = poll.delete_owned(registration)
+    else {
+        return Err(io::Error::other("stale owned deletion returned a descriptor").into());
+    };
+
+    ensure(
+        returned == registration,
+        "stale owned deletion changed the handle",
+    )?;
+    expect_stale_error(error, registration.id())
+}
+
+#[test]
+fn owned_delete_returns_a_foreign_handle_without_mutation() -> TestResult {
+    let (source, _peer) = UnixStream::pair()?;
+    let mut owner = Poll::with_capacity(1, 1)?;
+    let mut stranger = Poll::with_capacity(1, 1)?;
+    let registration = owner.register(&source, Key::new(906), Interest::READABLE, Mode::Level)?;
+
+    let Err(DeleteOwnedError::Retained {
+        error,
+        registration: returned,
+    }) = stranger.delete_owned(registration)
+    else {
+        return Err(io::Error::other("foreign owned deletion returned a descriptor").into());
+    };
+
+    ensure(
+        returned == registration,
+        "foreign owned deletion changed the handle",
+    )?;
+    ensure(
+        matches!(error, Error::WrongPoller { registration: rejected } if rejected == registration),
+        "foreign owned deletion lost its cause",
+    )?;
+    ensure(
+        owner.contains(&registration),
+        "foreign deletion mutated the owner",
+    )?;
+    owner.delete(registration)?;
     Ok(())
 }
 

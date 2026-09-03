@@ -34,7 +34,8 @@ registration handle.
 retained registration.
 `Poll::delete_owned` retires an owned registration and returns its exact
 descriptor. Borrowed registrations are rejected before backend work. An
-`Applied` failure returns the descriptor; other failures retain the handle.
+`Applied` failure returns the descriptor; other failures return the attempted
+handle. Inspect the cause before reuse.
 `Poll::registration_fd` safely borrows any retained resource descriptor,
 including one in uncertain backend state.
 `Poll::registrations` returns a bounded snapshot. `Poll::iter_registrations`

@@ -6,7 +6,7 @@ use crate::Registration;
 
 use super::Error;
 
-/// Owned deletion failure with its exact retained capability.
+/// Owned deletion failure returning either the descriptor or attempted handle.
 #[derive(Debug)]
 pub enum DeleteOwnedError {
     /// The poller released the descriptor.
@@ -16,11 +16,11 @@ pub enum DeleteOwnedError {
         /// Released descriptor.
         descriptor: OwnedFd,
     },
-    /// The poller retained the descriptor under this registration.
+    /// No owned descriptor was released to the caller.
     Retained {
         /// Underlying failure.
         error: Error,
-        /// Handle for the retained registration.
+        /// Exact registration passed to deletion.
         registration: Registration,
     },
 }
@@ -52,7 +52,7 @@ impl DeleteOwnedError {
         }
     }
 
-    /// Returns the handle when the poller retained the descriptor.
+    /// Returns the attempted handle when no descriptor was returned.
     pub const fn registration(&self) -> Option<Registration> {
         match self {
             Self::Returned { .. } => None,

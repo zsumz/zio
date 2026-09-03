@@ -108,7 +108,7 @@ impl Poll {
     ///
     /// Borrowed registrations are rejected without backend work. A
     /// proven-applied failure returns the descriptor; every other failure
-    /// retains the exact registration handle.
+    /// returns the exact attempted handle. Inspect the cause before reuse.
     pub fn delete_owned(
         &mut self,
         registration: Registration,
