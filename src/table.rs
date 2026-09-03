@@ -43,6 +43,10 @@ impl RegistrationTable {
         })
     }
 
+    pub(crate) const fn capacity(&self) -> usize {
+        self.limit.get()
+    }
+
     pub(crate) fn binding(
         &self,
         id: RegistrationId,

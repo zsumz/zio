@@ -62,6 +62,8 @@ fn registration_capacity_is_fixed() -> Result<(), Box<dyn std::error::Error>> {
     let (first, _first_peer) = UnixStream::pair()?;
     let (second, _second_peer) = UnixStream::pair()?;
     let mut poll = Poll::with_capacity(4, 1)?;
+    assert_eq!(poll.event_capacity(), 4);
+    assert_eq!(poll.registration_capacity(), 1);
     let registration = poll.register(&first, Key::new(1), Interest::READABLE, Mode::Level)?;
 
     let result = poll.register(&second, Key::new(2), Interest::READABLE, Mode::Level);

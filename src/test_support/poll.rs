@@ -116,6 +116,11 @@ impl ScriptedPoll {
         registration_state(self.owner.current(), &self.registrations, registration)
     }
 
+    /// Returns the fixed registration capacity.
+    pub const fn registration_capacity(&self) -> usize {
+        self.registrations.capacity()
+    }
+
     /// Establishes a delivered, disarmed one-shot state in both models.
     pub fn establish_disarmed(&mut self, registration: &Registration) -> Result<(), Error> {
         registration_state(self.owner.current(), &self.registrations, registration)?;

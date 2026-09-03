@@ -93,6 +93,11 @@ impl Poll {
         self.event_capacity.get()
     }
 
+    /// Returns the fixed registration capacity.
+    pub const fn registration_capacity(&self) -> usize {
+        self.registrations.capacity()
+    }
+
     /// Returns a cloneable wake capability associated with `key`.
     ///
     /// The first successful call fixes the poller's wake key. Later calls with

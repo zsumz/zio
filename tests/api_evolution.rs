@@ -39,6 +39,12 @@ fn poll_exposes_stored_configuration_rearm() {
     let _ = Poll::rearm as fn(&mut Poll, &Registration) -> Result<(), Error>;
 }
 
+#[test]
+fn poll_exposes_both_fixed_capacities() {
+    let _ = Poll::event_capacity as fn(&Poll) -> usize;
+    let _ = Poll::registration_capacity as fn(&Poll) -> usize;
+}
+
 fn operation_class(operation: Operation) -> &'static str {
     match operation {
         Operation::Wait => "wait",
