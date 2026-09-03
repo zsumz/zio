@@ -1,11 +1,11 @@
 //! Portable mutation state transitions over a static driver.
 
 use crate::{
-    ArmState, CommitStatus, DeleteError, Error, Interest, Mode, MutationError, Operation,
-    Registration, RegistrationState, registration::PollOwner, table::RegistrationTable,
+    ArmState, CommitStatus, Error, Interest, Mode, MutationError, Operation, Registration,
+    RegistrationState, registration::PollOwner, table::RegistrationTable,
 };
 
-use super::{DeleteRequest, ModifyRequest, MutationDriver, authority::require_owner};
+use super::{ModifyRequest, MutationDriver, authority::require_owner};
 
 /// Borrowed mutation state with a statically selected driver.
 pub(crate) struct MutationSession<'state, Driver> {
@@ -96,50 +96,9 @@ impl<'state, Driver: MutationDriver> MutationSession<'state, Driver> {
             None => Ok(()),
         }
     }
-
-    #[inline]
-    pub(crate) fn delete(&mut self, registration: Registration) -> Result<(), DeleteError> {
-        if let Err(error) = require_owner(self.owner.current(), &registration) {
-            return Err(DeleteError::new(error, registration));
-        }
-        let id = registration.id();
-        let prepared = self
-            .registrations
-            .prepare_registration_retire(registration.encoded_id(), true)
-            .map_err(|error| DeleteError::new(error, registration))?;
-        let binding = prepared
-            .binding()
-            .map_err(|error| DeleteError::new(error, registration))?;
-        let result = self.driver.delete(DeleteRequest {
-            descriptor: binding.descriptor,
-            registration: id,
-            interest: binding.interest,
-            state: binding.state,
-        });
-        if let Err(failure) = result {
-            let state_result = match failure.commit() {
-                CommitStatus::NotApplied => {
-                    prepared.keep();
-                    Ok(())
-                }
-                CommitStatus::Applied => prepared.retire(),
-                CommitStatus::Unknown => prepared.mark_uncertain(),
-            };
-            if let Err(error) = state_result {
-                return Err(DeleteError::new(error, registration));
-            }
-            return Err(DeleteError::new(
-                mutation_error(Operation::Delete, failure),
-                registration,
-            ));
-        }
-        prepared
-            .retire()
-            .map_err(|error| DeleteError::new(error, registration))
-    }
 }
 
-fn mutation_error(operation: Operation, failure: crate::sys::MutationFailure) -> Error {
+pub(super) fn mutation_error(operation: Operation, failure: crate::sys::MutationFailure) -> Error {
     let commit = failure.commit();
     let source = failure.into_source();
     Error::Mutation(MutationError::new(operation, commit, source))

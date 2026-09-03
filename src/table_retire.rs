@@ -105,9 +105,15 @@ impl PreparedRetire<'_> {
     }
 
     #[inline]
+    #[cfg(test)]
     pub(crate) fn retire(self) -> Result<(), Error> {
-        drop(self.lease.release()?);
+        drop(self.release()?);
         Ok(())
+    }
+
+    #[inline]
+    pub(crate) fn release(self) -> Result<Descriptor, Error> {
+        self.lease.release()
     }
 
     #[inline]

@@ -1,6 +1,7 @@
 //! Static mutation boundary shared by production and scripted pollers.
 
 mod authority;
+mod delete;
 mod driver;
 mod machine;
 mod register;
