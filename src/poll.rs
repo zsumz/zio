@@ -1,6 +1,6 @@
 //! Poll ownership, registration mutation, and wake capabilities.
 
-use std::num::NonZeroUsize;
+use std::{fmt, num::NonZeroUsize};
 
 use crate::{
     Error, Events, Key, Operation,
@@ -15,10 +15,19 @@ pub const DEFAULT_EVENT_CAPACITY: usize = 1_024;
 pub const DEFAULT_REGISTRATION_CAPACITY: usize = 1_024;
 
 /// Cloneable cross-thread capability that interrupts its owning poller.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Waker {
     wake: Wake,
     key: Key,
+}
+
+impl fmt::Debug for Waker {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("Waker")
+            .field("key", &self.key)
+            .finish_non_exhaustive()
+    }
 }
 
 impl Waker {
@@ -42,7 +51,6 @@ impl Waker {
 /// Owner-local portable readiness poller.
 ///
 /// A poller can move between threads. Operations require exclusive access.
-#[derive(Debug)]
 pub struct Poll {
     pub(crate) owner: PollOwner,
     pub(crate) backend: Backend,
@@ -52,6 +60,22 @@ pub struct Poll {
     pub(crate) wake: Wake,
     pub(crate) wake_key: Option<Key>,
     pub(crate) pending: crate::pending::PendingBatch,
+}
+
+impl fmt::Debug for Poll {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("Poll")
+            .field("event_capacity", &self.event_capacity())
+            .field("registration_capacity", &self.registration_capacity())
+            .field("registration_count", &self.registration_count())
+            .field(
+                "remaining_registration_capacity",
+                &self.remaining_registration_capacity(),
+            )
+            .field("wake_key", &self.waker_key())
+            .finish_non_exhaustive()
+    }
 }
 
 impl Poll {
@@ -143,3 +167,7 @@ impl Poll {
         })
     }
 }
+
+#[cfg(test)]
+#[path = "poll_test.rs"]
+mod tests;
