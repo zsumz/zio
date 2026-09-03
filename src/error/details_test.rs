@@ -88,6 +88,7 @@ fn top_level_accessors_expose_embedded_diagnostics() {
     assert_eq!(io.operation(), Some(Operation::Wait));
     assert_eq!(io.commit(), None);
     assert_eq!(io.registration_id(), None);
+    assert_eq!(io.registration(), None);
     assert_eq!(io.waker_key_conflict(), None);
     assert_eq!(io.capacity_limit(), None);
     assert_eq!(io.event_capacity_mismatch(), None);
@@ -117,11 +118,16 @@ fn top_level_accessors_expose_embedded_diagnostics() {
         Error::WrongPoller { registration }.registration_id(),
         Some(registration.id())
     );
+    assert_eq!(
+        Error::WrongPoller { registration }.registration(),
+        Some(registration)
+    );
     let id = RegistrationId::new(8);
     assert_eq!(
         Error::Stale { registration: id }.registration_id(),
         Some(id)
     );
+    assert_eq!(Error::Stale { registration: id }.registration(), None);
     assert_eq!(
         Error::Uncertain { registration: id }.registration_id(),
         Some(id)

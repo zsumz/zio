@@ -61,7 +61,7 @@ fn errors_return_registration_handles() {
     assert_error_ref::<DeleteError>();
     let _ = RegisterError::registration as fn(&RegisterError) -> Option<Registration>;
     let _ = DeleteError::registration as fn(&DeleteError) -> Registration;
-    let _ = rejected_registration as fn(&Error) -> Option<Registration>;
+    let _ = Error::registration as fn(&Error) -> Option<Registration>;
 }
 
 #[test]
@@ -198,13 +198,6 @@ fn error_class(error: &Error) -> &'static str {
     match error {
         Error::Invariant => "contract",
         _ => "other",
-    }
-}
-
-fn rejected_registration(error: &Error) -> Option<Registration> {
-    match error {
-        Error::WrongPoller { registration } => Some(*registration),
-        _ => None,
     }
 }
 

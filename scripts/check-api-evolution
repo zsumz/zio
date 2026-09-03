@@ -55,6 +55,7 @@ printf '%s\n' \
   '    let _ = Error::operation as fn(&Error) -> Option<Operation>;' \
   '    let _ = Error::commit as fn(&Error) -> Option<CommitStatus>;' \
   '    let _ = Error::registration_id as fn(&Error) -> Option<zio::RegistrationId>;' \
+  '    let _ = Error::registration as fn(&Error) -> Option<Registration>;' \
   '    let _ = Error::waker_key_conflict as fn(&Error) -> Option<(Key, Key)>;' \
   '    let _ = Error::capacity_limit as fn(&Error) -> Option<usize>;' \
   '    let _ = Error::event_capacity_mismatch as fn(&Error) -> Option<(usize, usize)>;' \
@@ -84,7 +85,6 @@ printf '%s\n' \
   '    assert_error_ref::<RegisterError>();' \
   '    assert_error_ref::<DeleteError>();' \
   '    let _ = MutationError::into_parts as fn(MutationError) -> (Operation, CommitStatus, std::io::Error);' \
-  '    let _ = rejected_registration as fn(&Error) -> Option<Registration>;' \
   '    assert_ordered::<Registration>();' \
   '    let _ = RegistrationId::get as fn(RegistrationId) -> u64;' \
   '    assert_from::<u64, RegistrationId>();' \
@@ -165,13 +165,6 @@ printf '%s\n' \
   '    match error {' \
   '        Error::Invariant => 1,' \
   '        _ => 0,' \
-  '    }' \
-  '}' \
-  '' \
-  'fn rejected_registration(error: &Error) -> Option<Registration> {' \
-  '    match error {' \
-  '        Error::WrongPoller { registration } => Some(*registration),' \
-  '        _ => None,' \
   '    }' \
   '}' \
   '' \

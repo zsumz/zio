@@ -2,7 +2,7 @@
 
 use std::io;
 
-use crate::{Key, RegistrationId};
+use crate::{Key, Registration, RegistrationId};
 
 use super::{CommitStatus, Error, Operation};
 
@@ -30,6 +30,14 @@ impl Error {
         match self {
             Self::WrongPoller { registration } => Some(registration.id()),
             Self::Stale { registration } | Self::Uncertain { registration } => Some(*registration),
+            _ => None,
+        }
+    }
+
+    /// Returns the exact rejected handle for a wrong-poller failure.
+    pub const fn registration(&self) -> Option<Registration> {
+        match self {
+            Self::WrongPoller { registration } => Some(*registration),
             _ => None,
         }
     }
