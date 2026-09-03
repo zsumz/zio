@@ -26,8 +26,7 @@ impl RegistrationTable {
         if self.slots.len() < self.limit.get() {
             let slot_index = self.slots.len();
             let free_index = u32::try_from(slot_index).map_err(|_| Error::Invariant)?;
-            let id =
-                encode(free_index, NonZeroU32::MIN).ok_or(Error::RegistrationSpaceExhausted)?;
+            let id = encode(free_index, NonZeroU32::MIN).ok_or(Error::Invariant)?;
             let Self {
                 slots,
                 free_head,
@@ -46,7 +45,11 @@ impl RegistrationTable {
             });
         }
         if self.exhausted == self.limit.get() {
-            Err(Error::RegistrationSpaceExhausted)
+            Err(Error::Capacity {
+                kind: CapacityKind::Registration,
+                limit: self.limit.get(),
+                reason: CapacityReason::GenerationExhausted,
+            })
         } else {
             Err(Error::Capacity {
                 kind: CapacityKind::Registration,
@@ -76,7 +79,7 @@ impl RegistrationTable {
         }
         let next_generation = slot.generation.checked_add(1).ok_or(Error::Invariant)?;
         let generation = NonZeroU32::new(next_generation).ok_or(Error::Invariant)?;
-        let id = encode(free_index, generation).ok_or(Error::RegistrationSpaceExhausted)?;
+        let id = encode(free_index, generation).ok_or(Error::Invariant)?;
         let next_free = slot.next_free;
         Ok(ReusedPermit {
             slot,

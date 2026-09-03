@@ -43,7 +43,8 @@ including one in uncertain backend state.
 borrows the same set without allocating. Both have unspecified order.
 `RegistrationInfo::descriptor_ownership` reports who owns the retained descriptor.
 Full means no slot is reservable. Remaining capacity excludes live and
-generation-exhausted slots.
+generation-exhausted slots. `CapacityReason::GenerationExhausted` means only a
+new poller can restore registration capacity.
 
 `Poll::set_key` changes only future resource-event routing and does no backend work.
 `Poll::modify_with_key` settles key, interest, and mode under one commit outcome.

@@ -24,6 +24,8 @@ pub enum CapacityReason {
     StorageUnavailable,
     /// The configured capacity exceeds a backend representation limit.
     BackendLimit,
+    /// Every configured slot exhausted its registration generations.
+    GenerationExhausted,
 }
 
 impl fmt::Display for CapacityKind {
@@ -40,6 +42,7 @@ impl fmt::Display for CapacityReason {
         formatter.write_str(match self {
             Self::Zero => "must be nonzero",
             Self::Exhausted => "is exhausted",
+            Self::GenerationExhausted => "has no reusable generations",
             Self::StorageUnavailable => "could not be reserved",
             Self::BackendLimit => "exceeds the backend limit",
         })

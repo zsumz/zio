@@ -198,7 +198,11 @@ fn permanent_exhaustion_is_distinct_from_live_capacity() -> Result<(), Box<dyn S
     table.retire(second)?;
     assert!(matches!(
         reserve(&mut table, &source, Key::new(7)),
-        Err(Error::RegistrationSpaceExhausted)
+        Err(Error::Capacity {
+            kind: crate::CapacityKind::Registration,
+            limit: 2,
+            reason: crate::CapacityReason::GenerationExhausted,
+        })
     ));
     assert_eq!(table.exhausted, 2);
     assert_eq!(table.remaining(), 0);

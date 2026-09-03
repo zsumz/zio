@@ -41,6 +41,10 @@ fn capacity_diagnostics_are_open() {
         capacity_reason_class(CapacityReason::StorageUnavailable),
         "storage"
     );
+    assert_eq!(
+        capacity_reason_class(CapacityReason::GenerationExhausted),
+        "generation-exhausted"
+    );
 }
 
 #[test]

@@ -38,6 +38,7 @@ pub(super) fn capacity_reason_class(reason: CapacityReason) -> &'static str {
         CapacityReason::Zero => "zero",
         CapacityReason::BackendLimit => "backend-limit",
         CapacityReason::Exhausted => "exhausted",
+        CapacityReason::GenerationExhausted => "generation-exhausted",
         CapacityReason::StorageUnavailable => "storage",
         _ => "other",
     }

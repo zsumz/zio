@@ -141,8 +141,6 @@ pub enum Error {
         /// Why the capacity was unavailable.
         reason: CapacityReason,
     },
-    /// Every registration generation in the fixed table is exhausted.
-    RegistrationSpaceExhausted,
     /// The supplied event destination cannot hold a complete batch.
     EventsTooSmall {
         /// Required logical capacity.
@@ -195,9 +193,6 @@ impl fmt::Display for Error {
                 reason,
             } => {
                 write!(formatter, "{kind} capacity {limit} {reason}")
-            }
-            Self::RegistrationSpaceExhausted => {
-                formatter.write_str("registration generation space is exhausted")
             }
             Self::EventsTooSmall { required, actual } => write!(
                 formatter,

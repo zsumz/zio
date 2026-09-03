@@ -31,6 +31,10 @@ fn diagnostics_use_plain_display_names() {
     );
     assert_eq!(CapacityReason::Exhausted.to_string(), "is exhausted");
     assert_eq!(
+        CapacityReason::GenerationExhausted.to_string(),
+        "has no reusable generations"
+    );
+    assert_eq!(
         CapacityReason::StorageUnavailable.to_string(),
         "could not be reserved"
     );
@@ -93,6 +97,15 @@ fn diagnostics_use_plain_display_names() {
         }
         .to_string(),
         "event capacity 0 must be nonzero"
+    );
+    assert_eq!(
+        Error::Capacity {
+            kind: CapacityKind::Registration,
+            limit: 2,
+            reason: CapacityReason::GenerationExhausted,
+        }
+        .to_string(),
+        "registration capacity 2 has no reusable generations"
     );
 }
 

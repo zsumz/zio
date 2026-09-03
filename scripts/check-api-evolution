@@ -261,8 +261,9 @@ printf '%s\n' \
   '    match reason {' \
   '        CapacityReason::Zero => 0,' \
   '        CapacityReason::Exhausted => 1,' \
-  '        CapacityReason::StorageUnavailable => 2,' \
-  '        _ => 3,' \
+  '        CapacityReason::GenerationExhausted => 2,' \
+  '        CapacityReason::StorageUnavailable => 3,' \
+  '        _ => 4,' \
   '    }' \
   '}' \
   '' \
@@ -342,10 +343,9 @@ printf '%s\n' \
   '        Error::Stale { .. } => 5,' \
   '        Error::Uncertain { .. } => 6,' \
   '        Error::Capacity { .. } => 7,' \
-  '        Error::RegistrationSpaceExhausted => 8,' \
-  '        Error::EventsTooSmall { .. } => 9,' \
-  '        Error::Invariant => 10,' \
-  '        Error::UnsupportedPlatform => 11,' \
+  '        Error::EventsTooSmall { .. } => 8,' \
+  '        Error::Invariant => 9,' \
+  '        Error::UnsupportedPlatform => 10,' \
   '    }' \
   '}' \
   > "$consumer_dir/examples/error-without-wildcard.rs"
@@ -398,7 +398,9 @@ printf '%s\n' \
   '    match reason {' \
   '        CapacityReason::Zero => 0,' \
   '        CapacityReason::Exhausted => 1,' \
-  '        CapacityReason::StorageUnavailable => 2,' \
+  '        CapacityReason::GenerationExhausted => 2,' \
+  '        CapacityReason::StorageUnavailable => 3,' \
+  '        CapacityReason::BackendLimit => 4,' \
   '    }' \
   '}' \
   > "$consumer_dir/examples/capacity-reason-without-wildcard.rs"
