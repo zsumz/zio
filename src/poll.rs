@@ -40,6 +40,11 @@ impl Waker {
         self.key
     }
 
+    /// Returns whether both capabilities produce the same keyed observation.
+    pub fn will_wake(&self, other: &Self) -> bool {
+        self.key == other.key && self.wake.same_target(&other.wake)
+    }
+
     /// Makes the poller's configured wake key observable.
     ///
     /// Multiple triggers may coalesce into one wake event. Wake observations

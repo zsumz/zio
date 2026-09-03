@@ -187,6 +187,7 @@ A `Poll` is movable between threads. A `Waker` is `Send + Sync`.
 A poller binds its wake source to one key. Same-key requests and clones share
 it, and each `Waker` reports that key. A conflicting key is rejected without
 replacing the original. `Poll::waker_key` reports the current binding.
+`Waker::will_wake` compares keyed poller destinations.
 
 Triggers may coalesce. One observation consumes the pending notification, and a
 later trigger remains observable. Wake and resource events share the fixed event

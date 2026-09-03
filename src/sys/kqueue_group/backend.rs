@@ -105,6 +105,10 @@ pub(crate) struct Wake {
 }
 
 impl Wake {
+    pub(crate) fn same_target(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.queue, &other.queue)
+    }
+
     pub(crate) fn wake(&self) -> io::Result<()> {
         let mut changes = ChangeList::new();
         changes

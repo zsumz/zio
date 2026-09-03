@@ -79,3 +79,20 @@ fn debug_output_is_backend_neutral() -> Result<(), crate::Error> {
     assert_eq!(format!("{waker:?}"), "Waker { key: Key(7), .. }");
     Ok(())
 }
+
+#[test]
+fn waker_identity_tracks_the_keyed_poller_target() -> Result<(), crate::Error> {
+    let key = Key::new(8);
+    let mut first_poll = Poll::with_capacity(1, 1)?;
+    let mut second_poll = Poll::with_capacity(1, 1)?;
+    let first = first_poll.waker(key)?;
+    let clone = first.clone();
+    let reacquired = first_poll.waker(key)?;
+    let distinct = second_poll.waker(key)?;
+
+    assert!(first.will_wake(&clone));
+    assert!(first.will_wake(&reacquired));
+    assert!(clone.will_wake(&first));
+    assert!(!first.will_wake(&distinct));
+    Ok(())
+}

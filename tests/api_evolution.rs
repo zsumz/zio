@@ -157,6 +157,7 @@ fn registration_ids_support_diagnostic_interop() {
 #[test]
 fn wakers_expose_keys_and_cross_thread_traits() {
     let _ = Waker::key as fn(&Waker) -> Key;
+    let _ = Waker::will_wake as fn(&Waker, &Waker) -> bool;
     let _ = Poll::waker_key as fn(&Poll) -> Option<Key>;
     assert_send::<Poll>();
     assert_send_sync::<Waker>();

@@ -38,4 +38,24 @@ impl Wake {
             self.unsupported.wake()
         }
     }
+
+    pub(crate) fn same_target(&self, other: &Self) -> bool {
+        #[cfg(target_os = "linux")]
+        {
+            std::sync::Arc::ptr_eq(&self.linux, &other.linux)
+        }
+        #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
+        {
+            self.kqueue.same_target(&other.kqueue)
+        }
+        #[cfg(not(any(
+            target_os = "linux",
+            target_os = "macos",
+            target_os = "freebsd",
+            target_os = "netbsd"
+        )))]
+        {
+            std::sync::Arc::ptr_eq(&self.unsupported, &other.unsupported)
+        }
+    }
 }
