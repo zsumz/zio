@@ -20,7 +20,6 @@ use super::{CommitStatus, Operation};
 pub struct RecoveryOutcome {
     registration: Registration,
     commit: CommitStatus,
-    state: RegistrationState,
 }
 
 impl RecoveryOutcome {
@@ -29,19 +28,9 @@ impl RecoveryOutcome {
         reason = "only kqueue targets construct wait-time recovery outcomes"
     )]
     pub(crate) const fn new(registration: Registration, commit: CommitStatus) -> Self {
-        let state = match commit {
-            CommitStatus::Applied => RegistrationState::Registered {
-                arm: ArmState::Disarmed,
-            },
-            CommitStatus::NotApplied => RegistrationState::Registered {
-                arm: ArmState::Armed,
-            },
-            CommitStatus::Unknown => RegistrationState::Uncertain,
-        };
         Self {
             registration,
             commit,
-            state,
         }
     }
 
@@ -57,7 +46,15 @@ impl RecoveryOutcome {
 
     /// Returns the state established by this recovery attempt.
     pub const fn state(&self) -> RegistrationState {
-        self.state
+        match self.commit {
+            CommitStatus::Applied => RegistrationState::Registered {
+                arm: ArmState::Disarmed,
+            },
+            CommitStatus::NotApplied => RegistrationState::Registered {
+                arm: ArmState::Armed,
+            },
+            CommitStatus::Unknown => RegistrationState::Uncertain,
+        }
     }
 }
 
