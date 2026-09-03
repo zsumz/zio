@@ -29,7 +29,7 @@ registration handle.
 handle-bearing failure retains it; every other failure closes it.
 `Poll::registration_fd` safely borrows any retained resource descriptor,
 including one in uncertain backend state.
-`Poll::registrations` returns a bounded owned snapshot for audit or cleanup.
+`Poll::registrations` returns a bounded snapshot with unspecified order.
 `RegistrationInfo::descriptor_ownership` reports who owns the retained descriptor.
 Remaining capacity excludes live and generation-exhausted slots.
 
@@ -62,7 +62,7 @@ backend registration. Dropping any or all copies does not delete it. Retain a
 copy outside cancellable work when early cleanup matters.
 
 Ordering supports ordered containers; it does not express registration age.
-Registration IDs expose a poller-local numeric value for diagnostics.
+Registration IDs expose opaque poller-local numeric values for diagnostics.
 
 Successful deletion retires the generation and makes every copy stale. An
 `Applied` delete failure does the same; `NotApplied` preserves every copy's

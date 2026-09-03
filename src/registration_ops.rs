@@ -131,7 +131,7 @@ impl Poll {
     /// Returns an owned snapshot of every retained registration handle.
     ///
     /// The snapshot includes uncertain registrations and is bounded by
-    /// [`Self::registration_capacity`].
+    /// [`Self::registration_capacity`]. Its order is unspecified.
     pub fn registrations(&self) -> Result<Vec<Registration>, Error> {
         registrations(self.owner.current(), &self.registrations)
     }

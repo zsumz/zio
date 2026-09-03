@@ -11,8 +11,8 @@ static NEXT_POLL_ID: AtomicU64 = AtomicU64::new(1);
 
 /// Poller-local identity for one exact registration generation.
 ///
-/// IDs from different pollers may compare equal. Use [`Registration`] when
-/// poller identity or mutation authority matters.
+/// IDs from different pollers may compare equal. Numeric encoding and ordering
+/// are opaque. Use [`Registration`] when poller authority matters.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct RegistrationId(u64);
@@ -22,7 +22,7 @@ impl RegistrationId {
         Self(raw)
     }
 
-    /// Returns the poller-local numeric identity.
+    /// Returns the opaque poller-local numeric identity.
     pub const fn get(self) -> u64 {
         self.0
     }
