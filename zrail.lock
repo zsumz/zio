@@ -216,7 +216,7 @@ sha256 = "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
 
 [[gate.input]]
 path = "README.md"
-sha256 = "478db648689bfc1d27c9b4f658ff83d31bb0b66d9aff0f8fa9767a5182c6538a"
+sha256 = "1a50c2de88083d858f8ba6aa2ca2862b1fc99fac24bdc1a5c2e4441b12694d9d"
 
 [[gate.input]]
 path = "clippy.toml"
@@ -535,7 +535,7 @@ sha256 = "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
 
 [[gate.input]]
 path = "README.md"
-sha256 = "478db648689bfc1d27c9b4f658ff83d31bb0b66d9aff0f8fa9767a5182c6538a"
+sha256 = "1a50c2de88083d858f8ba6aa2ca2862b1fc99fac24bdc1a5c2e4441b12694d9d"
 
 [[gate.input]]
 path = "docs/contracts.md"

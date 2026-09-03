@@ -57,7 +57,7 @@ report may allocate one bounded snapshot.
 - Unsafe borrowing skips duplication and remains caller-owned.
 - Level delivery repeats; one-shot delivery requires explicit rearming.
 - Readiness is advisory. Nonblocking I/O remains the source of truth.
-- Wake signals are bounded, coalesced, drainable, and observable.
+- Wake signals coalesce, drain on observation, and remain reusable.
 - Mutation and recovery failures report whether backend state changed.
 
 See [Contracts](docs/contracts.md) for the precise guarantees.
