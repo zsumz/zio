@@ -97,6 +97,8 @@ membership, not equality. For streams, consume positive-length reads until
 `WouldBlock`; a zero-length read confirms EOF. Readiness races are normal, so
 retry according to the operation result.
 
+Direct readiness predicates return `false` for wake events.
+
 One wait emits at most one event per registration and unions split native
 hints. Resource events retain first-observation order; a wake follows them.
 Separate registrations remain separate even when their keys match.

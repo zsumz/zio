@@ -3,6 +3,8 @@ use core::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Sub, SubAssign};
 
 use crate::Registration;
 
+#[path = "event_predicates.rs"]
+mod predicates;
 #[path = "readiness_debug.rs"]
 mod readiness_debug;
 

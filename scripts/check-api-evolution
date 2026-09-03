@@ -52,6 +52,13 @@ printf '%s\n' \
   '    let _ = Error::commit as fn(&Error) -> Option<CommitStatus>;' \
   '    let _ = Error::io_error as fn(&Error) -> Option<&std::io::Error>;' \
   '    let _ = classify_event as fn(Event) -> u8;' \
+  '    let _ = Event::is_resource as fn(Event) -> bool;' \
+  '    let _ = Event::is_wake as fn(Event) -> bool;' \
+  '    let _ = Event::is_readable as fn(Event) -> bool;' \
+  '    let _ = Event::is_writable as fn(Event) -> bool;' \
+  '    let _ = Event::is_read_closed as fn(Event) -> bool;' \
+  '    let _ = Event::is_write_closed as fn(Event) -> bool;' \
+  '    let _ = Event::is_error as fn(Event) -> bool;' \
   '    assert_eq!(classify_commit(CommitStatus::Unknown), 2);' \
   '    assert_eq!(classify_mode(Mode::OneShot), 1);' \
   '    assert_eq!(classify_wait(Wait::Forever), 2);' \

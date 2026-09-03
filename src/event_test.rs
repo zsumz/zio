@@ -1,6 +1,7 @@
 //! Event representation regressions.
 
-use super::{Event, Readiness};
+use super::{Event, Key, Readiness};
+use crate::Registration;
 
 #[cfg(target_pointer_width = "64")]
 #[test]
@@ -47,4 +48,30 @@ fn readiness_debug_uses_symbolic_flag_names() {
         ),
         "READABLE | READ_CLOSED | ERROR"
     );
+}
+
+#[test]
+fn event_predicates_distinguish_resources_from_wakes() {
+    const RESOURCE: Event = Event::Resource {
+        registration: Registration::test(1),
+        key: Key::new(2),
+        readiness: Readiness::READABLE.union(Readiness::WRITE_CLOSED),
+    };
+    const WAKE: Event = Event::Wake { key: Key::new(3) };
+
+    assert!(RESOURCE.is_resource());
+    assert!(!RESOURCE.is_wake());
+    assert!(RESOURCE.is_readable());
+    assert!(!RESOURCE.is_writable());
+    assert!(!RESOURCE.is_read_closed());
+    assert!(RESOURCE.is_write_closed());
+    assert!(!RESOURCE.is_error());
+
+    assert!(!WAKE.is_resource());
+    assert!(WAKE.is_wake());
+    assert!(!WAKE.is_readable());
+    assert!(!WAKE.is_writable());
+    assert!(!WAKE.is_read_closed());
+    assert!(!WAKE.is_write_closed());
+    assert!(!WAKE.is_error());
 }

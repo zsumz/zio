@@ -125,6 +125,17 @@ fn event_batches_support_standard_iteration() {
     let _ = assert_owned_event_iterator as fn(Events);
 }
 
+#[test]
+fn events_expose_direct_classification_and_readiness() {
+    let _ = Event::is_resource as fn(Event) -> bool;
+    let _ = Event::is_wake as fn(Event) -> bool;
+    let _ = Event::is_readable as fn(Event) -> bool;
+    let _ = Event::is_writable as fn(Event) -> bool;
+    let _ = Event::is_read_closed as fn(Event) -> bool;
+    let _ = Event::is_write_closed as fn(Event) -> bool;
+    let _ = Event::is_error as fn(Event) -> bool;
+}
+
 fn assert_event_slice<T: AsRef<[Event]>>() {}
 
 fn assert_ordered<T: Ord>() {}
