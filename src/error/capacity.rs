@@ -18,7 +18,7 @@ pub enum CapacityKind {
 pub enum CapacityReason {
     /// The configured capacity was zero.
     Zero,
-    /// Every configured slot was occupied.
+    /// No configured slot is currently reservable.
     Exhausted,
     /// Rust could not reserve the requested storage.
     StorageUnavailable,
