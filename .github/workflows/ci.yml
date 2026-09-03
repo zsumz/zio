@@ -176,15 +176,20 @@ jobs:
       - name: Compile the explicit unsupported backend on the MSRV
         env:
           RUSTFLAGS: -Dwarnings
-        run: >-
-          cargo +1.88.0 check --target x86_64-unknown-illumos
-          --workspace --all-targets --all-features --locked --offline
+        run: |
+          cargo +1.88.0 check --target x86_64-unknown-illumos \
+            --package zio --lib --no-default-features --locked --offline
+          cargo +1.88.0 check --target x86_64-unknown-illumos \
+            --workspace --all-targets --all-features --locked --offline
 
       - name: Lint the explicit unsupported backend
-        run: >-
-          cargo +1.97.1 clippy --target x86_64-unknown-illumos
-          --workspace --all-targets --all-features
-          --locked --offline -- -D warnings
+        run: |
+          cargo +1.97.1 clippy --target x86_64-unknown-illumos \
+            --package zio --lib --no-default-features \
+            --locked --offline -- -D warnings
+          cargo +1.97.1 clippy --target x86_64-unknown-illumos \
+            --workspace --all-targets --all-features \
+            --locked --offline -- -D warnings
 
   bsd-native-platform:
     name: ${{ matrix.name }} native tests
