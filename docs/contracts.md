@@ -77,6 +77,9 @@ prior state; `Unknown` makes every copy uncertain and allows a delete retry.
 Stale and wrong-poller copies are rejected before backend work and cannot affect
 a reused slot.
 
+`Poll::delete_all` snapshots retained handles, then stops at the first failure.
+Earlier deletions may have succeeded; later snapshot entries are untouched.
+
 `Applied` and `Unknown` register failures can carry an installed or uncertain
 handle. Inspect and retain it before propagating or consuming the error.
 

@@ -16,7 +16,7 @@ use std::{fmt, io};
 use crate::{Key, Registration, RegistrationId};
 
 pub use capacity::{CapacityKind, CapacityReason};
-pub use details::{DeleteError, MutationError, RegisterError};
+pub use details::{DeleteAllError, DeleteError, MutationError, RegisterError};
 pub use recovery::{RecoveryFailure, RecoveryOutcome};
 pub use register_owned::RegisterOwnedError;
 

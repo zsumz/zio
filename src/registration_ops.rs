@@ -3,8 +3,8 @@
 use std::os::fd::{AsFd, BorrowedFd, OwnedFd};
 
 use crate::{
-    DeleteError, Error, Interest, Key, Mode, Poll, RegisterError, RegisterOwnedError, Registration,
-    RegistrationInfo, RegistrationState,
+    DeleteAllError, DeleteError, Error, Interest, Key, Mode, Poll, RegisterError,
+    RegisterOwnedError, Registration, RegistrationInfo, RegistrationState,
     mutation::{
         MutationSession, registration_fd, registration_info, registration_state, registrations,
         set_registration_key,
@@ -100,6 +100,19 @@ impl Poll {
     #[inline]
     pub fn delete(&mut self, registration: Registration) -> Result<(), DeleteError> {
         self.mutations().delete(registration)
+    }
+
+    /// Deletes retained registrations until one deletion fails.
+    ///
+    /// A bounded snapshot is taken before deletion begins. On failure, earlier
+    /// deletions may have succeeded and later snapshot entries are untouched.
+    pub fn delete_all(&mut self) -> Result<(), DeleteAllError> {
+        let registrations = self.registrations().map_err(DeleteAllError::snapshot)?;
+        for registration in registrations {
+            self.delete(registration)
+                .map_err(DeleteAllError::deletion)?;
+        }
+        Ok(())
     }
 
     /// Returns authoritative state for a handle owned by this poller.

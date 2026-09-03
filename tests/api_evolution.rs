@@ -1,10 +1,10 @@
 //! Downstream matching contracts for open diagnostics and closed domains.
 
 use zio::{
-    ArmState, CapacityKind, CapacityReason, CommitStatus, DeleteError, DescriptorOwnership, Error,
-    Event, Events, Key, Mode, MutationError, Operation, Poll, Readiness, RecoveryFailure,
-    RecoveryOutcome, RegisterError, RegisterOwnedError, Registration, RegistrationId,
-    RegistrationInfo, RegistrationState, Wait, WaitReport, Waker,
+    ArmState, CapacityKind, CapacityReason, CommitStatus, DeleteAllError, DeleteError,
+    DescriptorOwnership, Error, Event, Events, Key, Mode, MutationError, Operation, Poll,
+    Readiness, RecoveryFailure, RecoveryOutcome, RegisterError, RegisterOwnedError, Registration,
+    RegistrationId, RegistrationInfo, RegistrationState, Wait, WaitReport, Waker,
 };
 
 #[path = "api_evolution/support.rs"]
@@ -90,11 +90,13 @@ fn errors_return_registration_handles() {
     assert_error_ref::<RegisterError>();
     assert_error_ref::<RegisterOwnedError>();
     assert_error_ref::<DeleteError>();
+    assert_error_ref::<DeleteAllError>();
     let _ = RegisterError::registration as fn(&RegisterError) -> Option<Registration>;
     let _ =
         RegisterOwnedError::descriptor as fn(&RegisterOwnedError) -> Option<&std::os::fd::OwnedFd>;
     let _ = RegisterOwnedError::registration as fn(&RegisterOwnedError) -> Option<Registration>;
     let _ = DeleteError::registration as fn(&DeleteError) -> Registration;
+    let _ = DeleteAllError::registration as fn(&DeleteAllError) -> Option<Registration>;
     let _ = Error::registration as fn(&Error) -> Option<Registration>;
 }
 
@@ -105,6 +107,7 @@ fn public_errors_remain_thread_portable() {
     assert_thread_error::<RegisterError>();
     assert_thread_error::<RegisterOwnedError>();
     assert_thread_error::<DeleteError>();
+    assert_thread_error::<DeleteAllError>();
     assert_thread_error::<RecoveryFailure>();
 }
 
@@ -160,6 +163,11 @@ fn mutation_errors_return_every_owned_detail() {
 #[test]
 fn poll_exposes_stored_configuration_rearm() {
     let _ = Poll::rearm as fn(&mut Poll, &Registration) -> Result<(), Error>;
+}
+
+#[test]
+fn poll_supports_fail_fast_bulk_deletion() {
+    let _ = Poll::delete_all as fn(&mut Poll) -> Result<(), DeleteAllError>;
 }
 
 #[test]

@@ -169,3 +169,63 @@ impl AsRef<Error> for DeleteError {
         self.error()
     }
 }
+
+/// Fail-fast bulk-deletion failure.
+///
+/// A registration identifies the first deletion that returned an error. No
+/// handle means snapshot construction failed before deletion began.
+#[derive(Debug)]
+pub struct DeleteAllError {
+    error: Error,
+    registration: Option<Registration>,
+}
+
+impl DeleteAllError {
+    pub(crate) const fn snapshot(error: Error) -> Self {
+        Self {
+            error,
+            registration: None,
+        }
+    }
+
+    pub(crate) fn deletion(error: DeleteError) -> Self {
+        let (error, registration) = error.into_parts();
+        Self {
+            error,
+            registration: Some(registration),
+        }
+    }
+
+    /// Returns the underlying failure.
+    pub const fn error(&self) -> &Error {
+        &self.error
+    }
+
+    /// Returns the exact registration whose deletion failed, when attempted.
+    pub const fn registration(&self) -> Option<Registration> {
+        self.registration
+    }
+
+    /// Splits this failure into its cause and optional failed registration.
+    pub fn into_parts(self) -> (Error, Option<Registration>) {
+        (self.error, self.registration)
+    }
+}
+
+impl fmt::Display for DeleteAllError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.error.fmt(formatter)
+    }
+}
+
+impl std::error::Error for DeleteAllError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&self.error)
+    }
+}
+
+impl AsRef<Error> for DeleteAllError {
+    fn as_ref(&self) -> &Error {
+        self.error()
+    }
+}

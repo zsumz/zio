@@ -125,6 +125,26 @@ fn registration_capacity_is_fixed() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
+fn delete_all_retires_every_registration() -> Result<(), Box<dyn std::error::Error>> {
+    let (first, _first_peer) = UnixStream::pair()?;
+    let (second, _second_peer) = UnixStream::pair()?;
+    let mut poll = Poll::with_capacity(2, 2)?;
+    let first = poll.register(&first, Key::new(1), Interest::READABLE, Mode::Level)?;
+    let second = poll.register(&second, Key::new(2), Interest::WRITABLE, Mode::OneShot)?;
+
+    poll.delete_all()?;
+
+    assert_eq!(poll.registration_count(), 0);
+    for registration in [first, second] {
+        assert!(matches!(
+            poll.registration_state(&registration),
+            Err(Error::Stale { registration: stale }) if stale == registration.id()
+        ));
+    }
+    Ok(())
+}
+
+#[test]
 fn poll_can_move_to_its_owning_thread() -> Result<(), Box<dyn std::error::Error>> {
     let (source, _peer) = UnixStream::pair()?;
     let poll = Poll::with_capacity(1, 1)?;

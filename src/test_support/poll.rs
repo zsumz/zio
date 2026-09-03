@@ -6,8 +6,8 @@ use std::{
 };
 
 use crate::{
-    CapacityKind, CapacityReason, CommitStatus, DeleteError, Error, Interest, Key, Mode,
-    RegisterError, RegisterOwnedError, Registration, RegistrationId, RegistrationInfo,
+    CapacityKind, CapacityReason, CommitStatus, DeleteAllError, DeleteError, Error, Interest, Key,
+    Mode, RegisterError, RegisterOwnedError, Registration, RegistrationId, RegistrationInfo,
     RegistrationState,
     mutation::{
         MutationSession, registration_fd, registration_info, registration_state, registrations,
@@ -123,6 +123,16 @@ impl ScriptedPoll {
     /// Deletes one registration through the next scripted deletion step.
     pub fn delete(&mut self, registration: Registration) -> Result<(), DeleteError> {
         self.mutations().delete(registration)
+    }
+
+    /// Deletes registrations through scripted steps until one fails.
+    pub fn delete_all(&mut self) -> Result<(), DeleteAllError> {
+        let registrations = self.registrations().map_err(DeleteAllError::snapshot)?;
+        for registration in registrations {
+            self.delete(registration)
+                .map_err(DeleteAllError::deletion)?;
+        }
+        Ok(())
     }
 
     /// Returns authoritative portable state for an owned registration.

@@ -65,7 +65,9 @@ mod wait_report;
 #[cfg(test)]
 mod wait_report_test;
 
-pub use error::{CapacityKind, CapacityReason, CommitStatus, DeleteError, Error, MutationError};
+pub use error::{
+    CapacityKind, CapacityReason, CommitStatus, DeleteAllError, DeleteError, Error, MutationError,
+};
 pub use error::{Operation, RecoveryFailure, RecoveryOutcome, RegisterError, RegisterOwnedError};
 pub use event::{Event, Key, Readiness};
 pub use events::Events;
