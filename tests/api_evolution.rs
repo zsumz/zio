@@ -8,7 +8,7 @@ use core::{
 use zio::{
     ArmState, CommitStatus, DeleteError, DescriptorOwnership, Error, Event, Events, Key, Mode,
     MutationError, Operation, Poll, Readiness, RecoveryOutcome, RegisterError, Registration,
-    RegistrationInfo, RegistrationState, Wait, Waker,
+    RegistrationInfo, RegistrationState, Wait, WaitReport, Waker,
 };
 
 #[test]
@@ -43,6 +43,11 @@ fn closed_delivery_and_state_domains_remain_exhaustive() {
 #[test]
 fn recovery_outcomes_return_registration_handles() {
     let _ = RecoveryOutcome::registration as fn(&RecoveryOutcome) -> Registration;
+}
+
+#[test]
+fn wait_reports_expose_completion() {
+    let _ = WaitReport::is_complete as fn(&WaitReport) -> bool;
 }
 
 #[test]

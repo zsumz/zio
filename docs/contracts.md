@@ -124,7 +124,8 @@ Each outcome carries the exact registration handle.
 `Poll::wait` returns `Ok(WaitReport)` after valid delivery. Process the retained
 resource and wake events first, then inspect `WaitReport::recovery`. A recovery
 failure owns every batch outcome, including successful peers, after the poller
-is reused. Returning `Err` means delivery failed and leaves `Events` empty.
+is reused. `WaitReport::is_complete` means no reconciliation is needed.
+Returning `Err` means delivery failed and leaves `Events` empty.
 
 ## Allocation contract
 

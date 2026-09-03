@@ -31,6 +31,11 @@ impl WaitReport {
         Self { recovery }
     }
 
+    /// Returns whether the delivered batch needs no recovery reconciliation.
+    pub const fn is_complete(&self) -> bool {
+        self.recovery.is_none()
+    }
+
     /// Borrows a post-delivery one-shot recovery failure, when present.
     pub const fn recovery(&self) -> Option<&RecoveryFailure> {
         self.recovery.as_ref()

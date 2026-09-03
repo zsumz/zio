@@ -8,6 +8,7 @@ use crate::{CommitStatus, Operation, RecoveryFailure, RecoveryOutcome, Registrat
 fn complete_report_contains_no_recovery() {
     let report = WaitReport::new(None);
 
+    assert!(report.is_complete());
     assert!(report.recovery().is_none());
     assert!(report.into_recovery().is_none());
 }
@@ -22,6 +23,7 @@ fn recovery_report_exposes_and_returns_its_owned_failure() -> Result<(), Box<dyn
         io::Error::from_raw_os_error(5),
     )));
 
+    assert!(!report.is_complete());
     let recovery = report
         .recovery()
         .ok_or_else(|| io::Error::other("missing recovery report"))?;
