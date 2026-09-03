@@ -1,6 +1,6 @@
 //! Event, readiness, key, and wait contracts.
 
-use zio::{Event, Events, Key, Readiness, Wait};
+use zio::{Error, Event, Events, Key, Readiness, Wait};
 
 use super::support::*;
 
@@ -24,21 +24,32 @@ fn flag_sets_support_standard_set_operators() {
 fn event_and_wait_values_are_hashable() {
     assert_hash::<Event>();
     assert_hash::<Wait>();
+    let _ = Wait::timeout as fn(Wait) -> Option<core::time::Duration>;
     assert_from::<Wait, core::time::Duration>();
     assert_from::<Wait, Option<core::time::Duration>>();
 }
 
 #[test]
 fn event_batches_support_standard_iteration() {
+    let _ = Events::with_capacity as fn(usize) -> Result<Events, Error>;
+    let _ = Events::capacity as fn(&Events) -> usize;
+    let _ = Events::len as fn(&Events) -> usize;
+    let _ = Events::is_empty as fn(&Events) -> bool;
     assert_slice::<Events, Event>();
+    let _ = Events::as_slice as fn(&Events) -> &[Event];
+    let _ = Events::get as fn(&Events, usize) -> Option<&Event>;
     let _ = Events::remaining_capacity as fn(&Events) -> usize;
     let _ = Events::is_full as fn(&Events) -> bool;
+    let _ = Events::clear as fn(&mut Events);
     let _ = assert_event_iterators as fn(&mut Events);
     let _ = assert_owned_event_iterator as fn(Events);
 }
 
 #[test]
 fn events_expose_direct_classification_and_readiness() {
+    let _ = Event::key as fn(Event) -> Key;
+    let _ = Event::registration as fn(Event) -> Option<zio::Registration>;
+    let _ = Event::readiness as fn(Event) -> Option<Readiness>;
     let _ = Event::is_resource as fn(Event) -> bool;
     let _ = Event::is_wake as fn(Event) -> bool;
     let _ = Event::is_readable as fn(Event) -> bool;

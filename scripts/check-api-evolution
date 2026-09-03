@@ -65,6 +65,9 @@ printf '%s\n' \
   '    let _ = Error::io_error as fn(&Error) -> Option<&std::io::Error>;' \
   '    let _ = Error::is_wait_interrupted as fn(&Error) -> bool;' \
   '    let _ = classify_event as fn(Event) -> u8;' \
+  '    let _ = Event::key as fn(Event) -> Key;' \
+  '    let _ = Event::registration as fn(Event) -> Option<Registration>;' \
+  '    let _ = Event::readiness as fn(Event) -> Option<zio::Readiness>;' \
   '    let _ = Event::is_resource as fn(Event) -> bool;' \
   '    let _ = Event::is_wake as fn(Event) -> bool;' \
   '    let _ = Event::is_readable as fn(Event) -> bool;' \
@@ -76,6 +79,7 @@ printf '%s\n' \
   '    assert_eq!(classify_mode(Mode::OneShot), 1);' \
   '    assert_eq!(classify_wait(Wait::Forever), 2);' \
   '    let _ = Wait::is_nonblocking as fn(Wait) -> bool;' \
+  '    let _ = Wait::timeout as fn(Wait) -> Option<std::time::Duration>;' \
   '    assert_eq!(classify_arm(ArmState::Disarmed), 1);' \
   '    assert_eq!(classify_state(RegistrationState::Uncertain), 2);' \
   '    assert_eq!(classify_ownership(DescriptorOwnership::Borrowed), 1);' \
@@ -195,8 +199,15 @@ printf '%s\n' \
   '    let _ = readiness;' \
   '    let _ = reverse_events as fn(&mut zio::Events);' \
   '    let _ = consume_events as fn(zio::Events);' \
+  '    let _ = Events::with_capacity as fn(usize) -> Result<Events, Error>;' \
+  '    let _ = Events::capacity as fn(&Events) -> usize;' \
+  '    let _ = Events::len as fn(&Events) -> usize;' \
+  '    let _ = Events::is_empty as fn(&Events) -> bool;' \
+  '    let _ = Events::as_slice as fn(&Events) -> &[Event];' \
+  '    let _ = Events::get as fn(&Events, usize) -> Option<&Event>;' \
   '    let _ = Events::remaining_capacity as fn(&Events) -> usize;' \
   '    let _ = Events::is_full as fn(&Events) -> bool;' \
+  '    let _ = Events::clear as fn(&mut Events);' \
   '}' \
   '' \
   'fn assert_ordered<T: Ord>() {}' \
