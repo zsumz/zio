@@ -33,7 +33,7 @@ impl PollBuilder {
         self
     }
 
-    /// Builds a poller from this configuration.
+    /// Validates both capacities and builds the poller.
     pub fn build(self) -> Result<Poll, Error> {
         Poll::with_capacity(self.event_capacity, self.registration_capacity)
     }
