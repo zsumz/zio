@@ -5,7 +5,7 @@ use std::os::fd::AsFd;
 use crate::{Interest, Key, Mode, Poll, RegisterError, Registration, mutation::MutationSession};
 
 impl Poll {
-    /// Registers one descriptor without duplicating or owning it.
+    /// Registers one descriptor with non-empty interest without duplicating or owning it.
     ///
     /// This expert tier follows [`Self::register`] semantics without a
     /// duplicate-descriptor syscall or ownership transfer.

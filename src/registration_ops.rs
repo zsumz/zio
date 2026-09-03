@@ -15,7 +15,7 @@ use crate::{
 };
 
 impl Poll {
-    /// Registers one descriptor after retaining an owned duplicate.
+    /// Registers one descriptor with non-empty interest, retaining an owned duplicate.
     ///
     /// Every successful call creates an independent registration and exact
     /// generation, including repeated calls for the same source or duplicated
@@ -42,7 +42,7 @@ impl Poll {
         self.mutations().register(source, key, interest, mode)
     }
 
-    /// Registers one descriptor by transferring ownership to the poller.
+    /// Registers one descriptor with non-empty interest by transferring ownership to the poller.
     ///
     /// This avoids descriptor duplication. A rejected or proven-not-applied
     /// call returns the original descriptor. Every other failure returns the
@@ -57,7 +57,7 @@ impl Poll {
         self.mutations().register_owned(source, key, interest, mode)
     }
 
-    /// Replaces interest and mode, rearming a one-shot registration.
+    /// Replaces non-empty interest and mode, rearming a one-shot registration.
     ///
     /// Outcome semantics:
     ///
@@ -76,7 +76,7 @@ impl Poll {
         self.mutations().modify(registration, interest, mode)
     }
 
-    /// Replaces key, interest, and mode, rearming a one-shot registration.
+    /// Replaces key, non-empty interest, and mode, rearming a one-shot registration.
     ///
     /// Successful and `Applied` outcomes commit all three values. `NotApplied`
     /// preserves them; `Unknown` preserves the snapshot and marks it uncertain.
