@@ -18,6 +18,21 @@ fn key_conversions_are_lossless() {
 }
 
 #[test]
+fn key_and_slab_index_round_trip() -> Result<(), core::num::TryFromIntError> {
+    let index = usize::MAX;
+    let key = Key::try_from(index)?;
+
+    assert_eq!(usize::try_from(key)?, index);
+    Ok(())
+}
+
+#[cfg(target_pointer_width = "32")]
+#[test]
+fn oversized_key_is_not_a_slab_index() {
+    assert!(usize::try_from(Key::new(u64::MAX)).is_err());
+}
+
+#[test]
 fn readiness_union_operators_match_membership() {
     let combined = Readiness::READABLE | Readiness::READ_CLOSED;
     assert!(combined.is_readable());

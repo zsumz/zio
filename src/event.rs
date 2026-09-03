@@ -1,5 +1,5 @@
 //! Caller keys and portable readiness observations.
-use core::fmt;
+use core::{fmt, num::TryFromIntError};
 
 use crate::Registration;
 
@@ -11,6 +11,8 @@ mod readiness_debug;
 mod readiness_ops;
 
 /// Caller-selected value delivered with an observed event.
+///
+/// Checked `usize` conversions support slab indices across pointer widths.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Key(u64);
 
@@ -38,6 +40,22 @@ impl From<u64> for Key {
 impl From<Key> for u64 {
     fn from(key: Key) -> Self {
         key.get()
+    }
+}
+
+impl TryFrom<usize> for Key {
+    type Error = TryFromIntError;
+
+    fn try_from(value: usize) -> Result<Self, Self::Error> {
+        u64::try_from(value).map(Self::new)
+    }
+}
+
+impl TryFrom<Key> for usize {
+    type Error = TryFromIntError;
+
+    fn try_from(key: Key) -> Result<Self, Self::Error> {
+        Self::try_from(key.get())
     }
 }
 

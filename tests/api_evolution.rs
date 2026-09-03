@@ -287,5 +287,7 @@ fn events_expose_direct_classification_and_readiness() {
 fn keys_support_lossless_standard_conversions() {
     assert_from::<Key, u64>();
     assert_from::<u64, Key>();
+    let _: Result<Key, core::num::TryFromIntError> = Key::try_from(0_usize);
+    let _: Result<usize, core::num::TryFromIntError> = usize::try_from(Key::ZERO);
     assert_display::<Key>();
 }
