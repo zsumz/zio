@@ -83,6 +83,8 @@ fn poll_snapshots_retained_registration_handles() {
 
 #[test]
 fn poll_exposes_capacity_and_retained_count() {
+    let _: usize = zio::DEFAULT_EVENT_CAPACITY;
+    let _: usize = zio::DEFAULT_REGISTRATION_CAPACITY;
     let _ = Poll::has_native_backend as fn() -> bool;
     let _ = Poll::builder as fn() -> PollBuilder;
     let _ = PollBuilder::new as fn() -> PollBuilder;

@@ -6,6 +6,20 @@ use super::support::*;
 
 #[test]
 fn flag_sets_support_standard_set_operators() {
+    let _: [zio::Interest; 4] = [
+        zio::Interest::EMPTY,
+        zio::Interest::READABLE,
+        zio::Interest::WRITABLE,
+        zio::Interest::ALL,
+    ];
+    let _: [Readiness; 6] = [
+        Readiness::EMPTY,
+        Readiness::READABLE,
+        Readiness::WRITABLE,
+        Readiness::READ_CLOSED,
+        Readiness::WRITE_CLOSED,
+        Readiness::ERROR,
+    ];
     let _ = zio::Interest::is_empty as fn(zio::Interest) -> bool;
     let _ = zio::Interest::contains as fn(zio::Interest, zio::Interest) -> bool;
     let _ = zio::Interest::intersects as fn(zio::Interest, zio::Interest) -> bool;
@@ -80,6 +94,8 @@ fn events_expose_direct_classification_and_readiness() {
 
 #[test]
 fn keys_support_lossless_standard_conversions() {
+    let _ = Key::new as fn(u64) -> Key;
+    let _ = Key::get as fn(Key) -> u64;
     assert_from::<Key, u64>();
     assert_from::<u64, Key>();
     let _: Result<Key, core::num::TryFromIntError> = Key::try_from(0_usize);

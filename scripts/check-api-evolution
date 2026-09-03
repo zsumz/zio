@@ -49,6 +49,8 @@ printf '%s\n' \
   '    assert_eq!(classify_error(&Error::Invariant), 1);' \
   '    assert_eq!(u64::from(Key::from(9_u64)), 9);' \
   '    assert_eq!(Key::new(9).to_string(), "9");' \
+  '    let _ = Key::new as fn(u64) -> Key;' \
+  '    let _ = Key::get as fn(Key) -> u64;' \
   '    assert_eq!(classify_operation(Operation::Wait), 1);' \
   '    assert_eq!(Operation::Wait.to_string(), "wait");' \
   '    assert_eq!(CommitStatus::Unknown.to_string(), "unknown");' \
@@ -135,6 +137,7 @@ printf '%s\n' \
   '    let _ = MutationError::commit as fn(&MutationError) -> CommitStatus;' \
   '    let _ = MutationError::source as fn(&MutationError) -> &std::io::Error;' \
   '    let _ = MutationError::into_parts as fn(MutationError) -> (Operation, CommitStatus, std::io::Error);' \
+  '    let _ = Registration::id as fn(&Registration) -> RegistrationId;' \
   '    assert_ordered::<Registration>();' \
   '    assert_display::<RegistrationId>();' \
   '    assert_hash::<Event>();' \
@@ -152,6 +155,8 @@ printf '%s\n' \
   '    assert_eq!(classify_capacity_reason(CapacityReason::Zero), 0);' \
   '    assert_send::<Poll>();' \
   '    assert_send_sync::<Waker>();' \
+  '    let _: usize = zio::DEFAULT_EVENT_CAPACITY;' \
+  '    let _: usize = zio::DEFAULT_REGISTRATION_CAPACITY;' \
   '    let _ = Poll::has_native_backend as fn() -> bool;' \
   '    let _ = Poll::new as fn() -> Result<Poll, Error>;' \
   '    let _ = Poll::with_capacity as fn(usize, usize) -> Result<Poll, Error>;' \
@@ -196,7 +201,7 @@ printf '%s\n' \
   '    let _ = Poll::wait as fn(&mut Poll, &mut Events, Wait) -> Result<WaitReport, Error>;' \
   '    let _ = Poll::wait_until as fn(&mut Poll, &mut Events, std::time::Instant) -> Result<WaitReport, Error>;' \
   '    let mut interest = zio::Interest::READABLE;' \
-  '    let _ = zio::Interest::ALL;' \
+  '    let _: [zio::Interest; 4] = [zio::Interest::EMPTY, zio::Interest::READABLE, zio::Interest::WRITABLE, zio::Interest::ALL];' \
   '    let _ = zio::Interest::is_empty as fn(zio::Interest) -> bool;' \
   '    let _ = zio::Interest::contains as fn(zio::Interest, zio::Interest) -> bool;' \
   '    let _ = zio::Interest::intersects as fn(zio::Interest, zio::Interest) -> bool;' \
@@ -214,7 +219,7 @@ printf '%s\n' \
   '    interest -= zio::Interest::WRITABLE;' \
   '    let _ = interest;' \
   '    let mut readiness = zio::Readiness::READABLE | zio::Readiness::READ_CLOSED;' \
-  '    let _ = zio::Readiness::ALL;' \
+  '    let _: [zio::Readiness; 6] = [zio::Readiness::EMPTY, zio::Readiness::READABLE, zio::Readiness::WRITABLE, zio::Readiness::READ_CLOSED, zio::Readiness::WRITE_CLOSED, zio::Readiness::ERROR];' \
   '    let _ = zio::Readiness::is_empty as fn(zio::Readiness) -> bool;' \
   '    let _ = zio::Readiness::contains as fn(zio::Readiness, zio::Readiness) -> bool;' \
   '    let _ = zio::Readiness::intersects as fn(zio::Readiness, zio::Readiness) -> bool;' \
