@@ -270,10 +270,8 @@ printf '%s\n' \
   '        Operation::Delete => 5,' \
   '        Operation::Wait => 6,' \
   '        Operation::TriggerWake => 7,' \
-  '        Operation::AcknowledgeWake => 8,' \
-  '        Operation::Disarm => 9,' \
-  '        Operation::Recover => 10,' \
-  '        Operation::UnsupportedPlatform => 11,' \
+  '        Operation::Disarm => 8,' \
+  '        Operation::UnsupportedPlatform => 9,' \
   '    }' \
   '}' \
   > "$consumer_dir/examples/operation-without-wildcard.rs"

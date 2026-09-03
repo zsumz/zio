@@ -11,6 +11,8 @@ must include a fallback arm. `Event`, `CommitStatus`, `DescriptorOwnership`,
 domains; changing their cases is a breaking contract change. Event fields may
 grow; match with `..`.
 
+`Operation` names only failures a current backend can report.
+
 Use `Error` accessors for operation, commit status, rejected handles,
 registration IDs, wake-key conflicts, capacity details, and typed I/O errors.
 

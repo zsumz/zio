@@ -39,12 +39,8 @@ pub enum Operation {
     Wait,
     /// Trigger the configured wake source.
     TriggerWake,
-    /// Acknowledge an observed wake.
-    AcknowledgeWake,
     /// Disable a delivered one-shot registration.
     Disarm,
-    /// Restore state after a partial backend mutation.
-    Recover,
     /// Report that the current target has no backend.
     UnsupportedPlatform,
 }
@@ -60,9 +56,7 @@ impl fmt::Display for Operation {
             Self::Delete => "delete",
             Self::Wait => "wait",
             Self::TriggerWake => "trigger wake",
-            Self::AcknowledgeWake => "acknowledge wake",
             Self::Disarm => "disarm",
-            Self::Recover => "recover",
             Self::UnsupportedPlatform => "unsupported platform",
         })
     }
