@@ -63,16 +63,14 @@ impl RecoveryOutcome {
 
 /// A wait-time recovery failure with exact owned per-registration outcomes.
 ///
-/// Outcomes include every one-shot registration attempted by the failed
-/// recovery batch, in observation order. The source is the first native or
-/// receipt-protocol failure in submitted-change order.
+/// Outcomes cover every attempted one-shot registration in observation order.
+/// [`Self::source`] is the first native or receipt-protocol failure in submitted
+/// change order.
 ///
-/// Successful recovery does not create this report allocation. Each failed
-/// post-delivery recovery owns one `Vec` backing allocation containing at most
-/// the smaller of the poller's event and registration capacities. Retaining
-/// several reports retains one independent bounded allocation per failure and
-/// does not borrow the poller. Allocation exhaustion follows Rust's ordinary
-/// allocation-error policy.
+/// Each failure owns one `Vec` backing allocation, bounded by the smaller of the
+/// poller's event and registration capacities. Successful recovery creates no
+/// report allocation. Reports are independent, do not borrow the poller, and
+/// follow Rust's normal allocation-error policy.
 #[derive(Debug)]
 pub struct RecoveryFailure {
     operation: Operation,
