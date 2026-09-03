@@ -89,13 +89,12 @@ impl Poll {
     /// Deletes a registration and releases its retained descriptor state.
     ///
     /// Success retires the exact generation and makes every remaining handle
-    /// copy stale. Every failed deletion retains the exact handle through
-    /// [`DeleteError`]. A
-    /// [`CommitStatus::NotApplied`] failure preserves the prior authoritative
-    /// state for retry; an [`CommitStatus::Applied`] failure retires the state,
-    /// so every copy is stale; an [`CommitStatus::Unknown`] failure marks the
-    /// registration uncertain and permits an explicit delete retry from any
-    /// copy.
+    /// copy stale. Every failed deletion returns the attempted handle through
+    /// [`DeleteError`]. A [`CommitStatus::NotApplied`] failure preserves the
+    /// prior authoritative state for retry; an [`CommitStatus::Applied`]
+    /// failure retires the state, so every copy is stale; an
+    /// [`CommitStatus::Unknown`] failure marks the registration uncertain and
+    /// permits an explicit delete retry from any copy.
     ///
     /// [`CommitStatus::Applied`]: crate::CommitStatus::Applied
     /// [`CommitStatus::NotApplied`]: crate::CommitStatus::NotApplied

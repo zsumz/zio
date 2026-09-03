@@ -118,7 +118,7 @@ impl AsRef<Error> for RegisterError {
     }
 }
 
-/// Delete failure that retains the exact registration handle.
+/// Delete failure that returns the exact attempted registration handle.
 ///
 /// Every handle copy remains registered after a not-applied failure, is stale
 /// after an applied failure, and is uncertain after an unknown failure.
@@ -141,7 +141,7 @@ impl DeleteError {
         &self.error
     }
 
-    /// Returns the registration retained after failed deletion.
+    /// Returns the exact registration passed to the failed deletion.
     pub const fn registration(&self) -> Registration {
         self.registration
     }
