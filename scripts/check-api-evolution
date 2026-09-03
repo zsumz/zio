@@ -339,10 +339,11 @@ printf '%s\n' \
   '        Error::InvalidInterest => 4,' \
   '        Error::Stale { .. } => 5,' \
   '        Error::Uncertain { .. } => 6,' \
-  '        Error::Capacity { .. } => 7,' \
-  '        Error::EventsTooSmall { .. } => 8,' \
-  '        Error::Invariant => 9,' \
-  '        Error::UnsupportedPlatform => 10,' \
+  '        Error::DescriptorNotOwned { .. } => 7,' \
+  '        Error::Capacity { .. } => 8,' \
+  '        Error::EventsTooSmall { .. } => 9,' \
+  '        Error::Invariant => 10,' \
+  '        Error::UnsupportedPlatform => 11,' \
   '    }' \
   '}' \
   > "$consumer_dir/examples/error-without-wildcard.rs"

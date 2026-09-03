@@ -260,7 +260,7 @@ sha256 = "45e07033c8cd89ed400ee4e96ec608e338e89822233abd6e56c85040ece66520"
 
 [[gate.input]]
 path = "scripts/check-api-evolution"
-sha256 = "9310b52de51470cf1b1ffd5c9b8b24b7db97691b5fd094d9c165c443f33b95e2"
+sha256 = "0fc6989085e595f9b74fe33f3e2f9683b8f8fbd182d73466ba7a93393e05da41"
 
 [[gate.input]]
 path = "scripts/rehearse-release"
@@ -555,7 +555,7 @@ sha256 = "279d77167cec5426fa80f457cd066dc74a360fbe4e2816f4f3fa01487a918fdc"
 
 [[gate.input]]
 path = "scripts/check-api-evolution"
-sha256 = "9310b52de51470cf1b1ffd5c9b8b24b7db97691b5fd094d9c165c443f33b95e2"
+sha256 = "0fc6989085e595f9b74fe33f3e2f9683b8f8fbd182d73466ba7a93393e05da41"
 
 [[gate.input]]
 path = "scripts/rehearse-release"
