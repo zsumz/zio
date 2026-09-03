@@ -98,6 +98,11 @@ impl Poll {
         self.registrations.capacity()
     }
 
+    /// Returns the retained registration count, including uncertain entries.
+    pub const fn registration_count(&self) -> usize {
+        self.registrations.len()
+    }
+
     /// Returns a cloneable wake capability associated with `key`.
     ///
     /// The first successful call fixes the poller's wake key. Later calls with

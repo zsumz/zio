@@ -9,6 +9,8 @@ use crate::{
     RegistrationState,
 };
 
+#[path = "table_permit.rs"]
+mod permit;
 #[path = "table_reserve.rs"]
 mod reserve;
 #[path = "table_retire.rs"]
@@ -18,7 +20,7 @@ mod slot;
 
 use slot::{Entry, FREE_END, Slot};
 
-pub(crate) use reserve::Reservation;
+pub(crate) use permit::Reservation;
 
 /// Owner-local fixed slot table.
 #[derive(Debug)]
@@ -27,6 +29,7 @@ pub(crate) struct RegistrationTable {
     slots: Vec<Slot>,
     free_head: u32,
     exhausted: usize,
+    live: usize,
 }
 
 impl RegistrationTable {
@@ -43,11 +46,16 @@ impl RegistrationTable {
             slots,
             free_head: FREE_END,
             exhausted: 0,
+            live: 0,
         })
     }
 
     pub(crate) const fn capacity(&self) -> usize {
         self.limit.get()
+    }
+
+    pub(crate) const fn len(&self) -> usize {
+        self.live
     }
 
     pub(crate) fn binding(
@@ -174,6 +182,9 @@ impl RegistrationTable {
     }
 }
 
+#[cfg(test)]
+#[path = "table_count_test.rs"]
+mod count_tests;
 #[cfg(test)]
 #[path = "table_reserve_test.rs"]
 mod reserve_tests;

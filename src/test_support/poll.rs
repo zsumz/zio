@@ -139,6 +139,11 @@ impl ScriptedPoll {
         self.registrations.capacity()
     }
 
+    /// Returns the retained registration count, including uncertain entries.
+    pub const fn registration_count(&self) -> usize {
+        self.registrations.len()
+    }
+
     /// Establishes a delivered, disarmed one-shot state in both models.
     pub fn establish_disarmed(&mut self, registration: &Registration) -> Result<(), Error> {
         registration_state(self.owner.current(), &self.registrations, registration)?;

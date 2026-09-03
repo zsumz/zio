@@ -22,7 +22,7 @@ use crate::{
 
 use super::{
     RegistrationTable,
-    reserve::occupy,
+    permit::occupy,
     slot::{Entry, FREE_END},
 };
 

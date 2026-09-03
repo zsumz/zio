@@ -16,6 +16,7 @@ pub(super) struct SlotLease<'table> {
     slot: &'table mut Slot,
     free_head: &'table mut u32,
     exhausted: &'table mut usize,
+    live: &'table mut usize,
     free_index: u32,
 }
 
@@ -24,12 +25,14 @@ impl<'table> SlotLease<'table> {
         slot: &'table mut Slot,
         free_head: &'table mut u32,
         exhausted: &'table mut usize,
+        live: &'table mut usize,
         free_index: u32,
     ) -> Self {
         Self {
             slot,
             free_head,
             exhausted,
+            live,
             free_index,
         }
     }
@@ -54,6 +57,7 @@ impl<'table> SlotLease<'table> {
 
     #[inline]
     pub(super) fn retire(self) -> Result<(), Error> {
+        let live = self.live.checked_sub(1).ok_or(Error::Invariant)?;
         if self.slot.generation == MAX_GENERATION {
             let exhausted = self.exhausted.checked_add(1).ok_or(Error::Invariant)?;
             self.slot.entry = None;
@@ -64,6 +68,7 @@ impl<'table> SlotLease<'table> {
             self.slot.next_free = *self.free_head;
             *self.free_head = self.free_index;
         }
+        *self.live = live;
         Ok(())
     }
 
@@ -144,6 +149,7 @@ impl RegistrationTable {
             slots,
             free_head,
             exhausted,
+            live,
             ..
         } = self;
         let slot = slots
@@ -160,7 +166,7 @@ impl RegistrationTable {
             return Err(Error::Uncertain { registration: id });
         }
         Ok(PreparedRetire {
-            lease: SlotLease::new(slot, free_head, exhausted, free_index),
+            lease: SlotLease::new(slot, free_head, exhausted, live, free_index),
         })
     }
 }

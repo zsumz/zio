@@ -94,14 +94,18 @@ fn registration_capacity_is_fixed() -> Result<(), Box<dyn std::error::Error>> {
     let mut poll = Poll::with_capacity(4, 1)?;
     assert_eq!(poll.event_capacity(), 4);
     assert_eq!(poll.registration_capacity(), 1);
+    assert_eq!(poll.registration_count(), 0);
     let registration = poll.register(&first, Key::new(1), Interest::READABLE, Mode::Level)?;
+    assert_eq!(poll.registration_count(), 1);
 
     let result = poll.register(&second, Key::new(2), Interest::READABLE, Mode::Level);
     assert!(matches!(
         result,
         Err(error) if matches!(error.error(), Error::Capacity { limit: 1 })
     ));
+    assert_eq!(poll.registration_count(), 1);
 
     poll.delete(registration)?;
+    assert_eq!(poll.registration_count(), 0);
     Ok(())
 }

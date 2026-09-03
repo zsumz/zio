@@ -9,7 +9,7 @@ use super::{MutationOutcome, MutationStep, ScriptedPoll};
 #[test]
 fn uncertain_register_retains_requested_configuration() -> Result<(), Box<dyn std::error::Error>> {
     let (source, _peer) = UnixStream::pair()?;
-    let mut poll = ScriptedPoll::new([MutationStep::Register(failure())])?;
+    let mut poll = ScriptedPoll::new([MutationStep::Register(failure(CommitStatus::Unknown))])?;
 
     let Err(error) = poll.register(&source, Key::new(3), Interest::READABLE, Mode::OneShot) else {
         return Err(io::Error::other("unknown registration unexpectedly succeeded").into());
@@ -19,6 +19,7 @@ fn uncertain_register_retains_requested_configuration() -> Result<(), Box<dyn st
         .ok_or_else(|| io::Error::other("unknown registration lost its handle"))?;
     let info = poll.registration_info(&registration)?;
 
+    assert_eq!(poll.registration_count(), 1);
     assert_eq!(info.key(), Key::new(3));
     assert_eq!(info.interest(), Interest::READABLE);
     assert_eq!(info.mode(), Mode::OneShot);
@@ -36,7 +37,7 @@ fn uncertain_modify_retains_previous_configuration() -> Result<(), Box<dyn std::
     let (source, _peer) = UnixStream::pair()?;
     let mut poll = ScriptedPoll::new([
         MutationStep::Register(MutationOutcome::Success),
-        MutationStep::Modify(failure()),
+        MutationStep::Modify(failure(CommitStatus::Unknown)),
     ])?;
     let registration = poll.register(&source, Key::new(5), Interest::READABLE, Mode::Level)?;
 
@@ -48,6 +49,7 @@ fn uncertain_modify_retains_previous_configuration() -> Result<(), Box<dyn std::
     }
     let info = poll.registration_info(&registration)?;
 
+    assert_eq!(poll.registration_count(), 1);
     assert_eq!(info.key(), Key::new(5));
     assert_eq!(info.interest(), Interest::READABLE);
     assert_eq!(info.mode(), Mode::Level);
@@ -55,9 +57,48 @@ fn uncertain_modify_retains_previous_configuration() -> Result<(), Box<dyn std::
     Ok(())
 }
 
-const fn failure() -> MutationOutcome {
+#[test]
+fn failed_register_count_follows_commit_status() -> Result<(), Box<dyn std::error::Error>> {
+    for (commit, retained) in [
+        (CommitStatus::NotApplied, 0),
+        (CommitStatus::Applied, 1),
+        (CommitStatus::Unknown, 1),
+    ] {
+        let (source, _peer) = UnixStream::pair()?;
+        let mut poll = ScriptedPoll::new([MutationStep::Register(failure(commit))])?;
+
+        assert!(
+            poll.register(&source, Key::new(1), Interest::READABLE, Mode::Level)
+                .is_err()
+        );
+        assert_eq!(poll.registration_count(), retained);
+    }
+    Ok(())
+}
+
+#[test]
+fn failed_delete_count_follows_commit_status() -> Result<(), Box<dyn std::error::Error>> {
+    for (commit, retained) in [
+        (CommitStatus::NotApplied, 1),
+        (CommitStatus::Applied, 0),
+        (CommitStatus::Unknown, 1),
+    ] {
+        let (source, _peer) = UnixStream::pair()?;
+        let mut poll = ScriptedPoll::new([
+            MutationStep::Register(MutationOutcome::Success),
+            MutationStep::Delete(failure(commit)),
+        ])?;
+        let registration = poll.register(&source, Key::new(1), Interest::READABLE, Mode::Level)?;
+
+        assert!(poll.delete(registration).is_err());
+        assert_eq!(poll.registration_count(), retained);
+    }
+    Ok(())
+}
+
+const fn failure(commit: CommitStatus) -> MutationOutcome {
     MutationOutcome::Failure {
-        commit: CommitStatus::Unknown,
+        commit,
         kind: io::ErrorKind::Other,
     }
 }

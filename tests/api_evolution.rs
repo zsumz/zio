@@ -52,9 +52,10 @@ fn poll_exposes_stored_configuration_rearm() {
 }
 
 #[test]
-fn poll_exposes_both_fixed_capacities() {
+fn poll_exposes_capacity_and_retained_count() {
     let _ = Poll::event_capacity as fn(&Poll) -> usize;
     let _ = Poll::registration_capacity as fn(&Poll) -> usize;
+    let _ = Poll::registration_count as fn(&Poll) -> usize;
 }
 
 #[test]
