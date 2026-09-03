@@ -47,7 +47,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 ```
 
 Callers choose registration and event limits, interests, delivery modes, keys,
-and wait behavior. Successful waits reuse fixed zio-owned storage.
+and wait behavior. Ordinary waits reuse fixed zio-owned storage. A recovery
+report may allocate one bounded snapshot.
 
 ## Contracts
 
