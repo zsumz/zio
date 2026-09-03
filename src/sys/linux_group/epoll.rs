@@ -8,7 +8,7 @@
 use std::{
     io,
     mem::{align_of, needs_drop, size_of},
-    os::fd::{AsRawFd, BorrowedFd, OwnedFd},
+    os::fd::{AsFd, AsRawFd, BorrowedFd, OwnedFd},
 };
 
 use rustix::event::epoll;
@@ -188,20 +188,22 @@ impl std::fmt::Debug for EpollBatch {
 
 /// One owned epoll instance.
 #[derive(Debug)]
-pub(super) struct Epoll {
-    descriptor: OwnedFd,
-}
+pub(super) struct Epoll(OwnedFd);
 
 impl Epoll {
     pub(super) fn new() -> io::Result<Self> {
         let descriptor = epoll::create(epoll::CreateFlags::CLOEXEC)?;
-        Ok(Self { descriptor })
+        Ok(Self(descriptor))
+    }
+
+    pub(super) fn as_fd(&self) -> BorrowedFd<'_> {
+        self.0.as_fd()
     }
 
     #[inline]
     pub(super) fn add(&self, source: BorrowedFd<'_>, token: u64, flags: u32) -> io::Result<()> {
         epoll::add(
-            &self.descriptor,
+            &self.0,
             source,
             epoll::EventData::new_u64(token),
             epoll::EventFlags::from_bits_retain(flags),
@@ -212,7 +214,7 @@ impl Epoll {
     #[inline]
     pub(super) fn modify(&self, source: BorrowedFd<'_>, token: u64, flags: u32) -> io::Result<()> {
         epoll::modify(
-            &self.descriptor,
+            &self.0,
             source,
             epoll::EventData::new_u64(token),
             epoll::EventFlags::from_bits_retain(flags),
@@ -222,7 +224,7 @@ impl Epoll {
 
     #[inline]
     pub(super) fn delete(&self, source: BorrowedFd<'_>) -> io::Result<()> {
-        epoll::delete(&self.descriptor, source)?;
+        epoll::delete(&self.0, source)?;
         Ok(())
     }
 
@@ -244,14 +246,8 @@ impl Epoll {
         // SAFETY: `new` checked the Event/native layout, the empty Vec owns at
         // least `max_events` tail-aligned writable slots, and epoll retains no
         // pointer.
-        let observed = unsafe {
-            libc::epoll_wait(
-                self.descriptor.as_raw_fd(),
-                native,
-                batch.max_events,
-                timeout,
-            )
-        };
+        let observed =
+            unsafe { libc::epoll_wait(self.0.as_raw_fd(), native, batch.max_events, timeout) };
         if observed < 0 {
             Err(io::Error::last_os_error())
         } else {

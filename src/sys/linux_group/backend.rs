@@ -75,6 +75,10 @@ impl Backend {
         Ok((Self { epoll }, wake))
     }
 
+    pub(crate) fn as_fd(&self) -> BorrowedFd<'_> {
+        self.epoll.as_fd()
+    }
+
     #[inline]
     pub(crate) fn register(
         &self,

@@ -5,15 +5,15 @@ producer = "0.0.3-rc.4"
 contract_sha256 = "fff3b1b743fff4f399079c990d2fee04418097a839799f8c9ee7191d8886a7c2"
 
 [analysis]
-inventory_sha256 = "a6e3620201dbaf97f5f89341a2b062277d5a7c1fe6c66b7eca9cfb8ce87732f8"
+inventory_sha256 = "4afc1356e85d5ae914cec532802c3b5b7367226473c075c5c86dcfea90fa9065"
 exclusions_sha256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 cargo_lock_sha256 = "c57d02582afe8069129844f4f07aa867b3a1a9391d77b4be4e5ca0013a6d1687"
 packages = 3
-targets = 35
-physical_rust_files = 257
-base_source_contexts = 434
+targets = 36
+physical_rust_files = 259
+base_source_contexts = 437
 derived_source_contexts = 0
-source_facts = 73890
+source_facts = 74109
 projection_queries = 0
 projected_facts = 0
 unresolved_bindings = 0
@@ -240,7 +240,7 @@ sha256 = "2a4b286bea1a4a7ccba09cfcdc7855595f2a7092f519d440f745e4e7f97ef067"
 
 [[gate.input]]
 path = "docs/contracts.md"
-sha256 = "d8c91dbcef19778f6bec701c43ef9367e17e2dd9fd701e68ad95505567f80e28"
+sha256 = "6557ce3e4a77fa3c34b9ac28adafed8191afff455414270b4a77505cc0144519"
 
 [[gate.input]]
 path = "docs/performance.md"
@@ -539,7 +539,7 @@ sha256 = "ac9ebcc7cbf9044222faa730d5d3c9957af0c411d5b9b47065acb0ec73d400b8"
 
 [[gate.input]]
 path = "docs/contracts.md"
-sha256 = "d8c91dbcef19778f6bec701c43ef9367e17e2dd9fd701e68ad95505567f80e28"
+sha256 = "6557ce3e4a77fa3c34b9ac28adafed8191afff455414270b4a77505cc0144519"
 
 [[gate.input]]
 path = "docs/performance.md"
@@ -572,7 +572,7 @@ sha256 = "e63c2cd05f6e85cfa28391cc966a29530ec95f038e85f10707ea4df1fb94e390"
 [[ratchet]]
 rule = "rust.file-size"
 target = "src/sys/linux_group/epoll.rs"
-value = 265
+value = 261
 
 [[ratchet]]
 rule = "rust.hygiene.unsafe"

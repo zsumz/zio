@@ -8,6 +8,7 @@ mod failure;
 mod kqueue_group;
 mod linux_group;
 mod platform;
+mod platform_driver;
 mod raw_batch;
 #[cfg(test)]
 mod raw_batch_test;

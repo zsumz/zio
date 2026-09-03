@@ -154,6 +154,10 @@ impl Backend {
         Ok((Self { queue }, wake))
     }
 
+    pub(crate) fn as_fd(&self) -> BorrowedFd<'_> {
+        self.queue.as_fd()
+    }
+
     pub(crate) fn register(
         &self,
         source: BorrowedFd<'_>,

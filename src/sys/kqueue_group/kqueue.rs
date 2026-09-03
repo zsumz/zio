@@ -11,7 +11,7 @@ const _: [(); 8] = [(); core::mem::size_of::<usize>()];
 use std::{
     io,
     mem::MaybeUninit,
-    os::fd::{AsRawFd, FromRawFd, OwnedFd},
+    os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, OwnedFd},
     ptr,
     time::Duration,
 };
@@ -72,6 +72,10 @@ impl Kqueue {
             }
         }
         Ok(Self { descriptor })
+    }
+
+    pub(super) fn as_fd(&self) -> BorrowedFd<'_> {
+        self.descriptor.as_fd()
     }
 
     pub(super) fn wait(

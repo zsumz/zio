@@ -78,6 +78,19 @@ impl fmt::Debug for Poll {
     }
 }
 
+#[cfg(any(
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "freebsd",
+    target_os = "netbsd"
+))]
+impl std::os::fd::AsFd for Poll {
+    /// Borrows the native selector descriptor.
+    fn as_fd(&self) -> std::os::fd::BorrowedFd<'_> {
+        self.backend.as_fd()
+    }
+}
+
 impl Poll {
     /// Creates a poller with the default fixed capacities.
     pub fn new() -> Result<Self, Error> {
