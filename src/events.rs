@@ -103,6 +103,15 @@ impl<'a> IntoIterator for &'a Events {
     }
 }
 
+impl IntoIterator for Events {
+    type Item = Event;
+    type IntoIter = std::vec::IntoIter<Event>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.events.into_iter()
+    }
+}
+
 impl AsRef<[Event]> for Events {
     fn as_ref(&self) -> &[Event] {
         self.as_slice()

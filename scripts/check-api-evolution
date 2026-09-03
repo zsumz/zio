@@ -84,6 +84,7 @@ printf '%s\n' \
   '    readiness -= zio::Readiness::ERROR;' \
   '    let _ = readiness;' \
   '    let _ = reverse_events as fn(&mut zio::Events);' \
+  '    let _ = consume_events as fn(zio::Events);' \
   '}' \
   '' \
   'fn assert_ordered<T: Ord>() {}' \
@@ -93,6 +94,10 @@ printf '%s\n' \
   'fn reverse_events(events: &mut zio::Events) {' \
   '    let _ = events.iter().rev();' \
   '    let _ = events.drain().rev();' \
+  '}' \
+  '' \
+  'fn consume_events(events: zio::Events) {' \
+  '    let _ = events.into_iter().rev();' \
   '}' \
   '' \
   'fn classify_error(error: &Error) -> u8 {' \

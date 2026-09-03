@@ -86,9 +86,10 @@ fn flag_sets_support_standard_set_operators() {
 }
 
 #[test]
-fn event_batches_support_immutable_slice_interop() {
+fn event_batches_support_standard_iteration() {
     assert_event_slice::<Events>();
     let _ = assert_event_iterators as fn(&mut Events);
+    let _ = assert_owned_event_iterator as fn(Events);
 }
 
 fn assert_event_slice<T: AsRef<[Event]>>() {}
@@ -100,6 +101,10 @@ fn assert_send_sync<T: Send + Sync>() {}
 fn assert_event_iterators(events: &mut Events) {
     assert_iterator(events.iter());
     assert_iterator(events.drain());
+}
+
+fn assert_owned_event_iterator(events: Events) {
+    assert_iterator(events.into_iter());
 }
 
 fn assert_iterator<I: DoubleEndedIterator + ExactSizeIterator + FusedIterator>(_: I) {}
