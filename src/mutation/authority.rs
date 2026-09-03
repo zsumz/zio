@@ -18,6 +18,17 @@ pub(crate) fn registration_fd<'poll>(
         .map(|binding| binding.descriptor)
 }
 
+pub(crate) fn registrations(
+    owner: Option<PollId>,
+    registrations: &RegistrationTable,
+) -> Result<Vec<Registration>, Error> {
+    match owner {
+        Some(owner) => registrations.snapshot(owner),
+        None if registrations.len() == 0 => Ok(Vec::new()),
+        None => Err(Error::Invariant),
+    }
+}
+
 pub(crate) fn set_registration_key(
     owner: Option<PollId>,
     registrations: &mut RegistrationTable,

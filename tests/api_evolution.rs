@@ -91,6 +91,11 @@ fn poll_borrows_retained_registration_descriptors() {
 }
 
 #[test]
+fn poll_snapshots_retained_registration_handles() {
+    let _ = Poll::registrations as fn(&Poll) -> Result<Vec<Registration>, Error>;
+}
+
+#[test]
 fn poll_exposes_capacity_and_retained_count() {
     let _ = Poll::event_capacity as fn(&Poll) -> usize;
     let _ = Poll::registration_capacity as fn(&Poll) -> usize;

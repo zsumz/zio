@@ -26,6 +26,7 @@ registration handle.
 handle-bearing failure retains it; every other failure closes it.
 `Poll::registration_fd` safely borrows any retained resource descriptor,
 including one in uncertain backend state.
+`Poll::registrations` returns a bounded owned snapshot for audit or cleanup.
 
 `Poll::set_key` changes only future resource-event routing and does no backend work.
 

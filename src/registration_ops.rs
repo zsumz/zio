@@ -6,7 +6,7 @@ use crate::{
     DeleteError, Error, Interest, Key, Mode, Poll, RegisterError, Registration, RegistrationInfo,
     RegistrationState,
     mutation::{
-        MutationSession, registration_fd, registration_info, registration_state,
+        MutationSession, registration_fd, registration_info, registration_state, registrations,
         set_registration_key,
     },
 };
@@ -126,6 +126,14 @@ impl Poll {
         registration: &Registration,
     ) -> Result<BorrowedFd<'poll>, Error> {
         registration_fd(self.owner.current(), &self.registrations, registration)
+    }
+
+    /// Returns an owned snapshot of every retained registration handle.
+    ///
+    /// The snapshot includes uncertain registrations and is bounded by
+    /// [`Self::registration_capacity`].
+    pub fn registrations(&self) -> Result<Vec<Registration>, Error> {
+        registrations(self.owner.current(), &self.registrations)
     }
 
     /// Changes the key used by future events without backend work.

@@ -20,6 +20,7 @@ fn uncertain_register_retains_requested_configuration() -> Result<(), Box<dyn st
     let info = poll.registration_info(&registration)?;
 
     assert_eq!(poll.registration_count(), 1);
+    assert_eq!(poll.registrations()?, vec![registration]);
     assert!(poll.registration_fd(&registration).is_ok());
     assert_eq!(info.key(), Key::new(3));
     assert_eq!(info.interest(), Interest::READABLE);

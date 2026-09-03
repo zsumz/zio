@@ -9,7 +9,7 @@ use crate::{
     CommitStatus, DeleteError, Error, Interest, Key, Mode, RegisterError, Registration,
     RegistrationId, RegistrationInfo, RegistrationState,
     mutation::{
-        MutationSession, registration_fd, registration_info, registration_state,
+        MutationSession, registration_fd, registration_info, registration_state, registrations,
         set_registration_key,
     },
     poll::DEFAULT_REGISTRATION_CAPACITY,
@@ -144,6 +144,11 @@ impl ScriptedPoll {
         registration: &Registration,
     ) -> Result<BorrowedFd<'poll>, Error> {
         registration_fd(self.owner.current(), &self.registrations, registration)
+    }
+
+    /// Returns an owned snapshot of every retained registration handle.
+    pub fn registrations(&self) -> Result<Vec<Registration>, Error> {
+        registrations(self.owner.current(), &self.registrations)
     }
 
     /// Changes the key retained for future modeled observations.
