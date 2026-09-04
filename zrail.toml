@@ -373,6 +373,7 @@ title = "Positive waits never collapse to nonblocking observations"
 document = "docs/contracts.md#wake-behavior"
 evidence = [
     "rust-test:tests/wake.rs::wake_before_wait_is_observable",
+    "rust-test:tests/wake.rs::wake_and_resource_share_capacity_without_loss",
     "rust-test:tests/wake.rs::wake_coalesces_drains_and_remains_reusable",
     "rust-test:tests/wake.rs::wake_completes_a_blocked_wait",
     "rust-test:src/sys/linux_group/eventfd_test.rs::saturated_counter_is_reset_and_retriggered",

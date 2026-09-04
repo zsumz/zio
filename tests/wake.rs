@@ -9,9 +9,9 @@
 
 mod support;
 
-use std::{io, thread, time::Duration};
+use std::{io, io::Write, os::unix::net::UnixStream, thread, time::Duration};
 
-use zio::{Event, Key, Poll, Wait};
+use zio::{Event, Interest, Key, Mode, Poll, Wait};
 
 use support::require_no_recovery;
 
@@ -51,6 +51,44 @@ fn wake_coalesces_drains_and_remains_reusable() -> Result<(), Box<dyn std::error
     waker.wake()?;
     require_no_recovery(poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?)?;
     assert!(has_wake(&events, key));
+    Ok(())
+}
+
+#[test]
+fn wake_and_resource_share_capacity_without_loss() -> Result<(), Box<dyn std::error::Error>> {
+    let (source, mut peer) = UnixStream::pair()?;
+    source.set_nonblocking(true)?;
+    let mut poll = Poll::with_capacity(1, 1)?;
+    let resource_key = Key::new(102);
+    let wake_key = Key::new(103);
+    let registration = poll.register(&source, resource_key, Interest::READABLE, Mode::OneShot)?;
+    let waker = poll.waker(wake_key)?;
+    let mut events = poll.events()?;
+    peer.write_all(b"ready")?;
+    waker.wake()?;
+
+    let mut saw_resource = false;
+    let mut saw_wake = false;
+    for _ in 0..2 {
+        require_no_recovery(poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?)?;
+        match events.as_slice() {
+            [
+                Event::Resource {
+                    registration: actual,
+                    key,
+                    ..
+                },
+            ] if *actual == registration && *key == resource_key => saw_resource = true,
+            [Event::Wake { key, .. }] if *key == wake_key => saw_wake = true,
+            observed => {
+                return Err(io::Error::other(format!("unexpected events: {observed:?}")).into());
+            }
+        }
+    }
+
+    assert!(saw_resource);
+    assert!(saw_wake);
+    poll.delete(registration)?;
     Ok(())
 }
 
