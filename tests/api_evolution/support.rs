@@ -1,6 +1,8 @@
 //! Trait assertions and event-iterator probes.
 
 use core::{
+    fmt::Debug,
+    hash::Hash,
     iter::FusedIterator,
     ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not, Sub, SubAssign},
 };
@@ -125,13 +127,13 @@ pub(super) fn assert_error_ref<T: AsRef<Error>>() {}
 
 pub(super) fn assert_thread_error<T: std::error::Error + Send + Sync + 'static>() {}
 
-pub(super) fn assert_thread_value<T: Send + Sync + 'static>() {}
+pub(super) fn assert_debug_thread_value<T: Debug + Send + Sync + 'static>() {}
 
-pub(super) fn assert_copy_thread_value<T: Copy + Send + Sync + 'static>() {}
+pub(super) fn assert_copy_value<T: Copy + Debug + Eq + Hash + Send + Sync + 'static>() {}
 
-pub(super) fn assert_send<T: Send>() {}
+pub(super) fn assert_debug_send<T: Debug + Send>() {}
 
-pub(super) fn assert_send_sync<T: Send + Sync>() {}
+pub(super) fn assert_clone_debug_send_sync<T: Clone + Debug + Send + Sync>() {}
 
 pub(super) fn assert_from<T: From<U>, U>() {}
 

@@ -212,6 +212,17 @@ status = "enforced"
 title = "Public defaults remain named zero or capacity values"
 
 [[invariant]]
+document = "docs/contracts.md#api-evolution"
+evidence = [
+    "rust-test:tests/api_evolution/values.rs::public_values_keep_common_traits",
+    "gate:check",
+    "gate:ci",
+]
+id = "API-TRAIT-01"
+status = "enforced"
+title = "Public value and capability traits remain stable"
+
+[[invariant]]
 document = "docs/contracts.md#registration-ownership"
 evidence = [
     "rust-test:tests/descriptor_identity.rs::numeric_descriptor_reuse_does_not_alias_retained_registration",

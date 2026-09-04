@@ -9,27 +9,27 @@ use zio::{
 use super::support::*;
 
 #[test]
-fn public_values_remain_thread_portable() {
-    assert_copy_thread_value::<Key>();
-    assert_copy_thread_value::<zio::Interest>();
-    assert_copy_thread_value::<Readiness>();
-    assert_copy_thread_value::<Event>();
-    assert_copy_thread_value::<Mode>();
-    assert_copy_thread_value::<Wait>();
-    assert_copy_thread_value::<Registration>();
-    assert_copy_thread_value::<RegistrationId>();
-    assert_copy_thread_value::<RegistrationInfo>();
-    assert_copy_thread_value::<RecoveryOutcome>();
-    assert_copy_thread_value::<ArmState>();
-    assert_copy_thread_value::<RegistrationState>();
-    assert_copy_thread_value::<DescriptorOwnership>();
-    assert_copy_thread_value::<Operation>();
-    assert_copy_thread_value::<CommitStatus>();
-    assert_copy_thread_value::<CapacityKind>();
-    assert_copy_thread_value::<CapacityReason>();
-    assert_copy_thread_value::<PollBuilder>();
-    assert_thread_value::<Events>();
-    assert_thread_value::<WaitReport>();
+fn public_values_keep_common_traits() {
+    assert_copy_value::<Key>();
+    assert_copy_value::<zio::Interest>();
+    assert_copy_value::<Readiness>();
+    assert_copy_value::<Event>();
+    assert_copy_value::<Mode>();
+    assert_copy_value::<Wait>();
+    assert_copy_value::<Registration>();
+    assert_copy_value::<RegistrationId>();
+    assert_copy_value::<RegistrationInfo>();
+    assert_copy_value::<RecoveryOutcome>();
+    assert_copy_value::<ArmState>();
+    assert_copy_value::<RegistrationState>();
+    assert_copy_value::<DescriptorOwnership>();
+    assert_copy_value::<Operation>();
+    assert_copy_value::<CommitStatus>();
+    assert_copy_value::<CapacityKind>();
+    assert_copy_value::<CapacityReason>();
+    assert_copy_value::<PollBuilder>();
+    assert_debug_thread_value::<Events>();
+    assert_debug_thread_value::<WaitReport>();
 }
 
 #[test]
@@ -56,6 +56,6 @@ fn wakers_expose_keys_and_cross_thread_traits() {
     let _ = Waker::key as fn(&Waker) -> Key;
     let _ = Waker::will_wake as fn(&Waker, &Waker) -> bool;
     let _ = Poll::waker_key as fn(&Poll) -> Option<Key>;
-    assert_send::<Poll>();
-    assert_send_sync::<Waker>();
+    assert_debug_send::<Poll>();
+    assert_clone_debug_send_sync::<Waker>();
 }
