@@ -15,7 +15,7 @@ use crate::{
 };
 
 impl Poll {
-    /// Registers one descriptor with non-empty interest, retaining an owned duplicate.
+    /// Registers one descriptor with non-empty interest, retaining a close-on-exec duplicate.
     ///
     /// Every successful call creates an independent registration and exact
     /// generation, including repeated calls for the same source or duplicated

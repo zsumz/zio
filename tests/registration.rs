@@ -9,7 +9,15 @@
 
 mod support;
 
-use std::{io::Write, os::unix::net::UnixStream, thread, time::Duration};
+use std::{
+    io::{self, Write},
+    os::{
+        fd::{AsRawFd, BorrowedFd},
+        unix::net::UnixStream,
+    },
+    thread,
+    time::Duration,
+};
 
 use zio::{CapacityKind, CapacityReason, Error, Event, Interest, Key, Mode, Poll, Wait};
 
@@ -55,6 +63,33 @@ fn poll_retains_the_registered_open_file_description() -> Result<(), Box<dyn std
 
     poll.delete(registration)?;
     Ok(())
+}
+
+#[test]
+fn retained_duplicate_is_close_on_exec() -> Result<(), Box<dyn std::error::Error>> {
+    let (source, _peer) = UnixStream::pair()?;
+    let mut poll = Poll::new()?;
+    let registration = poll.register(&source, Key::new(17), Interest::READABLE, Mode::Level)?;
+
+    let flags = descriptor_flags(poll.registration_fd(&registration)?)?;
+    assert_ne!(flags & libc::FD_CLOEXEC, 0);
+
+    poll.delete(registration)?;
+    Ok(())
+}
+
+#[allow(
+    unsafe_code,
+    reason = "a read-only fcntl call verifies the retained descriptor contract"
+)]
+fn descriptor_flags(descriptor: BorrowedFd<'_>) -> io::Result<i32> {
+    // SAFETY: `descriptor` remains open for this read-only synchronous call.
+    let flags = unsafe { libc::fcntl(descriptor.as_raw_fd(), libc::F_GETFD) };
+    if flags < 0 {
+        Err(io::Error::last_os_error())
+    } else {
+        Ok(flags)
+    }
 }
 
 #[test]
