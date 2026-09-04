@@ -232,7 +232,7 @@ evidence = [
 ]
 id = "API-CONST-01"
 status = "enforced"
-title = "Fixed-batch cardinality queries remain const"
+title = "Fixed-batch queries remain const"
 
 [[invariant]]
 document = "docs/contracts.md#registration-ownership"

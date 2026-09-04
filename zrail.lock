@@ -2,7 +2,7 @@
 schema = 2
 semantics = 3
 producer = "0.0.3-rc.4"
-contract_sha256 = "ea706ff9fa69e2574ca9ad7c5bcdd6a88189e7c297f0f66929dcb9dcafbdac09"
+contract_sha256 = "c78e7f57d1a05b8fc6d75fa9f441ff911b19c9d557df231fb4c620313c776de6"
 
 [analysis]
 inventory_sha256 = "17f80f5418bba142936f0eae0223974e7b025caa67604df5a449e86c7c0ec1b6"
@@ -21,7 +21,7 @@ analyzer_semantics = 3
 
 [[analysis.contract_source]]
 path = "zrail.toml"
-sha256 = "4cd3a21d5b789e196dac74d7aef30da4505f06318c61beef76a6ec080d90aaaa"
+sha256 = "7a64dffc1ecd7842f630ea34da2a569f43910db950df23cdc9522bd3bac2aca4"
 
 [[package]]
 name = "zio"
@@ -260,7 +260,7 @@ sha256 = "45e07033c8cd89ed400ee4e96ec608e338e89822233abd6e56c85040ece66520"
 
 [[gate.input]]
 path = "scripts/check-api-evolution"
-sha256 = "35af3ed9154c277f63101c261f7b1903b82ac9316e9cf7f2cef07a0e9a9e16ed"
+sha256 = "a0375b6eb44e8c54fd2184d1af26c60a164eeb0a4568d0d9898dea5523c3ee4b"
 
 [[gate.input]]
 path = "scripts/rehearse-release"
@@ -555,7 +555,7 @@ sha256 = "279d77167cec5426fa80f457cd066dc74a360fbe4e2816f4f3fa01487a918fdc"
 
 [[gate.input]]
 path = "scripts/check-api-evolution"
-sha256 = "35af3ed9154c277f63101c261f7b1903b82ac9316e9cf7f2cef07a0e9a9e16ed"
+sha256 = "a0375b6eb44e8c54fd2184d1af26c60a164eeb0a4568d0d9898dea5523c3ee4b"
 
 [[gate.input]]
 path = "scripts/rehearse-release"

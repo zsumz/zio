@@ -252,6 +252,10 @@ printf '%s\n' \
   '    let _ = Events::remaining_capacity as fn(&Events) -> usize;' \
   '    let _ = Events::is_full as fn(&Events) -> bool;' \
   '    let _ = Events::clear as fn(&mut Events);' \
+  '    let _ = event_cardinality as fn(&Events) -> (usize, bool, usize, bool);' \
+  '    let _ = recovery_cardinality as fn(&RecoveryFailure) -> (usize, bool);' \
+  '    let _ = event_slice as fn(&Events) -> &[Event];' \
+  '    let _ = recovery_slice as fn(&RecoveryFailure) -> &[RecoveryOutcome];' \
   '}' \
   '' \
   'fn assert_ordered<T: Ord>() {}' \
@@ -271,6 +275,22 @@ printf '%s\n' \
   'fn assert_send<T: Send>() {}' \
   '' \
   'fn assert_send_sync<T: Send + Sync>() {}' \
+  '' \
+  'const fn event_cardinality(events: &Events) -> (usize, bool, usize, bool) {' \
+  '    (events.len(), events.is_empty(), events.remaining_capacity(), events.is_full())' \
+  '}' \
+  '' \
+  'const fn recovery_cardinality(failure: &RecoveryFailure) -> (usize, bool) {' \
+  '    (failure.len(), failure.is_empty())' \
+  '}' \
+  '' \
+  'const fn event_slice(events: &Events) -> &[Event] {' \
+  '    events.as_slice()' \
+  '}' \
+  '' \
+  'const fn recovery_slice(failure: &RecoveryFailure) -> &[RecoveryOutcome] {' \
+  '    failure.outcomes()' \
+  '}' \
   '' \
   'fn reverse_events(events: &mut zio::Events) {' \
   '    let _ = events.iter().rev();' \
