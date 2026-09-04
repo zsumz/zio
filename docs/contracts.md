@@ -195,6 +195,7 @@ non-mutation case.
 
 Every wait replaces the supplied event batch; an error leaves it empty. A
 destination can be reused across pollers whose event capacity it meets.
+Clearing or draining a destination preserves its capacity.
 
 Use nonblocking descriptors and perform I/O until it would block.
 
