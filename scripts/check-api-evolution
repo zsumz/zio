@@ -49,6 +49,30 @@ printf '%s\n' \
   '    assert_eq!(classify_error(&Error::Invariant), 1);' \
   '    assert_eq!(u64::from(Key::from(9_u64)), 9);' \
   '    assert_eq!(Key::new(9).to_string(), "9");' \
+  '    assert_eq!(Key::default(), Key::ZERO);' \
+  '    assert_eq!(zio::Interest::default(), zio::Interest::EMPTY);' \
+  '    assert_eq!(zio::Readiness::default(), zio::Readiness::EMPTY);' \
+  '    assert_eq!(PollBuilder::default(), PollBuilder::new());' \
+  '    assert_copy_value::<Key>();' \
+  '    assert_copy_value::<zio::Interest>();' \
+  '    assert_copy_value::<zio::Readiness>();' \
+  '    assert_copy_value::<Event>();' \
+  '    assert_copy_value::<Mode>();' \
+  '    assert_copy_value::<Wait>();' \
+  '    assert_copy_value::<Registration>();' \
+  '    assert_copy_value::<RegistrationId>();' \
+  '    assert_copy_value::<RegistrationInfo>();' \
+  '    assert_copy_value::<RecoveryOutcome>();' \
+  '    assert_copy_value::<ArmState>();' \
+  '    assert_copy_value::<RegistrationState>();' \
+  '    assert_copy_value::<DescriptorOwnership>();' \
+  '    assert_copy_value::<Operation>();' \
+  '    assert_copy_value::<CommitStatus>();' \
+  '    assert_copy_value::<CapacityKind>();' \
+  '    assert_copy_value::<CapacityReason>();' \
+  '    assert_copy_value::<PollBuilder>();' \
+  '    assert_debug_thread_value::<Events>();' \
+  '    assert_debug_thread_value::<WaitReport>();' \
   '    let _ = Key::new as fn(u64) -> Key;' \
   '    let _ = Key::get as fn(Key) -> u64;' \
   '    assert_eq!(classify_operation(Operation::Wait), 1);' \
@@ -154,8 +178,8 @@ printf '%s\n' \
   '    assert_display::<CapacityReason>();' \
   '    assert_eq!(classify_capacity(CapacityKind::Event), 0);' \
   '    assert_eq!(classify_capacity_reason(CapacityReason::Zero), 0);' \
-  '    assert_send::<Poll>();' \
-  '    assert_send_sync::<Waker>();' \
+  '    assert_debug_send::<Poll>();' \
+  '    assert_clone_debug_send_sync::<Waker>();' \
   '    let _: usize = zio::DEFAULT_EVENT_CAPACITY;' \
   '    let _: usize = zio::DEFAULT_REGISTRATION_CAPACITY;' \
   '    let _ = Poll::has_native_backend as fn() -> bool;' \
@@ -272,9 +296,13 @@ printf '%s\n' \
   '' \
   "fn assert_thread_error<T: std::error::Error + Send + Sync + 'static>() {}" \
   '' \
-  'fn assert_send<T: Send>() {}' \
+  "fn assert_copy_value<T: Copy + std::fmt::Debug + Eq + std::hash::Hash + Send + Sync + 'static>() {}" \
   '' \
-  'fn assert_send_sync<T: Send + Sync>() {}' \
+  "fn assert_debug_thread_value<T: std::fmt::Debug + Send + Sync + 'static>() {}" \
+  '' \
+  'fn assert_debug_send<T: std::fmt::Debug + Send>() {}' \
+  '' \
+  'fn assert_clone_debug_send_sync<T: Clone + std::fmt::Debug + Send + Sync>() {}' \
   '' \
   'const fn event_cardinality(events: &Events) -> (usize, bool, usize, bool) {' \
   '    (events.len(), events.is_empty(), events.remaining_capacity(), events.is_full())' \
