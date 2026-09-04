@@ -372,6 +372,17 @@ status = "enforced"
 title = "Positive waits never collapse to nonblocking observations"
 
 [[invariant]]
+document = "docs/contracts.md#wait-behavior"
+evidence = [
+    "rust-test:tests/readiness.rs::wait_rejection_clears_a_previous_observation",
+    "gate:check",
+    "gate:ci",
+]
+id = "EVENTS-01"
+status = "enforced"
+title = "Waits replace event batches and clear failures"
+
+[[invariant]]
 document = "docs/contracts.md#wake-behavior"
 evidence = [
     "rust-test:tests/wake.rs::wake_before_wait_is_observable",

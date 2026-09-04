@@ -233,6 +233,29 @@ fn wait_rejects_an_undersized_destination() -> Result<(), Box<dyn std::error::Er
 }
 
 #[test]
+fn wait_rejection_clears_a_previous_observation() -> Result<(), Box<dyn std::error::Error>> {
+    let (source, mut peer) = UnixStream::pair()?;
+    let mut source_poll = Poll::with_capacity(1, 1)?;
+    let registration =
+        source_poll.register(&source, Key::new(44), Interest::READABLE, Mode::Level)?;
+    peer.write_all(b"ready")?;
+    let mut events = source_poll.events()?;
+    source_poll
+        .wait(&mut events, Wait::For(Duration::from_secs(1)))?
+        .into_result()?;
+    assert!(!events.is_empty());
+
+    let mut rejecting_poll = Poll::with_capacity(2, 1)?;
+    assert!(matches!(
+        rejecting_poll.wait(&mut events, Wait::NoBlock),
+        Err(Error::EventsTooSmall { .. })
+    ));
+    assert!(events.is_empty());
+    source_poll.delete(registration)?;
+    Ok(())
+}
+
+#[test]
 fn zero_event_capacity_is_reported_as_capacity_failure() {
     assert!(matches!(
         Events::with_capacity(0),

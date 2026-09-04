@@ -190,6 +190,8 @@ remaining duration at entry; a reached deadline is nonblocking. An interrupted
 wait returns `Error::Io`. `Error::is_wait_interrupted` classifies only that
 non-mutation case.
 
+Every wait replaces the supplied event batch; an error leaves it empty.
+
 Use nonblocking descriptors and perform I/O until it would block.
 
 ## Wake behavior
