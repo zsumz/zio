@@ -1,4 +1,4 @@
-//! Stale owned-deletion capability conformance evidence.
+//! Stale capability conformance evidence after slot reuse.
 
 use std::{error::Error as StdError, fmt::Debug, io, os::unix::net::UnixStream};
 
@@ -12,9 +12,10 @@ use zio_testkit::support::{
 
 const RETIRED_KEY: Key = Key::new(711);
 const REPLACEMENT_KEY: Key = Key::new(712);
+const REJECTED_KEY: Key = Key::new(713);
 
 #[test]
-fn stale_delete_owned_cannot_target_reused_generation() -> Result<(), Box<dyn StdError>> {
+fn stale_capabilities_cannot_target_reused_generation() -> Result<(), Box<dyn StdError>> {
     let source = UnixStream::pair()?.0;
     let mut poll = ScriptedPoll::with_capacity(
         1,
@@ -48,6 +49,21 @@ fn stale_delete_owned_cannot_target_reused_generation() -> Result<(), Box<dyn St
     };
 
     let calls_before = poll.calls().len();
+    expect_stale(poll.registration_state(&stale), retired_id, "state lookup")?;
+    expect_stale(poll.registration_info(&stale), retired_id, "info lookup")?;
+    expect_stale(
+        poll.registration_fd(&stale),
+        retired_id,
+        "descriptor lookup",
+    )?;
+    check_eq(&poll.contains(&stale), &false, "membership")?;
+    expect_stale(poll.set_key(&stale, REJECTED_KEY), retired_id, "key change")?;
+    expect_stale(
+        poll.modify_with_key(&stale, REJECTED_KEY, Interest::READABLE, Mode::Level),
+        retired_id,
+        "keyed modify",
+    )?;
+    expect_stale(poll.rearm(&stale), retired_id, "rearm")?;
     let returned = stale_owned_handle(delete_owned_error(poll.delete_owned(stale))?, stale)?;
     check_eq(&returned, &stale, "returned stale capability")?;
     check_eq(&poll.calls().len(), &calls_before, "backend call count")?;
@@ -131,6 +147,17 @@ fn delete_owned_error(
     result
         .err()
         .ok_or_else(|| io::Error::other("owned deletion unexpectedly succeeded"))
+}
+
+fn expect_stale<T: Debug>(
+    result: Result<T, Error>,
+    expected: RegistrationId,
+    context: &str,
+) -> Result<(), io::Error> {
+    match result {
+        Err(Error::Stale { registration }) => check_eq(&registration, &expected, context),
+        actual => Err(failure(context, "Stale", actual)),
+    }
 }
 
 fn expected_calls(retired: RegistrationId, replacement: RegistrationId) -> [MutationCall; 3] {
