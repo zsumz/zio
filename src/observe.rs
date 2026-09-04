@@ -145,16 +145,13 @@ impl Poll {
         self.deferred_wake = woke;
         let disarm_count = self.prepare_disarms(&delivery)?;
         #[cfg(feature = "unstable-test-support")]
-        let disarm_started = Instant::now();
+        let disarm_started = (disarm_count != 0).then(Instant::now);
         let recovery = self.backend.submit_disarms(&mut self.raw_events).err();
         #[cfg(feature = "unstable-test-support")]
         {
             self.test_wait_metrics.1 = disarm_count;
-            self.test_wait_metrics.2 = if disarm_count == 0 {
-                0
-            } else {
-                disarm_started.elapsed().as_nanos()
-            };
+            self.test_wait_metrics.2 =
+                disarm_started.map_or(0, |started| started.elapsed().as_nanos());
         }
         #[cfg(not(feature = "unstable-test-support"))]
         let _ = disarm_count;

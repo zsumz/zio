@@ -1,4 +1,4 @@
-//! Zero-duplication ownership transfer and explicit descriptor recovery.
+//! Zero-duplication registration and ownership transfer with explicit recovery.
 
 use std::{
     io::{self, Read, Write},

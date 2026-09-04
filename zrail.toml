@@ -91,7 +91,10 @@ inputs = [
     "examples/owned.rs",
     "examples/recovery.rs",
     "scripts/check-api-evolution",
+    "scripts/qualify-1.0",
+    "scripts/record-performance-qualification",
     "scripts/rehearse-release",
+    "scripts/test-qualify-1.0",
 ]
 kind = "local"
 name = "check"
@@ -183,6 +186,8 @@ inputs = [
     "src/poll.rs",
     "src/test_support/mod.rs",
     "src/test_support/wait_metrics.rs",
+    "scripts/qualify-1.0",
+    "scripts/record-performance-qualification",
 ]
 kind = "ci"
 name = "performance"
@@ -210,6 +215,7 @@ inputs = [
     "examples/recovery.rs",
     "rust-toolchain.toml",
     "scripts/check-api-evolution",
+    "scripts/qualify-1.0",
     "scripts/rehearse-release",
     "zcheck.toml",
     "zio-logo.svg",
@@ -677,6 +683,18 @@ evidence = [
 id = "RELEASE-01"
 status = "enforced"
 title = "The clean release-shaped package builds and runs outside the workspace"
+
+[[invariant]]
+document = "docs/qualification.md#stable-10-evidence-gate"
+evidence = [
+    "rust-test:crates/zio-qualify/tests/stable_evidence_gate.rs::incomplete_or_stale_release_evidence_is_rejected",
+    "gate:check",
+    "gate:performance",
+    "gate:release",
+]
+id = "RELEASE-STABLE-01"
+status = "enforced"
+title = "Stable release requires complete exact-commit native and hosted receipts"
 
 [[layer]]
 may_depend_on = []

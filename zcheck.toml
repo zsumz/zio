@@ -182,6 +182,11 @@ run = [
 ]
 tools = ["jq"]
 
+[tasks.stable-evidence-contract]
+description = "Reject incomplete, stale, dirty, or duplicated stable-release evidence."
+run = ["scripts/test-qualify-1.0"]
+tools = ["bash", "jq"]
+
 [tasks.check]
 description = "Run complete local zio qualification."
 needs = [
@@ -190,6 +195,7 @@ needs = [
   "rust-test",
   "package",
   "qualify-smoke-receipts",
+  "stable-evidence-contract",
 ]
 
 [tasks.release-rehearsal]

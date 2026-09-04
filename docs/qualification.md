@@ -69,6 +69,31 @@ unsupported rows when the descriptor limit is insufficient. A complete gate
 requires passed rows on macOS and at least one BSD; unsupported receipts are
 diagnostic evidence, not a substitute for that native coverage.
 
+## Stable 1.0 evidence gate
+
+Stable release evidence is accepted only through the repository validator:
+
+```sh
+scripts/qualify-1.0 \
+  --commit "$(git rev-parse HEAD)" \
+  --macos-receipts evidence/kqueue/macos.ndjson \
+  --bsd-receipts evidence/kqueue/freebsd.ndjson \
+  --performance-receipts evidence/performance \
+  --release-rehearsal-receipt evidence/release/receipt.json
+```
+
+The macOS and BSD inputs must each contain the five exact full-matrix rows,
+with no missing, duplicate, unsupported, failed, dirty, or foreign-commit
+receipt. The validator also checks complete fair cycles and exact one-shot
+disarm counts. Performance evidence must contain all five clean Linux and five
+clean macOS replica summaries. The release rehearsal, performance summaries,
+and both native kqueue runs must name the same candidate SHA and crate version.
+
+`scripts/test-qualify-1.0` constructs valid evidence and proves that missing
+rows, duplicates, unsupported results, dirty trees, foreign SHAs, incomplete
+performance replicas, and a mismatched release rehearsal are rejected by the
+canonical local gate.
+
 ## Dependency roles
 
 Normal zio builds use target-gated `libc` and Rustix's Linux epoll syscall

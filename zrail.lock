@@ -2,18 +2,18 @@
 schema = 2
 semantics = 3
 producer = "0.0.3-rc.4"
-contract_sha256 = "f680eff9e79d0b39ab22064cb793b660aa73c768cb12f3cb30eda8b3595e624e"
+contract_sha256 = "7058646a08aef545227631e2fe125182723a7bf61ca6ef2c2bf2fd246038c1a4"
 
 [analysis]
-inventory_sha256 = "d60e8ecd658c81d8df17ae7d782129f67294de8da7e7c707d3dea23bd777b160"
+inventory_sha256 = "8db3d6aefef27fc5748feca81d54ab1f873872bc17f93507e88d12f71eb85852"
 exclusions_sha256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 cargo_lock_sha256 = "c57d02582afe8069129844f4f07aa867b3a1a9391d77b4be4e5ca0013a6d1687"
 packages = 3
-targets = 49
-physical_rust_files = 300
-base_source_contexts = 502
+targets = 50
+physical_rust_files = 301
+base_source_contexts = 503
 derived_source_contexts = 0
-source_facts = 89909
+source_facts = 89997
 projection_queries = 0
 projected_facts = 0
 unresolved_bindings = 0
@@ -21,7 +21,7 @@ analyzer_semantics = 3
 
 [[analysis.contract_source]]
 path = "zrail.toml"
-sha256 = "fffdb959a3c77492275fa8fdca3a460ffb9e9fdaab4c111f153cb4cd291fa329"
+sha256 = "6f3e5bc83d39fa112cd2db6b22a1a5add3918f044960822d87a0b20b2eed926c"
 
 [[package]]
 name = "zio"
@@ -184,7 +184,7 @@ requirement = "=0.0.1-dev.1"
 [[gate]]
 name = "check"
 path = "zcheck.toml"
-sha256 = "a418684cdd8a772f02ddc2aa187e2e5f9365dcc5a744ba2a26fcda1b3e6b4385"
+sha256 = "b871252de639721488465736e1bdb1697bd64a32180d1ba1b1a52cd1ee7f33f5"
 
 [[gate.input]]
 path = ".editorconfig"
@@ -256,11 +256,11 @@ sha256 = "e7cb19961a471102e86f9f17c82d836c0f1c644c7cab2b7a51e7e9ea6ab0a721"
 
 [[gate.input]]
 path = "docs/performance.md"
-sha256 = "da19cee190c4f0e95a6ba29461b4eb710590fe46033870251b18f15227530f46"
+sha256 = "d4f3a19446503f29b2fe1e3c24a6c57fd583314c366f9dbc407a733d2933f05d"
 
 [[gate.input]]
 path = "docs/qualification.md"
-sha256 = "d81bad48303d549d104e8dea50da98e42303be7c6ca24e44af3f548ca575a041"
+sha256 = "ac85a0fd8526f7af38f45344c66c0016f3aa3d6fe67d239e8fda2177f1edf121"
 
 [[gate.input]]
 path = "examples/borrowed.md"
@@ -280,7 +280,7 @@ sha256 = "e665117737e7df8b7373ea55d5ea9140779369d88ab8953e2204790b01eeb7c2"
 
 [[gate.input]]
 path = "examples/owned.rs"
-sha256 = "7a51bfc1417dc06de3859288465233a528d03cf2b679e9b1f17771eb4fd4d639"
+sha256 = "35ede2dcd71296cf317de82d1a05813f90e924867cca0d453251e64ecaf10d9f"
 
 [[gate.input]]
 path = "examples/recovery.rs"
@@ -299,8 +299,20 @@ path = "scripts/check-api-evolution"
 sha256 = "2fea40c694da2904de16646c614323c1d11795a5c50f784ff8cd76eba3992d3c"
 
 [[gate.input]]
+path = "scripts/qualify-1.0"
+sha256 = "398eeb71a1a373824b3fd68504c517800c11eb4ac34ca92689c8d1222ac43635"
+
+[[gate.input]]
+path = "scripts/record-performance-qualification"
+sha256 = "0f26b9a999eca05c26902a4810f571ef352b379595c9cad6cc76c219b9fe3ee5"
+
+[[gate.input]]
 path = "scripts/rehearse-release"
-sha256 = "ff56ccb929a00412070eaa7c9f77bc7e43472b43f23985fc01b0cf0782a4c185"
+sha256 = "6b2b19f858bbc10a66d17fbeb127df73e172ede2652719e2939a3974ce1349fa"
+
+[[gate.input]]
+path = "scripts/test-qualify-1.0"
+sha256 = "5959948a6c223dfc01ffd045ca16d6a3ad928f98d5ff0a37c34d3d7dd31692e6"
 
 [[gate.input]]
 path = "zio-logo.svg"
@@ -317,12 +329,12 @@ sha256 = "279d77167cec5426fa80f457cd066dc74a360fbe4e2816f4f3fa01487a918fdc"
 
 [[gate.input]]
 path = "zcheck.toml"
-sha256 = "a418684cdd8a772f02ddc2aa187e2e5f9365dcc5a744ba2a26fcda1b3e6b4385"
+sha256 = "b871252de639721488465736e1bdb1697bd64a32180d1ba1b1a52cd1ee7f33f5"
 
 [[gate]]
 name = "performance"
 path = ".github/workflows/performance.yml"
-sha256 = "77c272d2d131c3f38923a7b4ef8de5c92699b0dfedf6044cbb69cc6ddfb8dced"
+sha256 = "054a063f20ead072d7da10e1c009207634f5c114b64248d25c95d636354123a6"
 
 [[gate.input]]
 path = "Cargo.lock"
@@ -590,15 +602,23 @@ sha256 = "cde97dbd80fbaba3516e3e3d0d5430bddb6e41acd8fe431de3611bafffc5717f"
 
 [[gate.input]]
 path = "docs/performance.md"
-sha256 = "da19cee190c4f0e95a6ba29461b4eb710590fe46033870251b18f15227530f46"
+sha256 = "d4f3a19446503f29b2fe1e3c24a6c57fd583314c366f9dbc407a733d2933f05d"
 
 [[gate.input]]
 path = "rust-toolchain.toml"
 sha256 = "279d77167cec5426fa80f457cd066dc74a360fbe4e2816f4f3fa01487a918fdc"
 
 [[gate.input]]
+path = "scripts/qualify-1.0"
+sha256 = "398eeb71a1a373824b3fd68504c517800c11eb4ac34ca92689c8d1222ac43635"
+
+[[gate.input]]
+path = "scripts/record-performance-qualification"
+sha256 = "0f26b9a999eca05c26902a4810f571ef352b379595c9cad6cc76c219b9fe3ee5"
+
+[[gate.input]]
 path = "src/observe.rs"
-sha256 = "132d00e2b22f43edb3615a262761e632a32d2402c223274a498614532f84b5ed"
+sha256 = "65b31f2508334b359ec8b985f82c998fd5561df5e5918a2aefc5cdc5af3f1aec"
 
 [[gate.input]]
 path = "src/poll.rs"
@@ -651,11 +671,11 @@ sha256 = "e7cb19961a471102e86f9f17c82d836c0f1c644c7cab2b7a51e7e9ea6ab0a721"
 
 [[gate.input]]
 path = "docs/performance.md"
-sha256 = "da19cee190c4f0e95a6ba29461b4eb710590fe46033870251b18f15227530f46"
+sha256 = "d4f3a19446503f29b2fe1e3c24a6c57fd583314c366f9dbc407a733d2933f05d"
 
 [[gate.input]]
 path = "docs/qualification.md"
-sha256 = "d81bad48303d549d104e8dea50da98e42303be7c6ca24e44af3f548ca575a041"
+sha256 = "ac85a0fd8526f7af38f45344c66c0016f3aa3d6fe67d239e8fda2177f1edf121"
 
 [[gate.input]]
 path = "examples/borrowed.md"
@@ -675,7 +695,7 @@ sha256 = "e665117737e7df8b7373ea55d5ea9140779369d88ab8953e2204790b01eeb7c2"
 
 [[gate.input]]
 path = "examples/owned.rs"
-sha256 = "7a51bfc1417dc06de3859288465233a528d03cf2b679e9b1f17771eb4fd4d639"
+sha256 = "35ede2dcd71296cf317de82d1a05813f90e924867cca0d453251e64ecaf10d9f"
 
 [[gate.input]]
 path = "examples/recovery.rs"
@@ -690,12 +710,16 @@ path = "scripts/check-api-evolution"
 sha256 = "2fea40c694da2904de16646c614323c1d11795a5c50f784ff8cd76eba3992d3c"
 
 [[gate.input]]
+path = "scripts/qualify-1.0"
+sha256 = "398eeb71a1a373824b3fd68504c517800c11eb4ac34ca92689c8d1222ac43635"
+
+[[gate.input]]
 path = "scripts/rehearse-release"
-sha256 = "ff56ccb929a00412070eaa7c9f77bc7e43472b43f23985fc01b0cf0782a4c185"
+sha256 = "6b2b19f858bbc10a66d17fbeb127df73e172ede2652719e2939a3974ce1349fa"
 
 [[gate.input]]
 path = "zcheck.toml"
-sha256 = "a418684cdd8a772f02ddc2aa187e2e5f9365dcc5a744ba2a26fcda1b3e6b4385"
+sha256 = "b871252de639721488465736e1bdb1697bd64a32180d1ba1b1a52cd1ee7f33f5"
 
 [[gate.input]]
 path = "zio-logo.svg"

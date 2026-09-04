@@ -21,6 +21,12 @@ fn sparse_clear_reuses_storage_and_resets_generation_guard() -> Result<(), Error
     Ok(())
 }
 
+#[cfg(any(
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "freebsd",
+    target_os = "netbsd"
+))]
 #[test]
 fn add_coalesce_and_clear_are_allocation_free() -> Result<(), Error> {
     let capacity = NonZeroUsize::new(2).ok_or(Error::Invariant)?;

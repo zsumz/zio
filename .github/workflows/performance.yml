@@ -238,6 +238,17 @@ jobs:
             done
           } > "$PERF_DIR/syscalls-contract.txt"
 
+      - name: Record performance qualification
+        env:
+          PERF_DIR: ${{ runner.temp }}/zio-performance
+        run: |
+          set -euo pipefail
+          test -z "$(git status --porcelain --untracked-files=all)"
+          scripts/record-performance-qualification \
+            "$GITHUB_SHA" "$RUNNER_OS" '${{ matrix.replica }}' \
+            "$PERF_DIR/timing.ndjson" "$PERF_DIR/allocation.ndjson" \
+            "$PERF_DIR/qualification-receipt.json"
+
       - name: Upload performance evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

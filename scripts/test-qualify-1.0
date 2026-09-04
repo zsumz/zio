@@ -1,0 +1,199 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+gate="$repository_root/scripts/qualify-1.0"
+record_performance="$repository_root/scripts/record-performance-qualification"
+commit='0123456789abcdef0123456789abcdef01234567'
+other_commit='abcdef0123456789abcdef0123456789abcdef01'
+version='1.0.0-rc.1'
+scratch="$(mktemp -d "${TMPDIR:-/tmp}/zio-1.0-test.XXXXXX")"
+
+cleanup() {
+  case "$scratch" in
+    "${TMPDIR:-/tmp}"/zio-1.0-test.*) rm -rf -- "$scratch" ;;
+    *) printf 'refusing to remove unexpected test path\n' >&2 ;;
+  esac
+}
+trap cleanup EXIT
+
+write_skew() {
+  local output="$1"
+  local os="$2"
+  : > "$output"
+  while read -r registrations capacity ready label; do
+    local waits=$(((ready + capacity - 1) / capacity))
+    jq -cn \
+      --arg commit "$commit" --arg version "$version" --arg os "$os" --arg label "$label" \
+      --argjson registrations "$registrations" --argjson capacity "$capacity" \
+      --argjson ready "$ready" --argjson waits "$waits" \
+      --argjson level_events "$((waits * capacity))" '
+      {
+        schema: "zio.kqueue-skew.v1",
+        zio_version: $version,
+        status: "passed",
+        git: {sha: $commit, sha_source: "fixture", dirty: false},
+        host: {os: $os},
+        parameters: {
+          registrations: $registrations,
+          event_capacity: $capacity,
+          ready_registrations: $ready,
+          ready_fraction: $label
+        },
+        level: {
+          waits_to_complete_cycle: $waits,
+          raw_native_events_returned: $level_events,
+          logical_events_delivered: $level_events,
+          unique_registrations_delivered: $ready,
+          disarm_submissions: 0,
+          disarmed_registrations: 0,
+          disarm_submission_elapsed_ns: 0,
+          retained_heap: {bytes_current: 1}
+        },
+        one_shot: {
+          waits_to_complete_cycle: $waits,
+          raw_native_events_returned: $ready,
+          logical_events_delivered: $ready,
+          unique_registrations_delivered: $ready,
+          disarm_submissions: $waits,
+          disarmed_registrations: $ready,
+          disarm_submission_elapsed_ns: 1,
+          retained_heap: {bytes_current: 1}
+        }
+      }
+    ' >> "$output"
+  done <<'ROWS'
+100000 64 100 0.1_percent
+100000 256 1000 1_percent
+100000 256 50000 50_percent
+100000 1024 100000 100_percent
+1000000 1024 1024 sparse_1024
+ROWS
+}
+
+write_performance() {
+  local directory="$1"
+  local raw="$scratch/raw-performance"
+  mkdir -p "$directory" "$raw"
+  for os in linux macos; do
+    for metric in timing allocation; do
+      local receipt="$raw/$os-$metric.ndjson"
+      : > "$receipt"
+      for ((index = 1; index <= 78; index++)); do
+        jq -cn \
+          --arg commit "$commit" --arg version "$version" --arg os "$os" \
+          --arg metric "$metric" --arg index "$index" '
+          {
+            schema: "zio.perf.v2",
+            status: "passed",
+            metric: $metric,
+            git: {sha: $commit, dirty: false},
+            host: {os: $os},
+            comparison_set: {zio: $version},
+            candidate: {name: ("candidate-" + $index)},
+            scenario: {name: ("scenario-" + $index)}
+          }
+        ' >> "$receipt"
+      done
+    done
+    for replica in 1 2 3 4 5; do
+      "$record_performance" \
+        "$commit" "$os" "$replica" \
+        "$raw/$os-timing.ndjson" "$raw/$os-allocation.ndjson" \
+        "$directory/$os-$replica.json"
+    done
+  done
+}
+
+write_release() {
+  local output="$1"
+  jq -n --arg commit "$commit" --arg version "$version" '
+    {
+      schema: "zio.release-rehearsal.v1",
+      status: "passed",
+      commit: $commit,
+      git: {sha: $commit, dirty: false},
+      version: $version,
+      archive_sha256: ("a" * 64)
+    }
+  ' > "$output"
+}
+
+run_gate() {
+  "$gate" \
+    --commit "$commit" \
+    --macos-receipts "$1" \
+    --bsd-receipts "$2" \
+    --performance-receipts "$3" \
+    --release-rehearsal-receipt "$4"
+}
+
+expect_failure() {
+  local name="$1"
+  shift
+  if "$@" > "$scratch/$name.stdout" 2> "$scratch/$name.stderr"; then
+    printf 'expected %s evidence to be rejected\n' "$name" >&2
+    return 1
+  fi
+}
+
+macos="$scratch/macos.ndjson"
+bsd="$scratch/freebsd.ndjson"
+performance="$scratch/performance"
+release="$scratch/release.json"
+write_skew "$macos" macos
+write_skew "$bsd" freebsd
+write_performance "$performance"
+write_release "$release"
+run_gate "$macos" "$bsd" "$performance" "$release" > "$scratch/success.stdout"
+
+sed '$d' "$scratch/raw-performance/linux-timing.ndjson" \
+  > "$scratch/incomplete-timing.ndjson"
+expect_failure incomplete-performance-source "$record_performance" \
+  "$commit" linux 1 \
+  "$scratch/incomplete-timing.ndjson" \
+  "$scratch/raw-performance/linux-allocation.ndjson" \
+  "$scratch/incomplete-performance-summary.json"
+
+sed '$d' "$macos" > "$scratch/missing-row.ndjson"
+expect_failure missing-row run_gate \
+  "$scratch/missing-row.ndjson" "$bsd" "$performance" "$release"
+
+{
+  sed -n '1,4p' "$macos"
+  sed -n '1p' "$macos"
+} > "$scratch/duplicate-row.ndjson"
+expect_failure duplicate-row run_gate \
+  "$scratch/duplicate-row.ndjson" "$bsd" "$performance" "$release"
+
+jq -c 'if input_line_number == 1 then .status = "unsupported" else . end' \
+  "$bsd" > "$scratch/unsupported-row.ndjson"
+expect_failure unsupported-row run_gate \
+  "$macos" "$scratch/unsupported-row.ndjson" "$performance" "$release"
+
+jq -c --arg commit "$other_commit" '.git.sha = $commit' \
+  "$macos" > "$scratch/wrong-sha.ndjson"
+expect_failure wrong-sha run_gate \
+  "$scratch/wrong-sha.ndjson" "$bsd" "$performance" "$release"
+
+jq -c 'if input_line_number == 1 then .git.dirty = true else . end' \
+  "$macos" > "$scratch/dirty-row.ndjson"
+expect_failure dirty-row run_gate \
+  "$scratch/dirty-row.ndjson" "$bsd" "$performance" "$release"
+
+cp -R "$performance" "$scratch/missing-performance"
+rm "$scratch/missing-performance/linux-5.json"
+expect_failure missing-performance run_gate \
+  "$macos" "$bsd" "$scratch/missing-performance" "$release"
+
+cp -R "$performance" "$scratch/duplicate-performance"
+cp "$performance/linux-1.json" "$scratch/duplicate-performance/linux-1-copy.json"
+expect_failure duplicate-performance run_gate \
+  "$macos" "$bsd" "$scratch/duplicate-performance" "$release"
+
+jq --arg commit "$other_commit" '.commit = $commit | .git.sha = $commit' \
+  "$release" > "$scratch/wrong-release.json"
+expect_failure wrong-release run_gate \
+  "$macos" "$bsd" "$performance" "$scratch/wrong-release.json"
+
+printf 'stable 1.0 evidence validator tests passed\n'

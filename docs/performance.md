@@ -98,5 +98,7 @@ weaker coalescing contract.
 The `Performance qualification` workflow records five independent Linux and
 macOS replicas. Linux also records lifecycle, persistent-readiness, and wake
 syscall summaries; traced timing output is discarded. Timings are evidence, not
-a CI threshold. Compare equivalent hosts and inspect raw paired rounds before
-drawing conclusions.
+a CI threshold. Each successful matrix job emits a
+`zio.performance-qualification.v1` summary binding its 78 timing and 78
+allocation receipts to the exact clean commit, host OS, and replica. Compare
+equivalent hosts and inspect raw paired rounds before drawing conclusions.

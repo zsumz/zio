@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "$#" -ne 6 ]]; then
+  printf '%s\n' \
+    'usage: scripts/record-performance-qualification COMMIT OS REPLICA TIMING ALLOCATION OUTPUT' \
+    >&2
+  exit 2
+fi
+
+commit="$1"
+raw_os="$2"
+replica="$3"
+timing="$4"
+allocation="$5"
+output="$6"
+
+[[ "$commit" =~ ^[0-9a-f]{40}$ ]] || {
+  printf 'performance qualification requires one full lowercase Git SHA\n' >&2
+  exit 2
+}
+case "$raw_os" in
+  Linux | linux) os='linux' ;;
+  macOS | macos) os='macos' ;;
+  *) printf 'performance qualification requires Linux or macOS\n' >&2; exit 2 ;;
+esac
+[[ "$replica" =~ ^[1-5]$ ]] || {
+  printf 'performance qualification replica must be between 1 and 5\n' >&2
+  exit 2
+}
+[[ -f "$timing" && -f "$allocation" ]] || {
+  printf 'performance qualification requires timing and allocation receipts\n' >&2
+  exit 2
+}
+[[ -d "$(dirname "$output")" ]] || {
+  printf 'performance qualification output directory does not exist\n' >&2
+  exit 2
+}
+
+temporary="$(mktemp "$output.XXXXXX")"
+cleanup() {
+  if [[ -n "$temporary" ]]; then
+    rm -f -- "$temporary"
+  fi
+}
+trap cleanup EXIT
+
+jq -e -n \
+  --slurpfile timing "$timing" \
+  --slurpfile allocation "$allocation" \
+  --arg commit "$commit" \
+  --arg os "$os" \
+  --argjson replica "$replica" '
+  ($timing + $allocation) as $all |
+  ($all[0].comparison_set.zio) as $version |
+  if
+    ($timing | length) == 78 and
+    ($allocation | length) == 78 and
+    ([$timing[] | [.candidate.name, .scenario.name]] | unique | length) == 78 and
+    ([$allocation[] | [.candidate.name, .scenario.name]] | unique | length) == 78 and
+    all($timing[]; .metric == "timing") and
+    all($allocation[]; .metric == "allocation") and
+    all($all[];
+      .schema == "zio.perf.v2" and
+      (.status == "passed" or .status == "unsupported") and
+      .git.sha == $commit and
+      .git.dirty == false and
+      .host.os == $os and
+      .comparison_set.zio == $version
+    )
+  then {
+    schema: "zio.performance-qualification.v1",
+    status: "passed",
+    zio_version: $version,
+    git: {sha: $commit, dirty: false},
+    host: {os: $os},
+    replica: $replica,
+    timing_receipts: ($timing | length),
+    allocation_receipts: ($allocation | length)
+  }
+  else error("performance receipts do not prove this clean matrix job")
+  end
+' > "$temporary"
+mv "$temporary" "$output"
+temporary=''

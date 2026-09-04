@@ -2,7 +2,6 @@
 //! ```no_run
 //! use std::{net::TcpListener, time::Duration};
 //! use zio::{Interest, Key, Mode, Poll, Wait};
-//!
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! let listener = TcpListener::bind("127.0.0.1:0")?;
 //! listener.set_nonblocking(true)?;
@@ -19,6 +18,7 @@
 //! # }
 //! ```
 //! Readiness is advisory; perform nonblocking I/O until it returns `WouldBlock`.
+#![doc = concat!(include_str!("../examples/borrowed.md"), include_str!("../examples/nested.md"))]
 #![deny(missing_debug_implementations, missing_docs, unreachable_pub)]
 #![deny(unsafe_code)]
 mod binding;

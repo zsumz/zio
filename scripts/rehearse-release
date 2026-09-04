@@ -165,7 +165,7 @@ jq -n \
   --arg version "$version" \
   --arg archive "$archive_basename" \
   --arg archive_sha256 "$archive_sha256" \
-  '{schema:"zio.release-rehearsal.v1", status:"passed", commit:$commit, version:$version, archive:$archive, archive_sha256:$archive_sha256, public_api_contract:"public-api-contract.json"}' \
+  '{schema:"zio.release-rehearsal.v1", status:"passed", commit:$commit, git:{sha:$commit, dirty:false}, version:$version, archive:$archive, archive_sha256:$archive_sha256, public_api_contract:"public-api-contract.json"}' \
   > "$evidence_dir/receipt.json"
 
 printf 'release rehearsal passed: zio %s (%s)\n' "$version" "$archive_sha256"

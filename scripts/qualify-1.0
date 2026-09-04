@@ -1,0 +1,203 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  printf '%s\n' \
+    'usage: scripts/qualify-1.0 --commit SHA --macos-receipts PATH' \
+    '       --bsd-receipts PATH --performance-receipts PATH' \
+    '       --release-rehearsal-receipt FILE'
+}
+
+fail() {
+  printf 'stable 1.0 evidence rejected: %s\n' "$1" >&2
+  exit 1
+}
+
+commit=''
+macos_receipts=''
+bsd_receipts=''
+performance_receipts=''
+release_receipt=''
+
+while (($# > 0)); do
+  case "$1" in
+    --commit)
+      (($# >= 2)) || fail '--commit requires a value'
+      [[ -z "$commit" ]] || fail '--commit may be supplied only once'
+      commit="$2"
+      shift 2
+      ;;
+    --macos-receipts)
+      (($# >= 2)) || fail '--macos-receipts requires a value'
+      [[ -z "$macos_receipts" ]] || fail '--macos-receipts may be supplied only once'
+      macos_receipts="$2"
+      shift 2
+      ;;
+    --bsd-receipts)
+      (($# >= 2)) || fail '--bsd-receipts requires a value'
+      [[ -z "$bsd_receipts" ]] || fail '--bsd-receipts may be supplied only once'
+      bsd_receipts="$2"
+      shift 2
+      ;;
+    --performance-receipts)
+      (($# >= 2)) || fail '--performance-receipts requires a value'
+      [[ -z "$performance_receipts" ]] || fail '--performance-receipts may be supplied only once'
+      performance_receipts="$2"
+      shift 2
+      ;;
+    --release-rehearsal-receipt)
+      (($# >= 2)) || fail '--release-rehearsal-receipt requires a value'
+      [[ -z "$release_receipt" ]] || fail '--release-rehearsal-receipt may be supplied only once'
+      release_receipt="$2"
+      shift 2
+      ;;
+    --help | -h)
+      usage
+      exit 0
+      ;;
+    *)
+      usage >&2
+      fail "unknown argument \`$1\`"
+      ;;
+  esac
+done
+
+[[ "$commit" =~ ^[0-9a-f]{40}$ ]] || fail '--commit must be one full lowercase Git SHA'
+[[ -n "$macos_receipts" ]] || fail '--macos-receipts is required'
+[[ -n "$bsd_receipts" ]] || fail '--bsd-receipts is required'
+[[ -n "$performance_receipts" ]] || fail '--performance-receipts is required'
+[[ -f "$release_receipt" ]] || fail 'release-rehearsal receipt must be a file'
+
+scratch="$(mktemp -d "${TMPDIR:-/tmp}/zio-1.0-evidence.XXXXXX")"
+cleanup() {
+  case "$scratch" in
+    "${TMPDIR:-/tmp}"/zio-1.0-evidence.*) rm -rf -- "$scratch" ;;
+    *) printf 'refusing to remove unexpected evidence path\n' >&2 ;;
+  esac
+}
+trap cleanup EXIT
+
+collect_schema() {
+  local label="$1"
+  local input="$2"
+  local schema="$3"
+  local output="$4"
+  local -a files=()
+  if [[ -f "$input" ]]; then
+    files+=("$input")
+  elif [[ -d "$input" ]]; then
+    while IFS= read -r -d '' file; do
+      files+=("$file")
+    done < <(find "$input" -type f \( -name '*.json' -o -name '*.ndjson' \) -print0)
+  else
+    fail "$label path does not exist"
+  fi
+  ((${#files[@]} > 0)) || fail "$label path contains no JSON receipts"
+  jq -s --arg schema "$schema" \
+    '[.[] | select(.schema? == $schema)]' "${files[@]}" > "$output" || \
+    fail "$label receipts are not valid JSON"
+  [[ "$(jq 'length' "$output")" -gt 0 ]] || fail "$label schema was not found"
+}
+
+release_version="$({
+  jq -er --arg commit "$commit" '
+    if
+      .schema == "zio.release-rehearsal.v1" and
+      .status == "passed" and
+      .commit == $commit and
+      .git.sha == $commit and
+      .git.dirty == false and
+      (.version | type == "string" and length > 0) and
+      (.archive_sha256 | test("^[0-9a-f]{64}$"))
+    then .version
+    else error("release receipt does not prove the clean candidate")
+    end
+  ' "$release_receipt"
+} 2>/dev/null)" || fail 'release-rehearsal receipt does not prove the clean candidate'
+
+collect_schema 'macOS kqueue' "$macos_receipts" 'zio.kqueue-skew.v1' "$scratch/macos.json"
+collect_schema 'BSD kqueue' "$bsd_receipts" 'zio.kqueue-skew.v1' "$scratch/bsd.json"
+collect_schema \
+  'performance qualification' "$performance_receipts" \
+  'zio.performance-qualification.v1' "$scratch/performance.json"
+
+validate_kqueue() {
+  local label="$1"
+  local platform="$2"
+  local receipt="$3"
+  jq -e --arg commit "$commit" --arg version "$release_version" \
+    --arg platform "$platform" '
+    def expected:
+      [
+        [100000, 64, 100, "0.1_percent"],
+        [100000, 256, 1000, "1_percent"],
+        [100000, 256, 50000, "50_percent"],
+        [100000, 1024, 100000, "100_percent"],
+        [1000000, 1024, 1024, "sparse_1024"]
+      ];
+    def key($row):
+      [
+        $row.parameters.registrations,
+        $row.parameters.event_capacity,
+        $row.parameters.ready_registrations,
+        $row.parameters.ready_fraction
+      ];
+    def waits($row):
+      (($row.parameters.ready_registrations + $row.parameters.event_capacity - 1) /
+        $row.parameters.event_capacity | floor);
+    length == 5 and
+    ([.[] | key(.)] | sort) == (expected | sort) and
+    ([.[] | key(.)] | unique | length) == 5 and
+    ([.[].host.os] | unique | length) == 1 and
+    all(.[];
+      .status == "passed" and
+      .zio_version == $version and
+      .git.sha == $commit and
+      .git.dirty == false and
+      (if $platform == "macos"
+       then .host.os == "macos"
+       else (.host.os == "freebsd" or .host.os == "netbsd")
+       end) and
+      .level.waits_to_complete_cycle == waits(.) and
+      .level.logical_events_delivered ==
+        (waits(.) * .parameters.event_capacity) and
+      .level.unique_registrations_delivered == .parameters.ready_registrations and
+      .level.raw_native_events_returned >= .level.logical_events_delivered and
+      .level.disarm_submissions == 0 and
+      .level.disarmed_registrations == 0 and
+      .level.disarm_submission_elapsed_ns == 0 and
+      .level.retained_heap.bytes_current > 0 and
+      .one_shot.waits_to_complete_cycle == waits(.) and
+      .one_shot.logical_events_delivered == .parameters.ready_registrations and
+      .one_shot.unique_registrations_delivered == .parameters.ready_registrations and
+      .one_shot.raw_native_events_returned >= .one_shot.logical_events_delivered and
+      .one_shot.disarm_submissions == waits(.) and
+      .one_shot.disarmed_registrations == .parameters.ready_registrations and
+      .one_shot.disarm_submission_elapsed_ns >= 0 and
+      .one_shot.retained_heap.bytes_current > 0
+    )
+  ' "$receipt" > /dev/null || fail "$label kqueue matrix is incomplete or invalid"
+}
+
+validate_kqueue 'macOS' 'macos' "$scratch/macos.json"
+validate_kqueue 'BSD' 'bsd' "$scratch/bsd.json"
+
+jq -e --arg commit "$commit" --arg version "$release_version" '
+  ([range(1; 6) | ["linux", .]] + [range(1; 6) | ["macos", .]]) as $expected |
+  length == 10 and
+  ([.[] | [.host.os, .replica]] | sort) == ($expected | sort) and
+  ([.[] | [.host.os, .replica]] | unique | length) == 10 and
+  all(.[];
+    .status == "passed" and
+    .zio_version == $version and
+    .git.sha == $commit and
+    .git.dirty == false and
+    .timing_receipts == 78 and
+    .allocation_receipts == 78
+  )
+' "$scratch/performance.json" > /dev/null || \
+  fail 'performance receipts do not prove five clean Linux and macOS replicas'
+
+bsd_os="$(jq -er '.[0].host.os' "$scratch/bsd.json")"
+printf 'stable 1.0 evidence passed: zio %s (%s; macos + %s)\n' \
+  "$release_version" "$commit" "$bsd_os"
