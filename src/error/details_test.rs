@@ -4,7 +4,10 @@ use std::{error::Error as _, io};
 
 use crate::{CapacityKind, CapacityReason, Registration, RegistrationId};
 
-use super::{CommitStatus, DeleteError, Error, MutationError, Operation, RegisterError};
+use super::{
+    CommitStatus, DeleteAllError, DeleteError, DeleteOwnedError, Error, MutationError, Operation,
+    RegisterError, RegisterOwnedError,
+};
 
 #[test]
 fn mutation_failure_returns_every_owned_part() {
@@ -136,6 +139,16 @@ fn error_sources_preserve_every_layer() {
 }
 
 #[test]
+fn capability_error_sources_preserve_underlying_error() {
+    let registration = Registration::test(9);
+    assert_delegated_source(&RegisterError::new(native_error(), None));
+    assert_delegated_source(&RegisterOwnedError::retained(native_error(), registration));
+    assert_delegated_source(&DeleteError::new(native_error(), registration));
+    assert_delegated_source(&DeleteOwnedError::retained(native_error(), registration));
+    assert_delegated_source(&DeleteAllError::preflight(native_error()));
+}
+
+#[test]
 fn capability_errors_borrow_typed_causes() {
     let register = RegisterError::new(Error::InvalidInterest, None);
     assert!(core::ptr::eq(register.error(), register.as_ref()));
@@ -251,4 +264,23 @@ fn wait_interruption_does_not_classify_mutations() {
     assert!(!interrupted_wake.is_wait_interrupted());
     assert!(!interrupted_mutation.is_wait_interrupted());
     assert!(!failed_wait.is_wait_interrupted());
+}
+
+fn native_error() -> Error {
+    Error::Io {
+        operation: Operation::Wait,
+        source: io::Error::other("native failure"),
+    }
+}
+
+fn assert_delegated_source(error: &dyn std::error::Error) {
+    let delegated = error.source();
+    assert!(delegated.is_some_and(<dyn std::error::Error>::is::<Error>));
+    let native = delegated.and_then(std::error::Error::source);
+    assert!(native.is_some_and(<dyn std::error::Error>::is::<io::Error>));
+    assert_eq!(
+        native.map(ToString::to_string).as_deref(),
+        Some("native failure")
+    );
+    assert!(native.and_then(std::error::Error::source).is_none());
 }

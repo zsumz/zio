@@ -53,6 +53,13 @@ fn recovery_failure_preserves_one_owned_snapshot() {
     assert_eq!(failure.iter().len(), 2);
     assert_eq!(failure.into_iter().len(), 2);
     assert_eq!(failure.source().raw_os_error(), Some(5));
+    let standard_source = std::error::Error::source(&failure);
+    assert!(standard_source.is_some_and(<dyn std::error::Error>::is::<io::Error>));
+    assert!(
+        standard_source
+            .and_then(std::error::Error::source)
+            .is_none()
+    );
     assert_eq!(
         failure.to_string(),
         format!(

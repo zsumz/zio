@@ -215,6 +215,9 @@ title = "Public defaults remain named zero or capacity values"
 document = "docs/contracts.md#api-evolution"
 evidence = [
     "rust-test:tests/api_evolution/diagnostics.rs::public_errors_preserve_standard_source_chains",
+    "rust-test:src/error/details_test.rs::error_sources_preserve_every_layer",
+    "rust-test:src/error/details_test.rs::capability_error_sources_preserve_underlying_error",
+    "rust-test:src/error/recovery_test.rs::recovery_failure_preserves_one_owned_snapshot",
     "rust-test:tests/api_evolution/values.rs::public_values_keep_common_traits",
     "gate:check",
     "gate:ci",
