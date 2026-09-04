@@ -18,11 +18,11 @@ pub const DEFAULT_EVENT_CAPACITY: usize = 1_024;
 /// Default number of registrations retained by one poller.
 pub const DEFAULT_REGISTRATION_CAPACITY: usize = 1_024;
 
-/// Cloneable cross-thread capability for keyed
-/// [`Event::Wake`](crate::Event::Wake) observations.
+/// Cloneable cross-thread capability for keyed [`Event::Wake`](crate::Event::Wake) observations.
 ///
 /// Clones may outlive the poller. They retain its native wake resource, not
 /// registered descriptors; later triggers have no observer.
+#[must_use = "retain the waker to signal the poller"]
 #[derive(Clone)]
 pub struct Waker {
     wake: Wake,
