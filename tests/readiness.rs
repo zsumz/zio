@@ -12,7 +12,6 @@ mod support;
 use std::{
     io::{self, Write},
     os::unix::net::UnixStream,
-    thread,
     time::{Duration, Instant},
 };
 
@@ -192,44 +191,6 @@ fn one_shot_coalescing_is_complete_with_competing_registrations()
 }
 
 #[test]
-fn wake_before_wait_is_observable() -> Result<(), Box<dyn std::error::Error>> {
-    let mut poll = Poll::new()?;
-    assert_eq!(poll.waker_key(), None);
-    let waker = poll.waker(Key::new(99))?;
-    assert_eq!(poll.waker_key(), Some(Key::new(99)));
-    waker.wake()?;
-
-    let mut events = poll.events()?;
-    let report = poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?;
-    assert!(matches!(
-        events.as_slice(),
-        [Event::Wake { key, .. }] if *key == Key::new(99)
-    ));
-    require_no_recovery(report)?;
-    Ok(())
-}
-
-#[test]
-fn wake_completes_a_blocked_wait() -> Result<(), Box<dyn std::error::Error>> {
-    let mut poll = Poll::new()?;
-    let waker = poll.waker(Key::new(100))?;
-    let thread = thread::spawn(move || {
-        thread::sleep(Duration::from_millis(20));
-        waker.wake()
-    });
-
-    let mut events = poll.events()?;
-    let report = poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?;
-    let wake_result = thread
-        .join()
-        .map_err(|_| io::Error::other("wake thread panicked"))?;
-    wake_result?;
-    assert!(has_wake(&events, Key::new(100)));
-    require_no_recovery(report)?;
-    Ok(())
-}
-
-#[test]
 fn wait_rejects_an_undersized_destination() -> Result<(), Box<dyn std::error::Error>> {
     let mut poll = Poll::with_capacity(4, 4)?;
     let mut events = Events::with_capacity(3)?;
@@ -275,10 +236,4 @@ fn has_key(events: &Events, expected: Key) -> bool {
     events
         .iter()
         .any(|event| matches!(event, Event::Resource { key, .. } if *key == expected))
-}
-
-fn has_wake(events: &Events, expected: Key) -> bool {
-    events
-        .iter()
-        .any(|event| matches!(event, Event::Wake { key, .. } if *key == expected))
 }

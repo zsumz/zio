@@ -372,8 +372,9 @@ title = "Positive waits never collapse to nonblocking observations"
 [[invariant]]
 document = "docs/contracts.md#wake-behavior"
 evidence = [
-    "rust-test:tests/readiness.rs::wake_before_wait_is_observable",
-    "rust-test:tests/readiness.rs::wake_completes_a_blocked_wait",
+    "rust-test:tests/wake.rs::wake_before_wait_is_observable",
+    "rust-test:tests/wake.rs::wake_coalesces_drains_and_remains_reusable",
+    "rust-test:tests/wake.rs::wake_completes_a_blocked_wait",
     "rust-test:src/sys/linux_group/eventfd_test.rs::saturated_counter_is_reset_and_retriggered",
     "rust-test:crates/zio-testkit/tests/wake_conformance.rs::wake_report_covers_every_scenario",
     "rust-test:crates/zio-testkit/tests/wake_conformance.rs::wake_scenario_names_are_stable",
@@ -496,7 +497,7 @@ title = "FreeBSD and NetBSD execute the native qualification suite"
 [[invariant]]
 document = "docs/qualification.md#release-rehearsal"
 evidence = [
-    "rust-test:tests/readiness.rs::wake_before_wait_is_observable",
+    "rust-test:tests/wake.rs::wake_before_wait_is_observable",
     "gate:release",
 ]
 id = "RELEASE-01"
