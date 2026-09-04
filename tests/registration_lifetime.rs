@@ -62,6 +62,29 @@ fn dropping_poller_closes_a_transferred_descriptor() -> TestResult {
 }
 
 #[test]
+fn live_waker_does_not_retain_a_transferred_descriptor() -> TestResult {
+    let (source, mut peer) = UnixStream::pair()?;
+    peer.set_read_timeout(Some(Duration::from_secs(1)))?;
+    let mut poll = Poll::with_capacity(1, 1)?;
+    let _registration = poll.register_owned(
+        source.into(),
+        Key::new(908),
+        Interest::READABLE,
+        Mode::Level,
+    )?;
+    let waker = poll.waker(Key::new(909))?;
+
+    drop(poll);
+
+    ensure(
+        peer.read(&mut [0_u8])? == 0,
+        "live waker retained a transferred descriptor",
+    )?;
+    waker.wake()?;
+    Ok(())
+}
+
+#[test]
 fn successful_delete_stales_every_surviving_copy() -> TestResult {
     let (source, _peer) = UnixStream::pair()?;
     let mut poll = Poll::with_capacity(1, 1)?;

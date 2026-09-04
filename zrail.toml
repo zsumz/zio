@@ -219,6 +219,7 @@ title = "Safe registration retains a distinct descriptor and exact generation"
 document = "docs/contracts.md#registration-ownership"
 evidence = [
     "rust-test:tests/registration_lifetime.rs::dropping_poller_closes_a_transferred_descriptor",
+    "rust-test:tests/registration_lifetime.rs::live_waker_does_not_retain_a_transferred_descriptor",
     "rust-test:tests/borrowed_registration.rs::dropping_poller_does_not_close_borrowed_source",
     "gate:check",
     "gate:ci",

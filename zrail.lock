@@ -2,7 +2,7 @@
 schema = 2
 semantics = 3
 producer = "0.0.3-rc.4"
-contract_sha256 = "93304f5aa9bbe4275ca195f09377224a0122ebcc6a6e38fac5ebd7a81faa2872"
+contract_sha256 = "9c18e94b0dec6fd65610e667b5edeafbd23f2a519a4c993fdfbcb538c2c1e97c"
 
 [analysis]
 inventory_sha256 = "6afe97c343940e603120175c293fe47d931e3ea164f563d0725882776a1b4168"
@@ -13,7 +13,7 @@ targets = 40
 physical_rust_files = 276
 base_source_contexts = 461
 derived_source_contexts = 0
-source_facts = 80979
+source_facts = 81053
 projection_queries = 0
 projected_facts = 0
 unresolved_bindings = 0
@@ -21,7 +21,7 @@ analyzer_semantics = 3
 
 [[analysis.contract_source]]
 path = "zrail.toml"
-sha256 = "3b4c0bf96fedab4d84fd7b4b48f53c3a87235911781d4d2952c4a1cd2b8906b9"
+sha256 = "69db8738a240d2d71ccf409053d2e8267670e83cd018d7424862b1736e8ae572"
 
 [[package]]
 name = "zio"
@@ -240,7 +240,7 @@ sha256 = "2a4b286bea1a4a7ccba09cfcdc7855595f2a7092f519d440f745e4e7f97ef067"
 
 [[gate.input]]
 path = "docs/contracts.md"
-sha256 = "7141656af4555271c6eae53a72544d20acf53b442f1fe2ab47ba80dd0c5ae221"
+sha256 = "2ab340ac742a7bebbcd3c4c544d2f65e8d63d6fb562538f47162128c3f2e68e2"
 
 [[gate.input]]
 path = "docs/performance.md"
@@ -539,7 +539,7 @@ sha256 = "73303f1eba53b406bf8d8bfade18750b7d1a1971d0d3fa3498582e1b335439d3"
 
 [[gate.input]]
 path = "docs/contracts.md"
-sha256 = "7141656af4555271c6eae53a72544d20acf53b442f1fe2ab47ba80dd0c5ae221"
+sha256 = "2ab340ac742a7bebbcd3c4c544d2f65e8d63d6fb562538f47162128c3f2e68e2"
 
 [[gate.input]]
 path = "docs/performance.md"

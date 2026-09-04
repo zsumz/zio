@@ -21,8 +21,8 @@ pub const DEFAULT_REGISTRATION_CAPACITY: usize = 1_024;
 /// Cloneable cross-thread capability for keyed
 /// [`Event::Wake`](crate::Event::Wake) observations.
 ///
-/// Clones may outlive the poller. They retain its native wake resource, but
-/// later triggers have no observer.
+/// Clones may outlive the poller. They retain its native wake resource, not
+/// registered descriptors; later triggers have no observer.
 #[derive(Clone)]
 pub struct Waker {
     wake: Wake,

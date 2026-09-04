@@ -197,6 +197,7 @@ Use nonblocking descriptors and perform I/O until it would block.
 ## Wake behavior
 
 `Poll` is `Send` but not `Sync`. `Waker` is `Send + Sync`.
+A waker may outlive its poller but does not retain registered descriptors.
 
 A poller binds its wake source to one key. Same-key requests and clones share
 it, and each `Waker` reports that key. A conflicting key is rejected without
