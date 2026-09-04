@@ -13,7 +13,7 @@ targets = 50
 physical_rust_files = 302
 base_source_contexts = 504
 derived_source_contexts = 0
-source_facts = 90355
+source_facts = 90356
 projection_queries = 0
 projected_facts = 0
 unresolved_bindings = 0
@@ -260,7 +260,7 @@ sha256 = "e7cb19961a471102e86f9f17c82d836c0f1c644c7cab2b7a51e7e9ea6ab0a721"
 
 [[gate.input]]
 path = "docs/performance.md"
-sha256 = "57825bfdc991cb789425af6b309d701357488b451285199ab460f02602b3c5b0"
+sha256 = "93d9de4217c1e1b0f93652993650b467cec0f365cc631e7263db277f5e1451f6"
 
 [[gate.input]]
 path = "docs/qualification.md"
@@ -312,7 +312,7 @@ sha256 = "b43ac154140f73e754fbc00f94c1ae9298ff6c80e56c860ac1841192465e30b8"
 
 [[gate.input]]
 path = "scripts/record-performance-qualification"
-sha256 = "dc440b1c64b2a71da1dee34dcc8be1cddf84fb7ce5fdaf14275405f88b406231"
+sha256 = "0195f1c8701e6fb2475c9ecfb385746aab846f2a7533d9f332f11dfdc4eae018"
 
 [[gate.input]]
 path = "scripts/rehearse-release"
@@ -324,7 +324,7 @@ sha256 = "48d7c1667ca24137c058f3ebea704d47a51366b89c6ed9c35127a9607292761c"
 
 [[gate.input]]
 path = "scripts/test-qualify-1.0"
-sha256 = "9134ff27259219a19d9ab9fe0db11261f195a015512e166eee20acbdc4ad023a"
+sha256 = "45ab18605fbdb0cfc978c8f65d30e7a080bf1583ed9b827e1e8fa5718e680d6a"
 
 [[gate.input]]
 path = "zio-logo.svg"
@@ -430,7 +430,7 @@ sha256 = "c8bdb887b63fce234888e4b405ab27d000c0ae651c426a9d7e3ce99278e915de"
 
 [[gate.input]]
 path = "crates/zio-qualify/src/benchmark/kqueue_skew/model.rs"
-sha256 = "9135995bac842bd259d7fd02064c7a88e691106fd4c439170c804bdf6fe9c4e6"
+sha256 = "2fa9486623f96a1942de9244d494481d8eda6d99ac4baa5a13a935f68121a241"
 
 [[gate.input]]
 path = "crates/zio-qualify/src/benchmark/kqueue_skew/receipt.rs"
@@ -618,7 +618,7 @@ sha256 = "cde97dbd80fbaba3516e3e3d0d5430bddb6e41acd8fe431de3611bafffc5717f"
 
 [[gate.input]]
 path = "docs/performance.md"
-sha256 = "57825bfdc991cb789425af6b309d701357488b451285199ab460f02602b3c5b0"
+sha256 = "93d9de4217c1e1b0f93652993650b467cec0f365cc631e7263db277f5e1451f6"
 
 [[gate.input]]
 path = "rust-toolchain.toml"
@@ -634,7 +634,7 @@ sha256 = "b43ac154140f73e754fbc00f94c1ae9298ff6c80e56c860ac1841192465e30b8"
 
 [[gate.input]]
 path = "scripts/record-performance-qualification"
-sha256 = "dc440b1c64b2a71da1dee34dcc8be1cddf84fb7ce5fdaf14275405f88b406231"
+sha256 = "0195f1c8701e6fb2475c9ecfb385746aab846f2a7533d9f332f11dfdc4eae018"
 
 [[gate.input]]
 path = "scripts/test-performance-fd-limit"
@@ -695,7 +695,7 @@ sha256 = "e7cb19961a471102e86f9f17c82d836c0f1c644c7cab2b7a51e7e9ea6ab0a721"
 
 [[gate.input]]
 path = "docs/performance.md"
-sha256 = "57825bfdc991cb789425af6b309d701357488b451285199ab460f02602b3c5b0"
+sha256 = "93d9de4217c1e1b0f93652993650b467cec0f365cc631e7263db277f5e1451f6"
 
 [[gate.input]]
 path = "docs/qualification.md"

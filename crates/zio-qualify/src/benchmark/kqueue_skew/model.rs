@@ -32,6 +32,11 @@ pub(super) struct Resources {
     dead_code,
     reason = "non-kqueue hosts construct only the structured unsupported variant"
 )]
+#[allow(
+    clippy::large_enum_variant,
+    reason = "one bounded benchmark-row outcome is serialized at a time; \
+              boxing the measurements would add unnecessary indirection"
+)]
 pub(super) enum Outcome {
     Passed {
         level: Measurement,

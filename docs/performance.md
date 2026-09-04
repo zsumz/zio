@@ -25,6 +25,8 @@ the runner; it is not a useful timing sample.
 - allocation uses 12 rounds in a separately instrumented binary;
 - allocation counters are thread-local. Blocked-wake allocation receipts cover
   the waiter; pretriggered wake covers trigger and observation together;
+- allocation totals and peaks are nonnegative, while current count and bytes
+  are signed net values because a measured interval may free prior allocations;
 - raw receipts retain round, candidate position, operations, events, and metric
   values;
 - summaries report sample-mean throughput distributions. Their p95 is not an

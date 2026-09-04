@@ -86,6 +86,8 @@ jq -e -n \
   def natural: integer and . >= 0;
   def positive: integer and . > 0;
   def text: type == "string" and length > 0;
+  def integer_array($count):
+    type == "array" and length == $count and all(.[]; integer);
   def natural_array($count):
     type == "array" and length == $count and all(.[]; natural);
   def positive_array($count):
@@ -129,8 +131,8 @@ jq -e -n \
       (.raw.allocation_count_peak | natural_array($samples)) and
       (.raw.allocation_bytes_total | natural_array($samples)) and
       (.raw.allocation_bytes_peak | natural_array($samples)) and
-      (.raw.allocation_count_current | natural_array($samples)) and
-      (.raw.allocation_bytes_current | natural_array($samples))
+      (.raw.allocation_count_current | integer_array($samples)) and
+      (.raw.allocation_bytes_current | integer_array($samples))
     end;
   ($catalog[0]) as $catalog |
   ($timing + $allocation) as $all |

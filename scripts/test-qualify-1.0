@@ -346,6 +346,34 @@ for metric in timing allocation; do
 done
 record_summary "$known" linux 1
 
+signed_net="$(performance_case signed-net)"
+jq -c '
+  if input_line_number == 1
+  then .raw.allocation_count_current[0] = -1 |
+    .raw.allocation_bytes_current[0] = -64
+  else . end
+' "$signed_net/allocation.ndjson" > "$signed_net/allocation.changed"
+mv "$signed_net/allocation.changed" "$signed_net/allocation.ndjson"
+record_summary "$signed_net" linux 1
+
+string_net="$(performance_case string-net)"
+jq -c '
+  if input_line_number == 1
+  then .raw.allocation_count_current[0] = "garbage"
+  else . end
+' "$string_net/allocation.ndjson" > "$string_net/allocation.changed"
+mv "$string_net/allocation.changed" "$string_net/allocation.ndjson"
+expect_record_failure string-net "$string_net"
+
+fractional_net="$(performance_case fractional-net)"
+jq -c '
+  if input_line_number == 1
+  then .raw.allocation_bytes_current[0] = -1.5
+  else . end
+' "$fractional_net/allocation.ndjson" > "$fractional_net/allocation.changed"
+mv "$fractional_net/allocation.changed" "$fractional_net/allocation.ndjson"
+expect_record_failure fractional-net "$fractional_net"
+
 invented_candidate="$(performance_case invented-candidate)"
 for metric in timing allocation; do
   jq -c 'if input_line_number == 1 then .candidate.name = "invented" else . end' \
