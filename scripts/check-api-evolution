@@ -197,6 +197,9 @@ printf '%s\n' \
   '    let _ = PollBuilder::event_capacity as fn(PollBuilder, usize) -> PollBuilder;' \
   '    let _ = PollBuilder::registration_capacity as fn(PollBuilder, usize) -> PollBuilder;' \
   '    let _ = PollBuilder::build as fn(PollBuilder) -> Result<Poll, Error>;' \
+  '    let _ = const_key_contract as fn(u64) -> u64;' \
+  '    let _ = const_wait_contract as fn(Wait) -> (bool, Option<std::time::Duration>);' \
+  '    let _ = const_builder_contract as fn() -> [PollBuilder; 2];' \
   '    let _ = Poll::modify as fn(&mut Poll, &Registration, zio::Interest, Mode) -> Result<(), Error>;' \
   '    let _ = Poll::rearm as fn(&mut Poll, &Registration) -> Result<(), Error>;' \
   '    let _ = Poll::modify_with_key as fn(&mut Poll, &Registration, Key, zio::Interest, Mode) -> Result<(), Error>;' \
@@ -306,6 +309,18 @@ printf '%s\n' \
   'fn assert_debug_send<T: std::fmt::Debug + Send>() {}' \
   '' \
   'fn assert_clone_debug_send_sync<T: Clone + std::fmt::Debug + Send + Sync>() {}' \
+  '' \
+  'const fn const_key_contract(value: u64) -> u64 {' \
+  '    Key::new(value).get()' \
+  '}' \
+  '' \
+  'const fn const_wait_contract(wait: Wait) -> (bool, Option<std::time::Duration>) {' \
+  '    (wait.is_nonblocking(), wait.timeout())' \
+  '}' \
+  '' \
+  'const fn const_builder_contract() -> [PollBuilder; 2] {' \
+  '    [PollBuilder::new().event_capacity(17).registration_capacity(19), Poll::builder()]' \
+  '}' \
   '' \
   'const fn const_interest_contract(interest: zio::Interest) -> ([bool; 5], [zio::Interest; 5]) {' \
   '    (' \

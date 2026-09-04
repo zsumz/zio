@@ -41,6 +41,30 @@ fn public_defaults_are_named_values() {
 }
 
 #[test]
+fn caller_configuration_values_are_const() {
+    const fn key_contract(value: u64) -> u64 {
+        Key::new(value).get()
+    }
+
+    const fn wait_contract(wait: Wait) -> (bool, Option<core::time::Duration>) {
+        (wait.is_nonblocking(), wait.timeout())
+    }
+
+    const fn builder_contract() -> [PollBuilder; 2] {
+        [
+            PollBuilder::new()
+                .event_capacity(17)
+                .registration_capacity(19),
+            Poll::builder(),
+        ]
+    }
+
+    let _ = key_contract as fn(u64) -> u64;
+    let _ = wait_contract as fn(Wait) -> (bool, Option<core::time::Duration>);
+    let _ = builder_contract as fn() -> [PollBuilder; 2];
+}
+
+#[test]
 fn fixed_batch_cardinality_queries_are_const() {
     const fn event_cardinality(events: &Events) -> (usize, bool, usize, bool) {
         (

@@ -26,7 +26,8 @@ Copyable public values are debuggable, comparable, hashable, `Send`, and
 `Sync`. `Poll`, `Events`, `WaitReport`, and `Waker` are debuggable; wakers are
 cloneable.
 `PollBuilder`, `Registration`, `WaitReport`, and `Waker` warn when discarded.
-`Interest` and `Readiness` set operations and queries work in const contexts.
+`Key` construction and access, `Wait` queries, and `PollBuilder` configuration
+work in const contexts. `Interest` and `Readiness` set operations and queries do too.
 `Events` and `RecoveryFailure` cardinality and slice queries work in const
 contexts.
 
