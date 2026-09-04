@@ -6,7 +6,7 @@
 )]
 
 #[cfg(not(target_pointer_width = "64"))]
-const _: [(); 8] = [(); core::mem::size_of::<usize>()];
+const KQUEUE_BACKEND_REQUIRES_64_BIT: [(); 8] = [(); core::mem::size_of::<usize>()];
 
 use std::{
     io,
