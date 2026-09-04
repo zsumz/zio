@@ -135,3 +135,29 @@ fn waker_can_outlive_its_poller() -> Result<(), crate::Error> {
 
     waker.wake()
 }
+
+#[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
+#[test]
+fn undersized_destination_does_not_consume_deferred_wake() -> Result<(), Error> {
+    let mut poll = Poll::with_capacity(2, 1)?;
+    let key = Key::new(10);
+    let _waker = poll.waker(key)?;
+    poll.deferred_wake = true;
+    let mut undersized = crate::Events::with_capacity(1)?;
+
+    assert!(matches!(
+        poll.wait(&mut undersized, crate::Wait::NoBlock),
+        Err(Error::EventsTooSmall {
+            required: 2,
+            actual: 1,
+        })
+    ));
+    assert!(undersized.is_empty());
+    assert!(poll.deferred_wake);
+
+    let mut events = poll.events()?;
+    assert!(poll.wait(&mut events, crate::Wait::NoBlock)?.is_complete());
+    assert_eq!(events.as_slice(), &[crate::Event::Wake { key }]);
+    assert!(!poll.deferred_wake);
+    Ok(())
+}
