@@ -497,6 +497,7 @@ evidence = [
     "rust-test:crates/zio-testkit/tests/model_sequence.rs::model_sequence_results_replay_by_reported_seed",
     "rust-test:crates/zio-testkit/src/model_sequence_preflight_test.rs::invalid_register_does_not_consume_a_generation",
     "rust-test:crates/zio-testkit/src/model_sequence_preflight_test.rs::invalid_modify_preserves_the_exact_prior_tuple",
+    "rust-test:crates/zio-testkit/src/model_sequence_preflight_test.rs::invalid_keyed_modify_preserves_the_exact_prior_tuple",
     "rust-test:crates/zio-testkit/src/model_sequence_runner_test.rs::failing_sequence_keeps_seed_and_minimal_replay_prefix",
     "rust-test:crates/zio-testkit/src/model_sequence_runner_test.rs::sentinel_action_fingerprints_are_stable",
     "gate:check",

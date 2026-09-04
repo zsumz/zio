@@ -49,6 +49,15 @@ fn invalid_register_does_not_consume_a_generation() -> Result<(), io::Error> {
 
 #[test]
 fn invalid_modify_preserves_the_exact_prior_tuple() -> Result<(), io::Error> {
+    verify_invalid_modify(None)
+}
+
+#[test]
+fn invalid_keyed_modify_preserves_the_exact_prior_tuple() -> Result<(), io::Error> {
+    verify_invalid_modify(Some(Key::new(0x5a10_0000_0000_0003)))
+}
+
+fn verify_invalid_modify(desired_key: Option<Key>) -> Result<(), io::Error> {
     let steps = [
         MutationStep::Register(MutationOutcome::Success),
         MutationStep::Modify(MutationOutcome::Success),
@@ -65,11 +74,11 @@ fn invalid_modify_preserves_the_exact_prior_tuple() -> Result<(), io::Error> {
         .map_err(other)?;
     poll.establish_disarmed(&registration).map_err(other)?;
 
-    let prior_state = poll.registration_state(&registration).map_err(other)?;
+    let prior_info = poll.registration_info(&registration).map_err(other)?;
     let prior_backend = poll.backend_state(registration.id());
     let prior_calls = poll.calls().to_vec();
     check_eq(
-        &prior_state,
+        &prior_info.state(),
         &RegistrationState::Registered {
             arm: ArmState::Disarmed,
         },
@@ -85,16 +94,20 @@ fn invalid_modify_preserves_the_exact_prior_tuple() -> Result<(), io::Error> {
         "disarmed backend tuple",
     )?;
 
-    let Err(error) = poll.modify(&registration, Interest::EMPTY, Mode::Level) else {
+    let result = match desired_key {
+        Some(key) => poll.modify_with_key(&registration, key, Interest::EMPTY, Mode::Level),
+        None => poll.modify(&registration, Interest::EMPTY, Mode::Level),
+    };
+    let Err(error) = result else {
         return Err(io::Error::other(
             "invalid modification unexpectedly succeeded",
         ));
     };
     require_invalid_interest(&error)?;
     check_eq(
-        &poll.registration_state(&registration).map_err(other)?,
-        &prior_state,
-        "portable state after invalid modification",
+        &poll.registration_info(&registration).map_err(other)?,
+        &prior_info,
+        "retained tuple after invalid modification",
     )?;
     check_eq(
         &poll.backend_state(registration.id()),
