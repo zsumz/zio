@@ -148,7 +148,7 @@ pub enum Error {
         /// Supplied logical capacity.
         actual: usize,
     },
-    /// A validated internal invariant diverged.
+    /// Internal state failed validation.
     Invariant,
     /// The current target has no supported readiness backend.
     UnsupportedPlatform,
@@ -198,7 +198,7 @@ impl fmt::Display for Error {
                 formatter,
                 "event capacity {actual} is smaller than required capacity {required}"
             ),
-            Self::Invariant => formatter.write_str("validated internal invariant diverged"),
+            Self::Invariant => formatter.write_str("internal state failed validation"),
             Self::UnsupportedPlatform => {
                 formatter.write_str("the current target has no supported readiness backend")
             }

@@ -107,6 +107,10 @@ fn diagnostics_use_plain_display_names() {
         .to_string(),
         "registration capacity 2 has no reusable generations"
     );
+    assert_eq!(
+        Error::Invariant.to_string(),
+        "internal state failed validation"
+    );
 }
 
 #[test]

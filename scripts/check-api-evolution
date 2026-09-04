@@ -47,6 +47,7 @@ printf '%s\n' \
   '' \
   'fn main() {' \
   '    assert_eq!(classify_error(&Error::Invariant), 1);' \
+  '    assert_eq!(Error::Invariant.to_string(), "internal state failed validation");' \
   '    assert_eq!(u64::from(Key::from(9_u64)), 9);' \
   '    assert_eq!(Key::new(9).to_string(), "9");' \
   '    assert_eq!(Key::default(), Key::ZERO);' \
