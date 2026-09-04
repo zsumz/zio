@@ -1,7 +1,7 @@
 # zio-qualify
 
 `zio-qualify` is the workspace-private readiness qualification harness for
-Zio's owned and borrowed tiers, Mio, and `polling`. Each candidate receives a
+`zio`'s owned and borrowed tiers, Mio, and `polling`. Each candidate receives a
 fresh native fixture and is checked independently against the same declared
 contract. No candidate is an oracle for another.
 
@@ -21,4 +21,4 @@ Timing builds do not link the allocation instrumentor. Receipts contain one
 metric kind only.
 
 See [Performance](../../docs/performance.md) for the receipt format and method.
-This crate is unpublished and absent from Zio's production graph.
+This crate is unpublished and absent from `zio`'s production graph.

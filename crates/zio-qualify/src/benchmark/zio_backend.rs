@@ -1,4 +1,4 @@
-//! Zio candidate adapter for common readiness workloads.
+//! `zio` candidate adapter for common readiness workloads.
 
 use std::{os::unix::net::UnixStream, time::Duration};
 

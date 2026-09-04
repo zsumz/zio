@@ -1,4 +1,4 @@
-//! Zio borrowed-registration adapter for common readiness workloads.
+//! `zio` borrowed-registration adapter for common readiness workloads.
 //!
 //! A successful registration carries its source lifetime until controlled
 //! deletion. Mutation and observation errors first drop the poller, retiring

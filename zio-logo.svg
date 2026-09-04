@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg" width="1040" height="260" viewBox="0 0 1040 260" role="img" aria-labelledby="title desc" version="1.1" id="svg49">
   <title id="title">zio</title>
-  <desc id="desc">Zio logo lockup with an illustrated industrial I/O selector, one explicit polling arm, portable readiness contacts, and the words portable I/O, explicit control.</desc>
+  <desc id="desc">zio logo lockup with an illustrated industrial I/O selector, one explicit polling arm, portable readiness contacts, and the words portable I/O, explicit control.</desc>
   <defs id="defs6">
     <linearGradient id="body" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#557d79" id="stop1"/>

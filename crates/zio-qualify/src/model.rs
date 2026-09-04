@@ -3,9 +3,9 @@
 /// A readiness implementation evaluated by the harness.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Implementation {
-    /// Zio's public poller.
+    /// `zio`'s public poller.
     Zio,
-    /// Zio's explicit borrowed-registration tier.
+    /// `zio`'s explicit borrowed-registration tier.
     ZioBorrowed,
     /// Mio's public poller.
     Mio,

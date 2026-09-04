@@ -1,4 +1,4 @@
-//! Zio borrowed-registration adapter using only its public API.
+//! `zio` borrowed-registration adapter using only its public API.
 
 use std::{os::unix::net::UnixStream, time::Duration};
 

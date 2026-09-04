@@ -1,6 +1,6 @@
 //! Workspace-private, contract-driven readiness qualification.
 //!
-//! Zio's owned and borrowed tiers, Mio, and `polling` are independent
+//! `zio`'s owned and borrowed tiers, Mio, and `polling` are independent
 //! candidates. A passing observation means that candidate satisfied the
 //! declared contract; it never means that the candidate agreed with another
 //! library.

@@ -1,4 +1,4 @@
-//! Zio adapter using only its ordinary public API.
+//! `zio` adapter using only its ordinary public API.
 
 use std::{os::unix::net::UnixStream, time::Duration};
 
