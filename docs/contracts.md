@@ -56,7 +56,7 @@ new poller can restore registration capacity.
 `RegistrationState::arm` returns `None` when backend state is uncertain.
 On supported targets, `Poll` implements `AsFd` and `AsRawFd`. Its selector is
 close-on-exec; readability means a nonblocking wait may observe an event. Use
-the descriptor for observation or nesting, not external registration changes.
+it as a readiness source; do not wait on or modify the selector outside zio.
 
 ## Borrowed registration
 
