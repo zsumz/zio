@@ -25,7 +25,8 @@ the named capacity constants.
 Copyable public values are debuggable, comparable, hashable, `Send`, and
 `Sync`. `Poll`, `Events`, `WaitReport`, and `Waker` are debuggable; wakers are
 cloneable.
-`Events` and `RecoveryFailure` cardinality queries work in const contexts.
+`Events` and `RecoveryFailure` cardinality and slice queries work in const
+contexts.
 
 `BackendLimit` rejects capacities that native or token representations cannot hold.
 `Error::capacity_limit` reports the configured or attempted logical capacity.

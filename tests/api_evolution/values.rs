@@ -60,6 +60,20 @@ fn fixed_batch_cardinality_queries_are_const() {
 }
 
 #[test]
+fn fixed_batch_slice_queries_are_const() {
+    const fn event_slice(events: &Events) -> &[Event] {
+        events.as_slice()
+    }
+
+    const fn recovery_slice(recovery: &RecoveryFailure) -> &[RecoveryOutcome] {
+        recovery.outcomes()
+    }
+
+    let _ = event_slice as fn(&Events) -> &[Event];
+    let _ = recovery_slice as fn(&RecoveryFailure) -> &[RecoveryOutcome];
+}
+
+#[test]
 fn registration_handles_support_ordered_collections() {
     let _ = Registration::id as fn(&Registration) -> RegistrationId;
     assert_ordered::<Registration>();

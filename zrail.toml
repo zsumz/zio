@@ -226,6 +226,7 @@ title = "Public value and capability traits remain stable"
 document = "docs/contracts.md#api-evolution"
 evidence = [
     "rust-test:tests/api_evolution/values.rs::fixed_batch_cardinality_queries_are_const",
+    "rust-test:tests/api_evolution/values.rs::fixed_batch_slice_queries_are_const",
     "gate:check",
     "gate:ci",
 ]

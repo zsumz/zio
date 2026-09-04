@@ -63,8 +63,8 @@ impl Events {
     }
 
     /// Borrows retained events in normalized delivery order.
-    pub fn as_slice(&self) -> &[Event] {
-        &self.events
+    pub const fn as_slice(&self) -> &[Event] {
+        self.events.as_slice()
     }
 
     /// Borrows the event at `index`, when present.

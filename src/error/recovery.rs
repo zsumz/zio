@@ -95,8 +95,8 @@ impl RecoveryFailure {
     }
 
     /// Borrows every exact registration outcome in observation order.
-    pub fn outcomes(&self) -> &[RecoveryOutcome] {
-        &self.outcomes
+    pub const fn outcomes(&self) -> &[RecoveryOutcome] {
+        self.outcomes.as_slice()
     }
 
     /// Returns the number of exact registration outcomes.
