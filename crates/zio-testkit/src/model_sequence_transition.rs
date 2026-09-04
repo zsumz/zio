@@ -59,26 +59,11 @@ pub(crate) fn observe(
         },
         Action::Modify { outcome, mode, .. } => {
             coverage.modify[outcome.index()] = true;
-            if matches!(
-                (*state, outcome),
-                (
-                    GeneratedState::Registered {
-                        arm: ArmState::Disarmed,
-                        ..
-                    },
-                    Outcome::Success | Outcome::Applied
-                )
-            ) {
-                coverage.mark(Coverage::REARM);
-            }
-            *state = match outcome {
-                Outcome::Success | Outcome::Applied => GeneratedState::Registered {
-                    mode,
-                    arm: ArmState::Armed,
-                },
-                Outcome::NotApplied => *state,
-                Outcome::Unknown => GeneratedState::Uncertain,
-            };
+            observe_modify(state, coverage, outcome, mode);
+        }
+        Action::ModifyWithKey { outcome, mode, .. } => {
+            coverage.modify_with_key[outcome.index()] = true;
+            observe_modify(state, coverage, outcome, mode);
         }
         Action::ModifyInvalid { .. } => coverage.mark(Coverage::INVALID_MODIFY),
         Action::Delete { outcome } => {
@@ -95,4 +80,32 @@ pub(crate) fn observe(
         Action::ProbeStale => coverage.mark(Coverage::STALE),
         Action::ProbeWrongPoller => coverage.mark(Coverage::WRONG_POLLER),
     }
+}
+
+fn observe_modify(
+    state: &mut GeneratedState,
+    coverage: &mut Coverage,
+    outcome: Outcome,
+    mode: Mode,
+) {
+    if matches!(
+        (*state, outcome),
+        (
+            GeneratedState::Registered {
+                arm: ArmState::Disarmed,
+                ..
+            },
+            Outcome::Success | Outcome::Applied
+        )
+    ) {
+        coverage.mark(Coverage::REARM);
+    }
+    *state = match outcome {
+        Outcome::Success | Outcome::Applied => GeneratedState::Registered {
+            mode,
+            arm: ArmState::Armed,
+        },
+        Outcome::NotApplied => *state,
+        Outcome::Unknown => GeneratedState::Uncertain,
+    };
 }

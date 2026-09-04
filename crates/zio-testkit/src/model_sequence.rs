@@ -91,6 +91,12 @@ pub(crate) enum Action {
         interest: Interest,
         mode: Mode,
     },
+    ModifyWithKey {
+        outcome: Outcome,
+        key: Key,
+        interest: Interest,
+        mode: Mode,
+    },
     ModifyInvalid {
         mode: Mode,
     },
@@ -132,6 +138,18 @@ impl Action {
                 outcome.name(),
                 interest_name(interest),
                 mode_name(mode)
+            ),
+            Self::ModifyWithKey {
+                outcome,
+                key,
+                interest,
+                mode,
+            } => format!(
+                "modify_with_key.{}.{}.{}.key_{:016x}",
+                outcome.name(),
+                interest_name(interest),
+                mode_name(mode),
+                key.get(),
             ),
             Self::ModifyInvalid { mode } => {
                 format!("modify.invalid_interest.{}", mode_name(mode))

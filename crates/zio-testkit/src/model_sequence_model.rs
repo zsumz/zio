@@ -185,12 +185,16 @@ impl ReferenceModel {
     pub(crate) fn complete_modify(
         &mut self,
         outcome: Outcome,
+        key: Option<Key>,
         interest: Interest,
         mode: Mode,
     ) -> Result<(), &'static str> {
         let entry = self.active.as_mut().ok_or("modify lost active handle")?;
         match outcome {
             Outcome::Success | Outcome::Applied => {
+                if let Some(key) = key {
+                    entry.key = key;
+                }
                 entry.interest = interest;
                 entry.mode = mode;
                 entry.state = ExpectedState::ARMED;
@@ -219,10 +223,7 @@ impl ReferenceModel {
             }
             Outcome::NotApplied => {}
             Outcome::Unknown => {
-                let entry = self
-                    .active
-                    .as_mut()
-                    .ok_or("delete lost its active handle")?;
+                let entry = self.active.as_mut().ok_or("delete lost active handle")?;
                 entry.state = ExpectedState::Uncertain;
             }
         }

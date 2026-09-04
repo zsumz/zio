@@ -32,6 +32,12 @@ pub(crate) fn execute(context: &mut SequenceContext, action: Action) -> Result<(
             interest,
             mode,
         } => modify(context, outcome, interest, mode),
+        Action::ModifyWithKey {
+            outcome,
+            key,
+            interest,
+            mode,
+        } => modify_with_key(context, outcome, key, interest, mode),
         Action::ModifyInvalid { mode } => modify_invalid(context, mode),
         Action::Delete { outcome } => delete(context, outcome),
         Action::ProbeStale => probe_stale(context),
@@ -129,15 +135,40 @@ fn modify(
     interest: Interest,
     mode: Mode,
 ) -> Result<(), Divergence> {
+    modify_configuration(context, outcome, None, interest, mode)
+}
+
+fn modify_with_key(
+    context: &mut SequenceContext,
+    outcome: Outcome,
+    key: Key,
+    interest: Interest,
+    mode: Mode,
+) -> Result<(), Divergence> {
+    modify_configuration(context, outcome, Some(key), interest, mode)
+}
+
+fn modify_configuration(
+    context: &mut SequenceContext,
+    outcome: Outcome,
+    key: Option<Key>,
+    interest: Interest,
+    mode: Mode,
+) -> Result<(), Divergence> {
     let entry = context
         .model
         .record_modify(interest, mode)
         .map_err(|actual| precondition("proven registered handle", actual))?;
-    let result = context.poll.modify(&entry.registration, interest, mode);
+    let result = match key {
+        Some(key) => context
+            .poll
+            .modify_with_key(&entry.registration, key, interest, mode),
+        None => context.poll.modify(&entry.registration, interest, mode),
+    };
     expect_mutation_result(result, outcome, Operation::Modify, io::ErrorKind::TimedOut)?;
     context
         .model
-        .complete_modify(outcome, interest, mode)
+        .complete_modify(outcome, key, interest, mode)
         .map_err(|actual| precondition("valid modify transition", actual))
 }
 

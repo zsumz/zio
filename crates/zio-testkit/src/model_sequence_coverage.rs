@@ -4,6 +4,7 @@
 pub(crate) struct Coverage {
     pub(crate) register: [bool; 4],
     pub(crate) modify: [bool; 4],
+    pub(crate) modify_with_key: [bool; 4],
     pub(crate) delete: [bool; 4],
     pub(crate) special: u16,
 }
@@ -24,12 +25,15 @@ impl Coverage {
     pub(crate) fn merge(&mut self, other: &Self) {
         merge_flags(&mut self.register, other.register);
         merge_flags(&mut self.modify, other.modify);
+        merge_flags(&mut self.modify_with_key, other.modify_with_key);
         merge_flags(&mut self.delete, other.delete);
         self.special |= other.special;
     }
 
     pub(crate) fn is_complete(&self) -> bool {
-        self.has_outcome_matrix() && self.special == Self::ALL_SPECIAL
+        self.has_outcome_matrix()
+            && self.modify_with_key.iter().all(|covered| *covered)
+            && self.special == Self::ALL_SPECIAL
     }
 
     pub(crate) fn has_outcome_matrix(&self) -> bool {
@@ -55,9 +59,10 @@ impl Coverage {
 
     pub(crate) fn summary(&self) -> String {
         format!(
-            "register={:?}, modify={:?}, delete={:?}, disarm={}, rearm={}, reuse={}, stale={}, wrong_poller={}, invalid_register={}, invalid_modify={}, set_key_armed={}, set_key_disarmed={}, set_key_uncertain={}",
+            "register={:?}, modify={:?}, modify_with_key={:?}, delete={:?}, disarm={}, rearm={}, reuse={}, stale={}, wrong_poller={}, invalid_register={}, invalid_modify={}, set_key_armed={}, set_key_disarmed={}, set_key_uncertain={}",
             self.register,
             self.modify,
+            self.modify_with_key,
             self.delete,
             self.has(Self::DISARM),
             self.has(Self::REARM),

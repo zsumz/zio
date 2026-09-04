@@ -43,6 +43,7 @@ impl Generator {
             coverage: Coverage {
                 register: [false; 4],
                 modify: [false; 4],
+                modify_with_key: [false; 4],
                 delete: [false; 4],
                 special: 0,
             },
@@ -72,6 +73,7 @@ impl Generator {
                 5 => Action::ProbeWrongPoller,
                 6 => Action::ModifyInvalid { mode: self.mode() },
                 7 => self.set_key(),
+                8 => self.modify_with_key(),
                 _ if self.has_stale => Action::ProbeStale,
                 _ => self.delete(),
             },
@@ -104,6 +106,15 @@ impl Generator {
     fn modify(&mut self) -> Action {
         Action::Modify {
             outcome: self.outcome(),
+            interest: self.interest(),
+            mode: self.mode(),
+        }
+    }
+
+    fn modify_with_key(&mut self) -> Action {
+        Action::ModifyWithKey {
+            outcome: self.outcome(),
+            key: Key::new(self.random.next()),
             interest: self.interest(),
             mode: self.mode(),
         }
