@@ -3,7 +3,7 @@
 use std::{
     error::Error as StdError,
     io::{self, Read, Write},
-    os::fd::{AsFd, AsRawFd, OwnedFd},
+    os::fd::{AsFd, AsRawFd, OwnedFd, RawFd},
     os::unix::net::UnixStream,
 };
 
@@ -31,7 +31,7 @@ fn owned_register_failures_return_the_exact_capability() -> TestResult {
 #[test]
 fn owned_capacity_failure_returns_exact_descriptor_without_backend_work() -> TestResult {
     let filler = UnixStream::pair()?.0;
-    let (source, mut peer) = UnixStream::pair()?;
+    let (source, peer) = UnixStream::pair()?;
     let descriptor: OwnedFd = source.into();
     let raw = descriptor.as_raw_fd();
     let mut poll = ScriptedPoll::with_capacity(
@@ -66,7 +66,6 @@ fn owned_capacity_failure_returns_exact_descriptor_without_backend_work() -> Tes
         }
     };
 
-    assert_eq!(descriptor.as_raw_fd(), raw);
     assert_eq!(poll.calls().len(), calls);
     assert_eq!(poll.registration_count(), 1);
     assert_eq!(
@@ -75,13 +74,39 @@ fn owned_capacity_failure_returns_exact_descriptor_without_backend_work() -> Tes
             arm: ArmState::Armed,
         }
     );
-    let mut returned = UnixStream::from(descriptor);
-    peer.write_all(b"z")?;
-    let mut byte = [0_u8; 1];
-    returned.read_exact(&mut byte)?;
-    assert_eq!(byte, *b"z");
+    prove_descriptor_open(descriptor, peer, raw)?;
 
     poll.delete(retained)?;
+    poll.finish()?;
+    Ok(())
+}
+
+#[test]
+fn owned_invalid_interest_returns_exact_descriptor_without_backend_work() -> TestResult {
+    let (source, peer) = UnixStream::pair()?;
+    let descriptor: OwnedFd = source.into();
+    let raw = descriptor.as_raw_fd();
+    let mut poll = ScriptedPoll::new(std::iter::empty::<MutationStep>())?;
+
+    let Err(error) = poll.register_owned(descriptor, KEY, Interest::EMPTY, Mode::Level) else {
+        return Err("owned registration accepted empty interest".into());
+    };
+    let descriptor = match error {
+        RegisterOwnedError::Returned {
+            error: Error::InvalidInterest,
+            descriptor,
+        } => descriptor,
+        actual => {
+            return Err(io::Error::other(format!(
+                "expected returned invalid-interest failure, observed {actual:?}"
+            ))
+            .into());
+        }
+    };
+
+    assert!(poll.calls().is_empty());
+    assert_eq!(poll.registration_count(), 0);
+    prove_descriptor_open(descriptor, peer, raw)?;
     poll.finish()?;
     Ok(())
 }
@@ -195,5 +220,19 @@ fn verify_delete_failure(commit: CommitStatus) -> TestResult {
         Err(Error::Stale { registration: stale }) if stale == registration.id()
     ));
     poll.finish()?;
+    Ok(())
+}
+
+fn prove_descriptor_open(
+    descriptor: OwnedFd,
+    mut peer: UnixStream,
+    expected_raw: RawFd,
+) -> TestResult {
+    assert_eq!(descriptor.as_raw_fd(), expected_raw);
+    let mut returned = UnixStream::from(descriptor);
+    peer.write_all(b"z")?;
+    let mut byte = [0_u8; 1];
+    returned.read_exact(&mut byte)?;
+    assert_eq!(byte, *b"z");
     Ok(())
 }
