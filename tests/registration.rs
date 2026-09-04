@@ -9,19 +9,11 @@
 
 mod support;
 
-use std::{
-    io::{self, Write},
-    os::{
-        fd::{AsRawFd, BorrowedFd},
-        unix::net::UnixStream,
-    },
-    thread,
-    time::Duration,
-};
+use std::{io::Write, os::unix::net::UnixStream, thread, time::Duration};
 
 use zio::{CapacityKind, CapacityReason, Error, Event, Interest, Key, Mode, Poll, Wait};
 
-use support::require_no_recovery;
+use support::{descriptor_flags, require_no_recovery};
 
 #[test]
 fn registration_authority_is_poller_local() -> Result<(), Box<dyn std::error::Error>> {
@@ -76,20 +68,6 @@ fn retained_duplicate_is_close_on_exec() -> Result<(), Box<dyn std::error::Error
 
     poll.delete(registration)?;
     Ok(())
-}
-
-#[allow(
-    unsafe_code,
-    reason = "a read-only fcntl call verifies the retained descriptor contract"
-)]
-fn descriptor_flags(descriptor: BorrowedFd<'_>) -> io::Result<i32> {
-    // SAFETY: `descriptor` remains open for this read-only synchronous call.
-    let flags = unsafe { libc::fcntl(descriptor.as_raw_fd(), libc::F_GETFD) };
-    if flags < 0 {
-        Err(io::Error::last_os_error())
-    } else {
-        Ok(flags)
-    }
 }
 
 #[test]

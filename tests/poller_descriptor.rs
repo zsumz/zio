@@ -7,6 +7,8 @@
     target_os = "netbsd"
 ))]
 
+mod support;
+
 use std::{
     io,
     os::fd::{AsFd, AsRawFd},
@@ -15,11 +17,22 @@ use std::{
 
 use zio::{Event, Interest, Key, Mode, Poll, Wait};
 
+use support::descriptor_flags;
+
 #[test]
 fn raw_descriptor_matches_the_safe_borrow() -> Result<(), zio::Error> {
     let poll = Poll::with_capacity(1, 1)?;
 
     assert_eq!(poll.as_raw_fd(), poll.as_fd().as_raw_fd());
+    Ok(())
+}
+
+#[test]
+fn selector_descriptor_is_close_on_exec() -> Result<(), Box<dyn std::error::Error>> {
+    let poll = Poll::with_capacity(1, 1)?;
+
+    let flags = descriptor_flags(poll.as_fd())?;
+    assert_ne!(flags & libc::FD_CLOEXEC, 0);
     Ok(())
 }
 

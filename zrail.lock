@@ -11,9 +11,9 @@ cargo_lock_sha256 = "c57d02582afe8069129844f4f07aa867b3a1a9391d77b4be4e5ca0013a6
 packages = 3
 targets = 39
 physical_rust_files = 275
-base_source_contexts = 458
+base_source_contexts = 459
 derived_source_contexts = 0
-source_facts = 79981
+source_facts = 80022
 projection_queries = 0
 projected_facts = 0
 unresolved_bindings = 0
@@ -240,7 +240,7 @@ sha256 = "2a4b286bea1a4a7ccba09cfcdc7855595f2a7092f519d440f745e4e7f97ef067"
 
 [[gate.input]]
 path = "docs/contracts.md"
-sha256 = "1d69e259a66981629f76703bf8905e02257e0ceb53d72f7a898a40a0d18176e8"
+sha256 = "3e3d9f6fc39c92f48937805475bda05c561f6e2bed64751408a864f1256c6547"
 
 [[gate.input]]
 path = "docs/performance.md"
@@ -539,7 +539,7 @@ sha256 = "73303f1eba53b406bf8d8bfade18750b7d1a1971d0d3fa3498582e1b335439d3"
 
 [[gate.input]]
 path = "docs/contracts.md"
-sha256 = "1d69e259a66981629f76703bf8905e02257e0ceb53d72f7a898a40a0d18176e8"
+sha256 = "3e3d9f6fc39c92f48937805475bda05c561f6e2bed64751408a864f1256c6547"
 
 [[gate.input]]
 path = "docs/performance.md"
