@@ -59,6 +59,7 @@ new poller can restore registration capacity.
 On supported targets, `Poll` implements `AsFd` and `AsRawFd`. Its selector is
 close-on-exec; readability means a nonblocking wait may observe an event. Use
 it as a readiness source; do not wait on or modify the selector outside zio.
+Draining a nested poller clears readiness; a later event reactivates it.
 
 ## Borrowed registration
 

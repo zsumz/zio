@@ -37,11 +37,12 @@ fn selector_descriptor_is_close_on_exec() -> Result<(), Box<dyn std::error::Erro
 }
 
 #[test]
-fn poller_can_be_observed_by_another_poller() -> Result<(), Box<dyn std::error::Error>> {
+fn nested_poller_readiness_clears_and_reactivates() -> Result<(), Box<dyn std::error::Error>> {
     let mut inner = Poll::with_capacity(1, 1)?;
     let mut outer = Poll::with_capacity(1, 1)?;
     let nested = outer.register(&inner, Key::new(1), Interest::READABLE, Mode::Level)?;
-    inner.waker(Key::new(2))?.wake()?;
+    let waker = inner.waker(Key::new(2))?;
+    waker.wake()?;
 
     let mut outer_events = outer.events()?;
     outer
@@ -68,6 +69,25 @@ fn poller_can_be_observed_by_another_poller() -> Result<(), Box<dyn std::error::
     assert!(matches!(
         inner_events.as_slice(),
         [Event::Wake { key, .. }] if *key == Key::new(2)
+    ));
+
+    outer
+        .wait(&mut outer_events, Wait::NoBlock)?
+        .into_result()?;
+    assert!(outer_events.is_empty());
+
+    waker.wake()?;
+    outer
+        .wait(&mut outer_events, Wait::For(Duration::from_secs(1)))?
+        .into_result()?;
+    assert!(matches!(
+        outer_events.as_slice(),
+        [Event::Resource {
+            registration,
+            key,
+            readiness,
+            ..
+        }] if *registration == nested && *key == Key::new(1) && readiness.is_readable()
     ));
 
     outer.delete(nested)?;

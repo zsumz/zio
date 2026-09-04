@@ -240,6 +240,17 @@ status = "enforced"
 title = "Poller drop closes owned descriptors and preserves borrowed descriptors"
 
 [[invariant]]
+document = "docs/contracts.md#registration-ownership"
+evidence = [
+    "rust-test:tests/poller_descriptor.rs::nested_poller_readiness_clears_and_reactivates",
+    "gate:check",
+    "gate:ci",
+]
+id = "SELECTOR-01"
+status = "enforced"
+title = "Nested poller readiness clears and reactivates"
+
+[[invariant]]
 document = "docs/contracts.md#registration-lifetime"
 evidence = [
     "rust-test:tests/registration_lifetime.rs::registration_handle_traits_are_stable",
