@@ -12,6 +12,7 @@ mod support;
 use std::{
     io::{self, Write},
     os::unix::net::UnixStream,
+    thread,
     time::{Duration, Instant},
 };
 
@@ -73,6 +74,31 @@ fn reached_deadline_is_nonblocking() -> Result<(), Box<dyn std::error::Error>> {
 
     assert!(events.is_empty());
     require_no_recovery(report)?;
+    Ok(())
+}
+
+#[test]
+fn future_deadline_wait_is_wakeable() -> Result<(), Box<dyn std::error::Error>> {
+    let mut poll = Poll::new()?;
+    let key = Key::new(43);
+    let waker = poll.waker(key)?;
+    let thread = thread::spawn(move || {
+        thread::sleep(Duration::from_millis(20));
+        waker.wake()
+    });
+    let mut events = poll.events()?;
+
+    let report = poll.wait_until(&mut events, Instant::now() + Duration::from_secs(1))?;
+    let wake_result = thread
+        .join()
+        .map_err(|_| io::Error::other("wake thread panicked"))?;
+
+    wake_result?;
+    require_no_recovery(report)?;
+    assert!(matches!(
+        events.as_slice(),
+        [Event::Wake { key: actual, .. }] if *actual == key
+    ));
     Ok(())
 }
 

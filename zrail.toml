@@ -362,6 +362,8 @@ document = "docs/contracts.md#wait-behavior"
 evidence = [
     "rust-test:src/sys/linux_group/backend_test.rs::zero_timeouts_remain_nonblocking",
     "rust-test:src/sys/linux_group/backend_test.rs::one_nanosecond_rounds_up_to_one_millisecond",
+    "rust-test:src/sys/kqueue_group/kqueue_timeout_test.rs::timeouts_preserve_precision_and_clamp_seconds",
+    "rust-test:tests/readiness.rs::future_deadline_wait_is_wakeable",
     "gate:check",
     "gate:ci",
 ]
