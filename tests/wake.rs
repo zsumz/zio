@@ -129,6 +129,11 @@ fn repeated_wakes_do_not_starve_a_ready_resource() -> Result<(), Box<dyn std::er
 
 #[test]
 fn repeated_wakes_preserve_ready_set_fairness() -> Result<(), Box<dyn std::error::Error>> {
+    verify_wake_pressure_fairness(Mode::Level)?;
+    verify_wake_pressure_fairness(Mode::OneShot)
+}
+
+fn verify_wake_pressure_fairness(mode: Mode) -> Result<(), Box<dyn std::error::Error>> {
     let mut poll = Poll::with_capacity(1, 3)?;
     let mut sources = Vec::new();
     let mut peers = Vec::new();
@@ -139,7 +144,7 @@ fn repeated_wakes_preserve_ready_set_fairness() -> Result<(), Box<dyn std::error
         let (source, mut peer) = UnixStream::pair()?;
         source.set_nonblocking(true)?;
         peer.write_all(b"ready")?;
-        registrations.push(poll.register(&source, key, Interest::READABLE, Mode::Level)?);
+        registrations.push(poll.register(&source, key, Interest::READABLE, mode)?);
         sources.push(source);
         peers.push(peer);
     }
