@@ -19,4 +19,7 @@ fn standard_timeouts_convert_without_losing_semantics() {
     assert_eq!(Wait::from(duration), Wait::For(duration));
     assert_eq!(Wait::from(Some(duration)), Wait::For(duration));
     assert_eq!(Wait::from(None), Wait::Forever);
+    assert_eq!(Wait::NoBlock.timeout(), Some(Duration::ZERO));
+    assert_eq!(Wait::For(duration).timeout(), Some(duration));
+    assert_eq!(Wait::Forever.timeout(), None);
 }
