@@ -20,6 +20,19 @@ fn poll_exposes_construction_and_observation() {
     let _ = Waker::wake as fn(&Waker) -> Result<(), Error>;
 }
 
+#[cfg(any(
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "freebsd",
+    target_os = "netbsd"
+))]
+#[test]
+fn poll_exposes_selector_composition() {
+    fn require<T: std::os::fd::AsFd + std::os::fd::AsRawFd>() {}
+
+    require::<Poll>();
+}
+
 #[test]
 fn poll_exposes_stored_configuration_rearm() {
     let _ = Poll::modify as fn(&mut Poll, &Registration, zio::Interest, Mode) -> Result<(), Error>;

@@ -55,7 +55,8 @@ new poller can restore registration capacity.
 `Poll::modify_with_key` settles key, interest, and mode under one commit outcome.
 `RegistrationState::arm` returns `None` when backend state is uncertain.
 On supported targets, `Poll` implements `AsFd` and `AsRawFd`. Its selector is
-close-on-exec; readability means a nonblocking wait may observe an event.
+close-on-exec; readability means a nonblocking wait may observe an event. Use
+the descriptor for observation or nesting, not external registration changes.
 
 ## Borrowed registration
 

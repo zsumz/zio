@@ -109,7 +109,9 @@ impl fmt::Debug for Poll {
     target_os = "netbsd"
 ))]
 impl std::os::fd::AsFd for Poll {
-    /// Borrows the native selector descriptor.
+    /// Borrows the native selector for observation or nesting.
+    ///
+    /// External changes to its registration set invalidate zio's guarantees.
     fn as_fd(&self) -> std::os::fd::BorrowedFd<'_> {
         self.backend.as_fd()
     }
@@ -122,6 +124,7 @@ impl std::os::fd::AsFd for Poll {
     target_os = "netbsd"
 ))]
 impl std::os::fd::AsRawFd for Poll {
+    /// Returns the same native selector exposed by [`std::os::fd::AsFd`].
     fn as_raw_fd(&self) -> std::os::fd::RawFd {
         std::os::fd::AsRawFd::as_raw_fd(&std::os::fd::AsFd::as_fd(self))
     }
