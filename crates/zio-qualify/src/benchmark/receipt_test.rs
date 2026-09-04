@@ -3,7 +3,7 @@
 use crate::Implementation;
 
 use super::{
-    candidate_bench::version,
+    candidate_bench::{disclosure, version},
     config::Config,
     measure::{Allocations, Captured, CapturedMetric, Counts, FdProbe, Metric, Resources},
     metadata, receipt,
@@ -80,22 +80,28 @@ fn source_and_exact_versions_are_stable() -> Result<(), String> {
     check(receipt.contains("\"dirty\":false"), "source state")?;
     check(
         receipt.contains(&format!("\"zio\":\"{}\"", env!("CARGO_PKG_VERSION"))),
-        "Zio version",
+        "zio version",
     )?;
     check(
         receipt.contains(&format!(
             "\"zio_borrowed\":\"{}\"",
             env!("CARGO_PKG_VERSION")
         )),
-        "Zio borrowed comparison version",
+        "zio borrowed comparison version",
     )?;
     check(
         version(Implementation::Zio) == env!("CARGO_PKG_VERSION"),
-        "Zio package metadata",
+        "zio package metadata",
     )?;
     check(
         version(Implementation::ZioBorrowed) == env!("CARGO_PKG_VERSION"),
-        "Zio borrowed package metadata",
+        "zio borrowed package metadata",
+    )?;
+    check(
+        [Implementation::Zio, Implementation::ZioBorrowed]
+            .into_iter()
+            .all(|implementation| disclosure(implementation).starts_with("zio ")),
+        "zio disclosure names",
     )
 }
 

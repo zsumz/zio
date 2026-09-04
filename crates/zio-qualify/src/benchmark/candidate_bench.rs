@@ -85,10 +85,10 @@ pub(crate) const fn version(implementation: Implementation) -> &'static str {
 pub(crate) const fn disclosure(implementation: Implementation) -> &'static str {
     match implementation {
         Implementation::Zio => {
-            "Zio retains fixed event and registration capacities and duplicates every registered descriptor; those costs are included."
+            "zio retains fixed-capacity event and registration storage and duplicates each registered descriptor; these costs are included."
         }
         Implementation::ZioBorrowed => {
-            "Zio retains fixed event and registration capacities but borrows each registered descriptor under its explicit unsafe lifetime contract; no descriptor duplicate is created."
+            "zio retains fixed-capacity event and registration storage and borrows each registered descriptor under its unsafe lifetime contract; no duplicate is created."
         }
         Implementation::Mio => {
             "Mio is measured under its native default; the API does not expose Level or OneShot selection."

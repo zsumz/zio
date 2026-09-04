@@ -13,7 +13,7 @@ targets = 41
 physical_rust_files = 278
 base_source_contexts = 465
 derived_source_contexts = 0
-source_facts = 81582
+source_facts = 81601
 projection_queries = 0
 projected_facts = 0
 unresolved_bindings = 0
@@ -318,7 +318,7 @@ sha256 = "27df0636c9f5c2d1c9b2855fe8de402f52598481359a86d1d853c7c207ca6941"
 
 [[gate.input]]
 path = "crates/zio-qualify/src/benchmark/candidate_bench.rs"
-sha256 = "15f944b608ca470e1d71140d236f693d07fe31aad7cc6c181238550faff8af64"
+sha256 = "ceb9967851fa4380d248a81a07615b7661ab6ef601217b0488acbf103c49a04d"
 
 [[gate.input]]
 path = "crates/zio-qualify/src/benchmark/config.rs"
@@ -326,7 +326,7 @@ sha256 = "7bd1edcb85f6cec0b538368ff7b73a7977c8290960bc6554ef0b937f2cf4b025"
 
 [[gate.input]]
 path = "crates/zio-qualify/src/benchmark/config_help.rs"
-sha256 = "1d984ff0068508822c7c74676466b8f5550b45ada6d7557611c003cd3132548f"
+sha256 = "dddebd90a2e8413bd6ce1bd45fffdeb58563f8fbee9eecd886f17a30fabd6b4e"
 
 [[gate.input]]
 path = "crates/zio-qualify/src/benchmark/config_parse.rs"
@@ -334,7 +334,7 @@ sha256 = "7bd0ea0f524d5fdc8a0c8ed5cdd77de29e066819d579fb5770c7c21f01af9c2c"
 
 [[gate.input]]
 path = "crates/zio-qualify/src/benchmark/config_test.rs"
-sha256 = "675d8ed408b076242c35fe4aa2ca7bce9cbaf6acac48310cf9ce09420c436818"
+sha256 = "9d17772353d177f6737a3503cbe1e3f990367c67d4552dca160598bee57431b4"
 
 [[gate.input]]
 path = "crates/zio-qualify/src/benchmark/json.rs"
@@ -414,7 +414,7 @@ sha256 = "ab7b323df094387439238fc0e90ab42b45d9b075311792e1874d7745accc7eba"
 
 [[gate.input]]
 path = "crates/zio-qualify/src/benchmark/receipt_test.rs"
-sha256 = "e937f5bc8e5ce9dfed1eba38bc014556f1eefb09adb76ec0ddd7970cfbe71db3"
+sha256 = "fd6a638ab1e7745ed891767ef4cdb5c6422dcca3b51665c1a4c858b380295022"
 
 [[gate.input]]
 path = "crates/zio-qualify/src/benchmark/record.rs"
@@ -446,7 +446,7 @@ sha256 = "ed256eb3a4aaaf617c3a3e9d8636e1a75ebcc5c7e5cc0bd501e2c2f615df4cfd"
 
 [[gate.input]]
 path = "crates/zio-qualify/src/benchmark/runner_test.rs"
-sha256 = "b1dacad2c1625b06213d5b8717f68722c4d3b61777506e76738d6fa21ff06dd0"
+sha256 = "fe969a1481b8e13310db195370f0faa53368e66223c31a3313e49b3c2b2ff8ec"
 
 [[gate.input]]
 path = "crates/zio-qualify/src/benchmark/scenario.rs"
@@ -458,7 +458,7 @@ sha256 = "095c9678de99c5af54666dd51101adeebc76adba05a580e980323c8d3421e4e9"
 
 [[gate.input]]
 path = "crates/zio-qualify/src/benchmark/scenario_test.rs"
-sha256 = "c937fe2d86bc5da0cd6cfdaae1d6b780584fe2b6e34ed8551ed8eac7294cf58e"
+sha256 = "3ac7f82ff8d2c1cac7c1f874ae5a526167902e7d8e970beabb0312c8715281be"
 
 [[gate.input]]
 path = "crates/zio-qualify/src/benchmark/segment_measure.rs"

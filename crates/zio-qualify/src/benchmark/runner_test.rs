@@ -86,11 +86,11 @@ fn one_candidate_failure_is_retained_and_peers_continue() -> Result<(), String> 
     )?;
     check(
         passed_candidate(&receipt, Implementation::Zio),
-        "Zio did not continue",
+        "zio did not continue",
     )?;
     check(
         passed_candidate(&receipt, Implementation::ZioBorrowed),
-        "Zio borrowed did not continue",
+        "zio borrowed did not continue",
     )?;
     check(
         passed_candidate(&receipt, Implementation::Polling),
