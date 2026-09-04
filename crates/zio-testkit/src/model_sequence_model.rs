@@ -23,6 +23,7 @@ impl ExpectedState {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct Entry {
     pub(crate) registration: Registration,
+    pub(crate) key: Key,
     pub(crate) interest: Interest,
     pub(crate) mode: Mode,
     pub(crate) state: ExpectedState,
@@ -112,6 +113,7 @@ impl ReferenceModel {
         &mut self,
         outcome: Outcome,
         registration: Option<Registration>,
+        key: Key,
         interest: Interest,
         mode: Mode,
     ) -> Result<(), &'static str> {
@@ -124,6 +126,7 @@ impl ReferenceModel {
             }
             Outcome::Success | Outcome::Applied => Some(Entry {
                 registration: registration.ok_or("register omitted its retained handle")?,
+                key,
                 interest,
                 mode,
                 state: ExpectedState::Registered {
@@ -132,6 +135,7 @@ impl ReferenceModel {
             }),
             Outcome::Unknown => Some(Entry {
                 registration: registration.ok_or("unknown register omitted its handle")?,
+                key,
                 interest,
                 mode,
                 state: ExpectedState::Uncertain,
@@ -142,12 +146,10 @@ impl ReferenceModel {
 
     pub(crate) fn disarm(&mut self) -> Result<RegistrationId, &'static str> {
         let entry = self.active.as_mut().ok_or("disarm requires a handle")?;
-        if entry.mode != Mode::OneShot
-            || entry.state
-                != (ExpectedState::Registered {
-                    arm: ArmState::Armed,
-                })
-        {
+        let armed = ExpectedState::Registered {
+            arm: ArmState::Armed,
+        };
+        if entry.mode != Mode::OneShot || entry.state != armed {
             return Err("disarm requires an armed one-shot registration");
         }
         let registration = entry.registration.id();
@@ -185,10 +187,7 @@ impl ReferenceModel {
         interest: Interest,
         mode: Mode,
     ) -> Result<(), &'static str> {
-        let entry = self
-            .active
-            .as_mut()
-            .ok_or("modify lost its active handle")?;
+        let entry = self.active.as_mut().ok_or("modify lost active handle")?;
         match outcome {
             Outcome::Success | Outcome::Applied => {
                 entry.interest = interest;

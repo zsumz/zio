@@ -86,7 +86,7 @@ fn register(
     };
     context
         .model
-        .complete_register(outcome, registration, interest, mode)
+        .complete_register(outcome, registration, key, interest, mode)
         .map_err(|actual| precondition("valid register transition", actual))
 }
 
