@@ -83,3 +83,30 @@ fn drain_preserves_capacity_for_reuse() -> Result<(), Box<dyn std::error::Error>
     poll.delete(registration)?;
     Ok(())
 }
+
+#[test]
+fn owned_iteration_preserves_delivery_order() -> Result<(), Box<dyn std::error::Error>> {
+    let (first_source, mut first_peer) = UnixStream::pair()?;
+    let (second_source, mut second_peer) = UnixStream::pair()?;
+    let mut poll = Poll::with_capacity(2, 2)?;
+    let first = poll.register(&first_source, Key::new(4), Interest::READABLE, Mode::Level)?;
+    let second = poll.register(&second_source, Key::new(5), Interest::READABLE, Mode::Level)?;
+    let mut events = poll.events()?;
+    first_peer.write_all(b"first")?;
+    second_peer.write_all(b"second")?;
+
+    require_no_recovery(poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?)?;
+    let delivered = events.as_slice().to_vec();
+    assert_eq!(delivered.len(), 2);
+
+    let mut owned = events.into_iter();
+    assert_eq!(owned.len(), 2);
+    assert_eq!(owned.next(), delivered.first().copied());
+    assert_eq!(owned.next_back(), delivered.last().copied());
+    assert_eq!(owned.next(), None);
+    assert_eq!(owned.next_back(), None);
+
+    poll.delete(first)?;
+    poll.delete(second)?;
+    Ok(())
+}

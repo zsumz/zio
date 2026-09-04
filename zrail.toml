@@ -400,6 +400,7 @@ document = "docs/contracts.md#wait-behavior"
 evidence = [
     "rust-test:tests/event_destination.rs::drain_preserves_capacity_for_reuse",
     "rust-test:tests/event_destination.rs::larger_destination_is_reusable_across_pollers",
+    "rust-test:tests/event_destination.rs::owned_iteration_preserves_delivery_order",
     "rust-test:tests/readiness.rs::wait_rejection_clears_a_previous_observation",
     "gate:check",
     "gate:ci",
