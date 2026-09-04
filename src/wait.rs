@@ -55,6 +55,12 @@ impl From<Option<Duration>> for Wait {
     }
 }
 
+impl From<Wait> for Option<Duration> {
+    fn from(wait: Wait) -> Self {
+        wait.timeout()
+    }
+}
+
 #[cfg(test)]
 #[path = "wait_test.rs"]
 mod tests;

@@ -60,6 +60,7 @@ fn event_and_wait_values_are_hashable() {
     let _ = Wait::timeout as fn(Wait) -> Option<core::time::Duration>;
     assert_from::<Wait, core::time::Duration>();
     assert_from::<Wait, Option<core::time::Duration>>();
+    assert_from::<Option<core::time::Duration>, Wait>();
 }
 
 #[test]
