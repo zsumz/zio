@@ -12,55 +12,16 @@ use std::{
     fs::File,
     mem::size_of,
     num::NonZeroUsize,
-    os::fd::{AsFd, AsRawFd, OwnedFd},
+    os::fd::{AsFd, AsRawFd},
 };
 
 use crate::{
-    Error, Interest, Key, Mode, RegistrationId,
+    DescriptorOwnership, Error, Interest, Key, Mode,
     descriptor::Descriptor,
     token::{MAX_GENERATION, decode},
 };
 
 use super::{RegistrationTable, slot::Slot};
-
-impl RegistrationTable {
-    pub(crate) fn reserve_descriptor(
-        &mut self,
-        descriptor: Descriptor,
-        key: Key,
-        interest: Interest,
-        mode: Mode,
-    ) -> Result<RegistrationId, Error> {
-        let (id, reservation) = if self.has_reusable_slot() {
-            let permit = self.reused_permit()?;
-            let id = permit.id();
-            let (reservation, ()) =
-                permit.reserve_with(descriptor, key, interest, mode, |_, _| ())?;
-            (id, reservation)
-        } else {
-            let permit = self.fresh_permit()?;
-            let id = permit.id();
-            let (reservation, ()) =
-                permit.reserve_with(descriptor, key, interest, mode, |_, _| ())?;
-            (id, reservation)
-        };
-        Ok(reservation.keep(id))
-    }
-
-    pub(crate) fn reserve(
-        &mut self,
-        descriptor: OwnedFd,
-        key: Key,
-        interest: Interest,
-        mode: Mode,
-    ) -> Result<RegistrationId, Error> {
-        self.reserve_descriptor(Descriptor::owned(descriptor), key, interest, mode)
-    }
-
-    pub(crate) fn retire(&mut self, id: RegistrationId) -> Result<(), Error> {
-        self.prepare_retire(id, true)?.retire()
-    }
-}
 
 #[test]
 #[cfg(target_pointer_width = "64")]
@@ -91,6 +52,23 @@ fn construction_allocates_only_the_slot_buffer() -> Result<(), Box<dyn StdError>
     assert_eq!(allocations.bytes_max, expected_bytes);
     assert_eq!(table.slots.capacity(), limit.get());
     assert!(table.slots.is_empty());
+    Ok(())
+}
+
+#[test]
+#[cfg(target_pointer_width = "64")]
+fn construction_rejects_unrepresentable_registration_capacity() -> Result<(), Box<dyn StdError>> {
+    let limit = usize::try_from(u64::from(u32::MAX) + 1)?;
+    let limit = NonZeroUsize::new(limit).ok_or(Error::Invariant)?;
+
+    assert!(matches!(
+        RegistrationTable::new(limit),
+        Err(Error::Capacity {
+            kind: crate::CapacityKind::Registration,
+            limit: actual,
+            reason: crate::CapacityReason::BackendLimit,
+        }) if actual == limit.get()
+    ));
     Ok(())
 }
 
@@ -137,15 +115,17 @@ fn reservation_carries_the_inserted_descriptor_and_retire_proof() -> Result<(), 
     let raw_descriptor = descriptor.as_raw_fd();
     let permit = table.fresh_permit()?;
     let id = permit.id();
-    let (reservation, observed) = permit.reserve_with(
-        Descriptor::owned(descriptor),
-        Key::new(1),
-        Interest::READABLE,
-        Mode::Level,
-        |descriptor, id| (descriptor.as_raw_fd(), id),
-    )?;
+    let (reservation, observed) = permit
+        .reserve_with(
+            Descriptor::owned(descriptor),
+            Key::new(1),
+            Interest::READABLE,
+            Mode::Level,
+            |descriptor, id| (descriptor.as_raw_fd(), id),
+        )
+        .map_err(super::permit::ReservationFailure::discard_descriptor)?;
     assert_eq!(observed, (raw_descriptor, id));
-    reservation.retire()?;
+    drop(reservation.release()?);
     assert!(matches!(
         table.state(id),
         Err(Error::Stale { registration }) if registration == id
@@ -154,7 +134,35 @@ fn reservation_carries_the_inserted_descriptor_and_retire_proof() -> Result<(), 
 }
 
 #[test]
-fn retired_slots_are_reused_in_lifo_order() -> Result<(), Box<dyn StdError>> {
+fn reservation_releases_the_exact_owned_descriptor() -> Result<(), Box<dyn StdError>> {
+    let mut table = table(1)?;
+    let source = File::open("/dev/null")?;
+    let descriptor = source.as_fd().try_clone_to_owned()?;
+    let raw_descriptor = descriptor.as_raw_fd();
+    let permit = table.fresh_permit()?;
+    let id = permit.id();
+    let (reservation, ()) = permit
+        .reserve_with(
+            Descriptor::owned(descriptor),
+            Key::new(2),
+            Interest::READABLE,
+            Mode::Level,
+            |_, _| (),
+        )
+        .map_err(super::permit::ReservationFailure::discard_descriptor)?;
+
+    let descriptor = reservation.release()?;
+    assert_eq!(descriptor.as_raw_fd(), raw_descriptor);
+    assert_eq!(descriptor.ownership(), DescriptorOwnership::Owned);
+    assert!(matches!(
+        table.state(id),
+        Err(Error::Stale { registration }) if registration == id
+    ));
+    Ok(())
+}
+
+#[test]
+fn retired_slots_are_reused_in_fifo_order() -> Result<(), Box<dyn StdError>> {
     let mut table = table(3)?;
     let source = File::open("/dev/null")?;
     let first = reserve(&mut table, &source, Key::new(1))?;
@@ -166,8 +174,28 @@ fn retired_slots_are_reused_in_lifo_order() -> Result<(), Box<dyn StdError>> {
     let first_reused = reserve(&mut table, &source, Key::new(4))?;
     let second_reused = reserve(&mut table, &source, Key::new(5))?;
 
-    assert_reused(first, first_reused)?;
-    assert_reused(second, second_reused)?;
+    assert_reused(second, first_reused)?;
+    assert_reused(first, second_reused)?;
+    Ok(())
+}
+
+#[test]
+fn virgin_slots_are_used_before_any_generation_is_recycled() -> Result<(), Box<dyn StdError>> {
+    let mut table = table(3)?;
+    let source = File::open("/dev/null")?;
+
+    let first = reserve(&mut table, &source, Key::new(1))?;
+    table.retire(first)?;
+    let second = reserve(&mut table, &source, Key::new(2))?;
+    table.retire(second)?;
+    let third = reserve(&mut table, &source, Key::new(3))?;
+
+    assert_eq!(decode(first)?.0, 0);
+    assert_eq!(decode(second)?.0, 1);
+    assert_eq!(decode(third)?.0, 2);
+    assert_eq!(decode(first)?.1.get(), 1);
+    assert_eq!(decode(second)?.1.get(), 1);
+    assert_eq!(decode(third)?.1.get(), 1);
     Ok(())
 }
 
@@ -190,27 +218,41 @@ fn permanent_exhaustion_is_distinct_from_live_capacity() -> Result<(), Box<dyn S
     table.retire(second)?;
     assert!(matches!(
         reserve(&mut table, &source, Key::new(7)),
-        Err(Error::RegistrationSpaceExhausted)
+        Err(Error::Capacity {
+            kind: crate::CapacityKind::Registration,
+            limit: 2,
+            reason: crate::CapacityReason::GenerationExhausted,
+        })
     ));
     assert_eq!(table.exhausted, 2);
+    assert_eq!(table.remaining(), 0);
     Ok(())
 }
 
 #[test]
-fn virgin_capacity_remains_after_an_initialized_slot_exhausts() -> Result<(), Box<dyn StdError>> {
+fn virgin_capacity_precedes_a_nearly_exhausted_reusable_slot() -> Result<(), Box<dyn StdError>> {
     let mut table = table(2)?;
     let source = File::open("/dev/null")?;
     let seeded = reserve(&mut table, &source, Key::new(1))?;
     table.retire(seeded)?;
     table.slots[0].generation = MAX_GENERATION - 1;
-    let exhausted = reserve(&mut table, &source, Key::new(2))?;
-    table.retire(exhausted)?;
-
-    let registration = reserve(&mut table, &source, Key::new(3))?;
-    let (index, generation) = decode(registration)?;
+    let virgin = reserve(&mut table, &source, Key::new(2))?;
+    let (index, generation) = decode(virgin)?;
     assert_eq!(index, 1);
     assert_eq!(generation.get(), 1);
+    assert_eq!(table.exhausted, 0);
+
+    table.retire(virgin)?;
+    let terminal = reserve(&mut table, &source, Key::new(3))?;
+    assert_eq!(decode(terminal)?.0, 0);
+    assert_eq!(decode(terminal)?.1.get(), MAX_GENERATION);
+    table.retire(terminal)?;
+
     assert_eq!(table.exhausted, 1);
+    assert_eq!(table.remaining(), 1);
+    let reused = reserve(&mut table, &source, Key::new(4))?;
+    assert_eq!(decode(reused)?.0, 1);
+    assert_eq!(decode(reused)?.1.get(), 2);
     Ok(())
 }
 
@@ -245,5 +287,12 @@ fn assert_reused(
 }
 
 fn assert_capacity(result: &Result<crate::RegistrationId, Error>, expected: usize) {
-    assert!(matches!(result, Err(Error::Capacity { limit }) if *limit == expected));
+    assert!(matches!(
+        result,
+        Err(Error::Capacity {
+            kind: crate::CapacityKind::Registration,
+            limit,
+            reason: crate::CapacityReason::Exhausted,
+        }) if *limit == expected
+    ));
 }

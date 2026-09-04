@@ -7,8 +7,8 @@ use std::{
 };
 
 use crate::{
-    ArmState, Interest, Mode, Readiness, RecoveryOutcome, RegistrationId, RegistrationState, Wait,
-    error::Operation,
+    ArmState, Error, Interest, Mode, Readiness, RegistrationId, RegistrationState, Wait,
+    error::Operation, observe_recovery::DisarmOutcome,
 };
 
 use super::super::{
@@ -30,12 +30,16 @@ pub(crate) struct RawBatch {
 }
 
 impl RawBatch {
-    fn new(event_capacity: usize, disarm_capacity: usize) -> Option<Self> {
-        let native_capacity = disarm_capacity.checked_mul(2)?;
-        Some(Self {
-            raw: KeventBatch::new(event_capacity, native_capacity)?,
-            disarms: DisarmBatch::new(disarm_capacity)?,
-        })
+    fn new(
+        native_events: usize,
+        native_changes: usize,
+        recoveries: usize,
+        arena_error: Error,
+        recovery_error: Error,
+    ) -> Result<Self, Error> {
+        let raw = KeventBatch::new(native_events, native_changes).ok_or(arena_error)?;
+        let disarms = DisarmBatch::new(recoveries).ok_or(recovery_error)?;
+        Ok(Self { raw, disarms })
     }
 
     pub(crate) fn event(&self, index: usize, observed: usize) -> Option<RawEvent> {
@@ -65,7 +69,7 @@ impl RawBatch {
 
     pub(crate) fn disarm_outcomes(
         &self,
-    ) -> impl Clone + ExactSizeIterator<Item = RecoveryOutcome> + '_ {
+    ) -> impl Clone + ExactSizeIterator<Item = DisarmOutcome> + '_ {
         self.disarms.outcomes()
     }
 
@@ -101,6 +105,10 @@ pub(crate) struct Wake {
 }
 
 impl Wake {
+    pub(crate) fn same_target(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.queue, &other.queue)
+    }
+
     pub(crate) fn wake(&self) -> io::Result<()> {
         let mut changes = ChangeList::new();
         changes
@@ -117,8 +125,20 @@ pub(crate) struct Backend {
 }
 
 impl Backend {
-    pub(crate) fn raw_batch(event_capacity: usize, disarm_capacity: usize) -> Option<RawBatch> {
-        RawBatch::new(event_capacity, disarm_capacity)
+    pub(crate) fn raw_batch(
+        native_events: usize,
+        native_changes: usize,
+        recoveries: usize,
+        arena_error: Error,
+        recovery_error: Error,
+    ) -> Result<RawBatch, Error> {
+        RawBatch::new(
+            native_events,
+            native_changes,
+            recoveries,
+            arena_error,
+            recovery_error,
+        )
     }
 
     pub(crate) fn new() -> Result<(Self, Wake), SetupFailure> {
@@ -136,6 +156,10 @@ impl Backend {
             queue: Arc::clone(&queue),
         };
         Ok((Self { queue }, wake))
+    }
+
+    pub(crate) fn as_fd(&self) -> BorrowedFd<'_> {
+        self.queue.as_fd()
     }
 
     pub(crate) fn register(

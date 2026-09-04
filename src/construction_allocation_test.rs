@@ -19,11 +19,15 @@ fn waker_normalized_construction_stays_compact() -> Result<(), Box<dyn StdError>
 
     let allocations = allocation_counter::measure(|| {
         retained = Some(
-            Poll::with_capacity(CAPACITY, CAPACITY).and_then(|mut poll| {
-                let events = poll.events()?;
-                let waker = poll.waker(Key::new(1))?;
-                Ok((poll, events, waker))
-            }),
+            Poll::builder()
+                .event_capacity(CAPACITY)
+                .registration_capacity(CAPACITY)
+                .build()
+                .and_then(|mut poll| {
+                    let events = poll.events()?;
+                    let waker = poll.waker(Key::new(1))?;
+                    Ok((poll, events, waker))
+                }),
         );
     });
 
@@ -39,7 +43,7 @@ fn waker_normalized_construction_stays_compact() -> Result<(), Box<dyn StdError>
     #[cfg(all(target_os = "linux", target_pointer_width = "64"))]
     {
         let capacity = u64::try_from(CAPACITY)?;
-        let expected_linux_bytes = 24 + capacity * 40;
+        let expected_linux_bytes = 24 + capacity * 56;
         assert_eq!(allocations.bytes_total, expected_linux_bytes);
         assert_eq!(
             allocations.bytes_current,
@@ -49,7 +53,7 @@ fn waker_normalized_construction_stays_compact() -> Result<(), Box<dyn StdError>
     }
     #[cfg(target_os = "macos")]
     {
-        let expected_macos_bytes = 13_592;
+        let expected_macos_bytes = 14_616;
         assert_eq!(allocations.bytes_total, expected_macos_bytes);
         assert_eq!(
             allocations.bytes_current,

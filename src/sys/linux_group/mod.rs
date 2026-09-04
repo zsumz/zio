@@ -7,6 +7,8 @@ mod backend;
 mod backend_test;
 mod epoll;
 #[cfg(test)]
+mod epoll_arena_test;
+#[cfg(test)]
 mod epoll_test;
 mod eventfd;
 #[cfg(test)]

@@ -3,7 +3,8 @@
 use std::{fmt::Debug, os::unix::net::UnixStream};
 
 use zio::{
-    Error, Interest, Mode, Registration, RegistrationId, RegistrationState,
+    CapacityKind, CapacityReason, Error, Interest, Mode, Registration, RegistrationId,
+    RegistrationState,
     test_support::{ScriptedBackendState, ScriptedPoll},
 };
 
@@ -50,13 +51,12 @@ pub(crate) fn expect_mutation(
             mutation.commit(),
         );
     }
-    let source = mutation.into_source();
-    if source.kind() != source_kind(scenario.operation()) {
+    if mutation.source().kind() != source_kind(scenario.operation()) {
         return mismatch(
             scenario,
             ConformanceCheck::Source,
             source_kind(scenario.operation()),
-            source.kind(),
+            mutation.source().kind(),
         );
     }
     Ok(())
@@ -153,7 +153,12 @@ pub(crate) fn expect_retained_capacity(
         );
     }
     match error {
-        Error::Capacity { limit: 1 } => Ok(()),
+        Error::Capacity {
+            kind: CapacityKind::Registration,
+            limit: 1,
+            reason: CapacityReason::Exhausted,
+            ..
+        } => Ok(()),
         actual => mismatch(
             scenario,
             ConformanceCheck::CapacityRetention,

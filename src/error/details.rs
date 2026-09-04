@@ -38,9 +38,9 @@ impl MutationError {
         &self.source
     }
 
-    /// Returns the owned operating-system failure.
-    pub fn into_source(self) -> io::Error {
-        self.source
+    /// Splits this failure into its operation, commit status, and source.
+    pub fn into_parts(self) -> (Operation, CommitStatus, io::Error) {
+        (self.operation, self.commit, self.source)
     }
 }
 
@@ -48,7 +48,7 @@ impl fmt::Display for MutationError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             formatter,
-            "{:?} failed with {:?} commit status: {}",
+            "{} failed with {} commit status: {}",
             self.operation, self.commit, self.source
         )
     }
@@ -60,13 +60,11 @@ impl std::error::Error for MutationError {
     }
 }
 
-/// Registration failure that preserves any possibly installed registration.
+/// Registration failure preserving an installed or uncertain handle.
 ///
 /// [`Self::registration`] is `None` for preflight failures and mutations proven
-/// not applied. It contains a registered handle for an applied mutation and an
-/// uncertain handle when the backend result cannot be proven. Because handles
-/// are copyable, callers can copy the handle borrowed by
-/// [`Self::registration`] before propagating or otherwise consuming the error.
+/// not applied. It returns a registered handle for an applied mutation and an
+/// uncertain handle when the backend result cannot be proven.
 #[derive(Debug)]
 pub struct RegisterError {
     error: Error,
@@ -86,9 +84,9 @@ impl RegisterError {
         &self.error
     }
 
-    /// Borrows the retained applied or uncertain registration, when one exists.
-    pub const fn registration(&self) -> Option<&Registration> {
-        self.registration.as_ref()
+    /// Returns the retained applied or uncertain registration, when one exists.
+    pub const fn registration(&self) -> Option<Registration> {
+        self.registration
     }
 
     /// Splits this failure into the cause and optional registration.
@@ -109,7 +107,13 @@ impl std::error::Error for RegisterError {
     }
 }
 
-/// Delete failure that retains the exact registration handle.
+impl AsRef<Error> for RegisterError {
+    fn as_ref(&self) -> &Error {
+        self.error()
+    }
+}
+
+/// Delete failure that returns the exact attempted registration handle.
 ///
 /// Every handle copy remains registered after a not-applied failure, is stale
 /// after an applied failure, and is uncertain after an unknown failure.
@@ -132,9 +136,9 @@ impl DeleteError {
         &self.error
     }
 
-    /// Borrows the registration returned after failed deletion.
-    pub const fn registration(&self) -> &Registration {
-        &self.registration
+    /// Returns the exact registration passed to the failed deletion.
+    pub const fn registration(&self) -> Registration {
+        self.registration
     }
 
     /// Splits this failure into the cause and returned registration.
@@ -152,5 +156,71 @@ impl fmt::Display for DeleteError {
 impl std::error::Error for DeleteError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         Some(&self.error)
+    }
+}
+
+impl AsRef<Error> for DeleteError {
+    fn as_ref(&self) -> &Error {
+        self.error()
+    }
+}
+
+/// Fail-fast bulk-deletion failure.
+///
+/// A registration identifies the first deletion that returned an error. No
+/// handle means retained-registration validation failed.
+#[derive(Debug)]
+pub struct DeleteAllError {
+    error: Error,
+    registration: Option<Registration>,
+}
+
+impl DeleteAllError {
+    pub(crate) const fn preflight(error: Error) -> Self {
+        Self {
+            error,
+            registration: None,
+        }
+    }
+
+    pub(crate) fn deletion(error: DeleteError) -> Self {
+        let (error, registration) = error.into_parts();
+        Self {
+            error,
+            registration: Some(registration),
+        }
+    }
+
+    /// Returns the underlying failure.
+    pub const fn error(&self) -> &Error {
+        &self.error
+    }
+
+    /// Returns the exact registration whose deletion failed, when attempted.
+    pub const fn registration(&self) -> Option<Registration> {
+        self.registration
+    }
+
+    /// Splits this failure into its cause and optional failed registration.
+    pub fn into_parts(self) -> (Error, Option<Registration>) {
+        (self.error, self.registration)
+    }
+}
+
+impl fmt::Display for DeleteAllError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.error.fmt(formatter)
+    }
+}
+
+impl std::error::Error for DeleteAllError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&self.error)
+    }
+}
+
+impl AsRef<Error> for DeleteAllError {
+    fn as_ref(&self) -> &Error {
+        self.error()
     }
 }

@@ -8,8 +8,8 @@ use std::{
 
 use crate::{
     ArmState, CommitStatus, Error, Event, Events, Interest, Key, Mode, Readiness, RecoveryFailure,
-    RegistrationId, RegistrationState, WaitReport, pending_kqueue::PendingResource,
-    table::RegistrationTable,
+    Registration, RegistrationId, RegistrationState, WaitReport, observe_recovery::DisarmOutcome,
+    pending_kqueue::PendingResource, table::RegistrationTable,
 };
 
 const ARMED: RegistrationState = RegistrationState::Registered {
@@ -42,9 +42,10 @@ fn recovery_failure_preserves_translated_resource_and_wake_events() -> Result<()
     let mut events = Events::with_capacity(4)?;
 
     let result = crate::observe_recovery::finish(
+        Some(owner()),
         &mut registrations,
         &mut events,
-        &pending,
+        pending.iter(),
         pending.len(),
         true,
         Some(Key::new(99)),
@@ -57,14 +58,17 @@ fn recovery_failure_preserves_translated_resource_and_wake_events() -> Result<()
         events.as_slice(),
         &[
             Event::Resource {
+                registration: handle(applied),
                 key: Key::new(11),
                 readiness: Readiness::READABLE,
             },
             Event::Resource {
+                registration: handle(not_applied),
                 key: Key::new(12),
                 readiness: Readiness::WRITABLE,
             },
             Event::Resource {
+                registration: handle(unknown),
                 key: Key::new(13),
                 readiness: Readiness::READABLE,
             },
@@ -72,9 +76,9 @@ fn recovery_failure_preserves_translated_resource_and_wake_events() -> Result<()
         ]
     );
     assert_eq!(failure.outcomes().len(), 3);
-    assert_eq!(failure.outcomes()[0].registration(), applied);
-    assert_eq!(failure.outcomes()[1].registration(), not_applied);
-    assert_eq!(failure.outcomes()[2].registration(), unknown);
+    assert_eq!(failure.outcomes()[0].registration(), handle(applied));
+    assert_eq!(failure.outcomes()[1].registration(), handle(not_applied));
+    assert_eq!(failure.outcomes()[2].registration(), handle(unknown));
     assert_eq!(failure.outcomes()[0].commit(), CommitStatus::Applied);
     assert_eq!(failure.outcomes()[0].state(), DISARMED);
     assert_eq!(failure.outcomes()[1].state(), ARMED);
@@ -127,8 +131,8 @@ fn retained_recovery_reports_survive_poll_state_reuse() -> Result<(), Box<dyn St
     assert_eq!(first.source().raw_os_error(), Some(5));
     assert_eq!(second.outcomes()[0].commit(), CommitStatus::NotApplied);
     assert_eq!(second.source().raw_os_error(), Some(6));
-    assert_eq!(first.outcomes()[0].registration(), registration);
-    assert_eq!(second.outcomes()[0].registration(), registration);
+    assert_eq!(first.outcomes()[0].registration(), handle(registration));
+    assert_eq!(second.outcomes()[0].registration(), handle(registration));
     assert_eq!(first.outcomes()[0].state(), ARMED);
     assert_eq!(second.outcomes()[0].state(), ARMED);
     assert_eq!(registrations.state(registration)?, DISARMED);
@@ -150,9 +154,10 @@ fn incomplete_recovery_outcomes_fail_before_observation_or_state_change()
     let mut events = Events::with_capacity(2)?;
 
     let result = crate::observe_recovery::finish(
+        Some(owner()),
         &mut registrations,
         &mut events,
-        &pending,
+        pending.iter(),
         pending.len(),
         false,
         None,
@@ -179,9 +184,10 @@ fn recovery_source_presence_matches_degraded_outcomes() -> Result<(), Box<dyn St
         let pending = [pending(registration, Key::new(61), Readiness::READABLE)];
         let mut events = Events::with_capacity(1)?;
         let result = crate::observe_recovery::finish(
+            Some(owner()),
             &mut registrations,
             &mut events,
-            &pending,
+            pending.iter(),
             1,
             false,
             None,
@@ -204,6 +210,7 @@ fn finish_round(
 ) -> Result<Option<RecoveryFailure>, Box<dyn StdError>> {
     let mut events = Events::with_capacity(1)?;
     let result = crate::observe_recovery::finish(
+        Some(owner()),
         registrations,
         &mut events,
         pending,
@@ -216,6 +223,7 @@ fn finish_round(
     assert_eq!(
         events.as_slice(),
         &[Event::Resource {
+            registration: handle(registration),
             key: Key::new(41),
             readiness: Readiness::READABLE,
         }]
@@ -256,6 +264,14 @@ const fn pending(registration: RegistrationId, key: Key, readiness: Readiness) -
     }
 }
 
-const fn outcome(registration: RegistrationId, commit: CommitStatus) -> crate::RecoveryOutcome {
-    crate::RecoveryOutcome::new(registration, commit)
+const fn handle(registration: RegistrationId) -> Registration {
+    Registration::test(registration.get())
+}
+
+const fn owner() -> crate::registration::PollId {
+    Registration::test(1).owner()
+}
+
+const fn outcome(registration: RegistrationId, commit: CommitStatus) -> DisarmOutcome {
+    DisarmOutcome::new(registration, commit)
 }

@@ -1,42 +1,54 @@
 //! Linear settlement for one validated registration generation.
 
 use crate::{
-    Error, RegistrationId, RegistrationState,
-    binding::Binding,
-    token::{EncodedRegistrationId, MAX_GENERATION},
+    Error, RegistrationId, RegistrationState, binding::Binding, descriptor::Descriptor,
+    token::EncodedRegistrationId,
 };
 
 #[cfg(test)]
 use crate::token::decode;
 
-use super::{RegistrationTable, slot::Slot};
+use super::{RegistrationTable, free_queue::release_slot, slot::Slot};
 
 /// Exclusive access to one occupied slot and its free-list state.
 pub(super) struct SlotLease<'table> {
-    slot: &'table mut Slot,
+    slots: &'table mut [Slot],
+    slot_index: usize,
     free_head: &'table mut u32,
+    free_tail: &'table mut u32,
     exhausted: &'table mut usize,
+    live: &'table mut usize,
     free_index: u32,
 }
 
 impl<'table> SlotLease<'table> {
     pub(super) const fn new(
-        slot: &'table mut Slot,
+        slots: &'table mut [Slot],
+        slot_index: usize,
         free_head: &'table mut u32,
+        free_tail: &'table mut u32,
         exhausted: &'table mut usize,
+        live: &'table mut usize,
         free_index: u32,
     ) -> Self {
         Self {
-            slot,
+            slots,
+            slot_index,
             free_head,
+            free_tail,
             exhausted,
+            live,
             free_index,
         }
     }
 
     #[inline]
     fn binding(&self) -> Result<Binding<'_>, Error> {
-        let entry = self.slot.entry.as_ref().ok_or(Error::Invariant)?;
+        let entry = self
+            .slots
+            .get(self.slot_index)
+            .and_then(|slot| slot.entry.as_ref())
+            .ok_or(Error::Invariant)?;
         Ok(Binding {
             descriptor: entry.descriptor.as_fd(),
             interest: entry.interest,
@@ -53,23 +65,25 @@ impl<'table> SlotLease<'table> {
     pub(super) fn keep(self) {}
 
     #[inline]
-    pub(super) fn retire(self) -> Result<(), Error> {
-        if self.slot.generation == MAX_GENERATION {
-            let exhausted = self.exhausted.checked_add(1).ok_or(Error::Invariant)?;
-            self.slot.entry = None;
-            self.slot.next_free = super::slot::FREE_END;
-            *self.exhausted = exhausted;
-        } else {
-            self.slot.entry = None;
-            self.slot.next_free = *self.free_head;
-            *self.free_head = self.free_index;
-        }
-        Ok(())
+    pub(super) fn release(self) -> Result<Descriptor, Error> {
+        release_slot(
+            self.slots,
+            self.slot_index,
+            self.free_head,
+            self.free_tail,
+            self.exhausted,
+            self.live,
+            self.free_index,
+        )
     }
 
     #[inline]
     pub(super) fn mark_uncertain(self) -> Result<(), Error> {
-        let entry = self.slot.entry.as_mut().ok_or(Error::Invariant)?;
+        let entry = self
+            .slots
+            .get_mut(self.slot_index)
+            .and_then(|slot| slot.entry.as_mut())
+            .ok_or(Error::Invariant)?;
         entry.state = RegistrationState::Uncertain;
         Ok(())
     }
@@ -96,8 +110,15 @@ impl PreparedRetire<'_> {
     }
 
     #[inline]
+    #[cfg(test)]
     pub(crate) fn retire(self) -> Result<(), Error> {
-        self.lease.retire()
+        drop(self.release()?);
+        Ok(())
+    }
+
+    #[inline]
+    pub(crate) fn release(self) -> Result<Descriptor, Error> {
+        self.lease.release()
     }
 
     #[inline]
@@ -120,6 +141,15 @@ impl RegistrationTable {
     }
 
     #[cfg(test)]
+    #[cfg_attr(
+        not(any(
+            target_os = "linux",
+            target_os = "macos",
+            target_os = "freebsd",
+            target_os = "netbsd"
+        )),
+        allow(dead_code, reason = "matches supported retirement test support")
+    )]
     #[inline]
     pub(crate) fn prepare_retire(
         &mut self,
@@ -143,12 +173,12 @@ impl RegistrationTable {
         let Self {
             slots,
             free_head,
+            free_tail,
             exhausted,
+            live,
             ..
         } = self;
-        let slot = slots
-            .get_mut(index)
-            .ok_or(Error::Stale { registration: id })?;
+        let slot = slots.get(index).ok_or(Error::Stale { registration: id })?;
         if slot.generation != generation {
             return Err(Error::Stale { registration: id });
         }
@@ -160,7 +190,9 @@ impl RegistrationTable {
             return Err(Error::Uncertain { registration: id });
         }
         Ok(PreparedRetire {
-            lease: SlotLease::new(slot, free_head, exhausted, free_index),
+            lease: SlotLease::new(
+                slots, index, free_head, free_tail, exhausted, live, free_index,
+            ),
         })
     }
 }

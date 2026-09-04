@@ -96,10 +96,10 @@ fn curated_sentinels_keep_their_named_behavior() -> Result<(), io::Error> {
 #[test]
 fn sentinel_action_fingerprints_are_stable() -> Result<(), io::Error> {
     let expected = [
-        0xa21d_b0a8_09fb_2aaa,
-        0x9365_899f_667f_c365,
-        0xb844_f520_8502_092b,
-        0xeff8_c280_2f29_8cf5,
+        0xe8b0_7f05_e9d4_bd78,
+        0x96da_8248_e75f_e196,
+        0x7080_d514_af49_7594,
+        0xece2_4074_d6b4_f0a9,
     ];
     let mut actual = [0_u64; 4];
     for (index, seed) in MODEL_SEQUENCE_SENTINEL_SEEDS.into_iter().enumerate() {
@@ -127,20 +127,20 @@ fn fingerprint(actions: &[Action]) -> u64 {
             } => {
                 hash = feed(hash, 0);
                 hash = feed(hash, outcome_byte(outcome));
-                for byte in key.get().to_le_bytes() {
-                    hash = feed(hash, byte);
-                }
+                hash = feed_key(hash, key);
                 hash = feed(hash, interest_byte(interest));
                 hash = feed(hash, mode_byte(mode));
             }
             Action::RegisterInvalid { key, mode } => {
                 hash = feed(hash, 1);
-                for byte in key.get().to_le_bytes() {
-                    hash = feed(hash, byte);
-                }
+                hash = feed_key(hash, key);
                 hash = feed(hash, mode_byte(mode));
             }
             Action::Disarm => hash = feed(hash, 2),
+            Action::SetKey { key } => {
+                hash = feed(hash, 8);
+                hash = feed_key(hash, key);
+            }
             Action::Modify {
                 outcome,
                 interest,
@@ -148,6 +148,18 @@ fn fingerprint(actions: &[Action]) -> u64 {
             } => {
                 hash = feed(hash, 3);
                 hash = feed(hash, outcome_byte(outcome));
+                hash = feed(hash, interest_byte(interest));
+                hash = feed(hash, mode_byte(mode));
+            }
+            Action::ModifyWithKey {
+                outcome,
+                key,
+                interest,
+                mode,
+            } => {
+                hash = feed(hash, 9);
+                hash = feed(hash, outcome_byte(outcome));
+                hash = feed_key(hash, key);
                 hash = feed(hash, interest_byte(interest));
                 hash = feed(hash, mode_byte(mode));
             }
@@ -164,6 +176,10 @@ fn fingerprint(actions: &[Action]) -> u64 {
         }
     }
     hash
+}
+
+fn feed_key(hash: u64, key: zio::Key) -> u64 {
+    key.get().to_le_bytes().into_iter().fold(hash, feed)
 }
 
 const fn feed(hash: u64, byte: u8) -> u64 {
@@ -187,6 +203,7 @@ const fn mode_byte(mode: zio::Mode) -> u8 {
     match mode {
         zio::Mode::Level => 0,
         zio::Mode::OneShot => 1,
+        _ => 2,
     }
 }
 

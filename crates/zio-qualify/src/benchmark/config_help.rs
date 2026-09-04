@@ -4,7 +4,7 @@ use super::{measure::Metric, scenario::Scenario};
 
 pub(crate) fn help(metric: Metric) -> String {
     format!(
-        "{command}: reproducible Zio owned, Zio borrowed, Mio, and polling {metric} qualification\n\
+        "{command}: reproducible {metric} qualification for zio owned, zio borrowed, Mio, and polling\n\
 \n\
 USAGE: {command} [OPTIONS]\n\
   --samples N                 measured rounds (default {samples})\n\

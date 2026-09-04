@@ -1,8 +1,8 @@
-//! Zio borrowed-registration adapter using only its public API.
+//! `zio` borrowed-registration adapter using only its public API.
 
 use std::{os::unix::net::UnixStream, time::Duration};
 
-use zio::{Event, Key, Mode, Poll, Readiness, Registration, Wait};
+use zio::{Event, Key, Mode, Poll, Registration};
 
 use crate::{
     ConfiguredDelivery, DeliveryProfile, Interest, Observation, ProfileSupport,
@@ -34,13 +34,17 @@ impl Candidate for ZioBorrowedCandidate {
         reason = "the session retains source until successful deletion and owns the poller"
     )]
     fn register(source: &UnixStream, spec: RegistrationSpec) -> CandidateResult<Self::Session<'_>> {
-        let mut poll = Poll::with_capacity(4, 1).map_err(display)?;
+        let mut poll = Poll::builder()
+            .event_capacity(4)
+            .registration_capacity(1)
+            .build()
+            .map_err(display)?;
         // SAFETY: the session retains `source` until successful deletion and
         // owns `poll`, so the descriptor cannot close before the poller.
         let registration = unsafe {
             poll.register_borrowed(
                 source,
-                Key::new(spec.key as u64),
+                Key::try_from(spec.key).map_err(display)?,
                 interest(spec.interest),
                 mode(spec.profile),
             )
@@ -67,22 +71,20 @@ pub(crate) struct ZioBorrowedSession<'source> {
 
 impl CandidateSession for ZioBorrowedSession<'_> {
     fn wait(&mut self, timeout: Duration) -> CandidateResult<EventBatch> {
-        self.events.clear();
         let report = self
             .poll
-            .wait(&mut self.events, Wait::For(timeout))
+            .wait(&mut self.events, timeout.into())
             .map_err(display)?;
         let delivery = (|| {
             let mut observation = Observation::EMPTY;
             let mut matched_events = 0_usize;
+            let expected = Key::try_from(self.spec.key).map_err(display)?;
             for event in &self.events {
-                match *event {
-                    Event::Resource { key, readiness } if key == Key::new(self.spec.key as u64) => {
-                        observation = observation | translate(readiness);
-                        matched_events = matched_events.saturating_add(1);
-                    }
-                    _ => return Err(format!("unexpected zio borrowed event: {event:?}")),
+                if !event.is_resource() || event.key() != expected {
+                    return Err(format!("unexpected zio borrowed event: {event:?}"));
                 }
+                observation = observation | translate(*event);
+                matched_events = matched_events.saturating_add(1);
             }
             Ok(EventBatch {
                 matched_events,
@@ -93,13 +95,7 @@ impl CandidateSession for ZioBorrowedSession<'_> {
     }
 
     fn rearm(&mut self) -> CandidateResult<()> {
-        self.poll
-            .modify(
-                &self.registration,
-                interest(self.spec.interest),
-                mode(self.spec.profile),
-            )
-            .map_err(display)
+        self.poll.rearm(&self.registration).map_err(display)
     }
 
     fn delete(mut self) -> CandidateResult<()> {
@@ -121,14 +117,14 @@ fn mode(profile: DeliveryProfile) -> Mode {
     }
 }
 
-fn translate(readiness: Readiness) -> Observation {
+fn translate(event: Event) -> Observation {
     let mut observation = Observation::EMPTY;
     for (present, flag) in [
-        (readiness.is_readable(), Observation::READABLE),
-        (readiness.is_writable(), Observation::WRITABLE),
-        (readiness.is_read_closed(), Observation::READ_CLOSED),
-        (readiness.is_write_closed(), Observation::WRITE_CLOSED),
-        (readiness.is_error(), Observation::ERROR),
+        (event.is_readable(), Observation::READABLE),
+        (event.is_writable(), Observation::WRITABLE),
+        (event.is_read_closed(), Observation::READ_CLOSED),
+        (event.is_write_closed(), Observation::WRITE_CLOSED),
+        (event.is_error(), Observation::ERROR),
     ] {
         if present {
             observation = observation | flag;

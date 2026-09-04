@@ -14,15 +14,12 @@ impl PendingBatch {
         not(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd")),
         allow(clippy::unnecessary_wraps, reason = "kqueue allocation is fallible")
     )]
-    pub(crate) fn new(
-        capacity: NonZeroUsize,
-        registrations: NonZeroUsize,
-    ) -> Result<Self, crate::Error> {
+    pub(crate) fn new(registrations: NonZeroUsize) -> Result<Self, crate::Error> {
         #[cfg(not(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd")))]
-        let _ = (capacity, registrations);
+        let _ = registrations;
         Ok(Self {
             #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
-            inner: crate::pending_kqueue::KqueuePending::new(capacity, registrations)?,
+            inner: crate::pending_kqueue::KqueuePending::new(registrations)?,
         })
     }
 
@@ -46,5 +43,13 @@ impl PendingBatch {
     #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
     pub(crate) fn as_slice(&self) -> &[crate::pending_kqueue::PendingResource] {
         self.inner.as_slice()
+    }
+
+    #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
+    pub(crate) fn delivery_selection(
+        &mut self,
+        limit: usize,
+    ) -> crate::pending_kqueue::DeliverySelection {
+        self.inner.delivery_selection(limit)
     }
 }

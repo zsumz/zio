@@ -1,23 +1,17 @@
-//! Portable registration state transitions over a static mutation driver.
-
-use std::os::fd::AsFd;
+//! Portable mutation state transitions over a static driver.
 
 use crate::{
-    CommitStatus, DeleteError, Error, Interest, Key, Mode, MutationError, Operation, RegisterError,
-    Registration, RegistrationState, descriptor::Descriptor, registration::PollOwner,
-    table::RegistrationTable,
+    ArmState, CommitStatus, Error, Interest, Key, Mode, MutationError, Operation, Registration,
+    RegistrationState, registration::PollOwner, table::RegistrationTable,
 };
 
-use super::{
-    DeleteRequest, ModifyRequest, MutationDriver, authority::require_owner,
-    register::register_descriptor as apply_registration,
-};
+use super::{ModifyRequest, MutationDriver, authority::require_owner};
 
 /// Borrowed mutation state with a statically selected driver.
 pub(crate) struct MutationSession<'state, Driver> {
-    owner: &'state mut PollOwner,
-    registrations: &'state mut RegistrationTable,
-    driver: &'state mut Driver,
+    pub(super) owner: &'state mut PollOwner,
+    pub(super) registrations: &'state mut RegistrationTable,
+    pub(super) driver: &'state mut Driver,
 }
 
 impl<'state, Driver: MutationDriver> MutationSession<'state, Driver> {
@@ -33,78 +27,29 @@ impl<'state, Driver: MutationDriver> MutationSession<'state, Driver> {
         }
     }
 
-    pub(crate) fn register<F: AsFd + ?Sized>(
-        &mut self,
-        source: &F,
-        key: Key,
-        interest: Interest,
-        mode: Mode,
-    ) -> Result<Registration, RegisterError> {
-        validate_registration_interest(interest)?;
-        let descriptor = source.as_fd().try_clone_to_owned().map_err(|source| {
-            RegisterError::new(
-                Error::Io {
-                    operation: Operation::Register,
-                    source,
-                },
-                None,
-            )
-        })?;
-        self.register_descriptor(Descriptor::owned(descriptor), key, interest, mode)
-    }
-
-    /// Registers after erasing the source borrow into the retained table.
-    ///
-    /// # Safety
-    ///
-    /// The source must satisfy the complete lifetime and identity contract of
-    /// [`crate::Poll::register_borrowed`].
-    #[allow(
-        unsafe_code,
-        reason = "this internal seam propagates the public borrowed-descriptor contract"
-    )]
-    #[inline]
-    pub(crate) unsafe fn register_borrowed<F: AsFd + ?Sized>(
-        &mut self,
-        source: &F,
-        key: Key,
-        interest: Interest,
-        mode: Mode,
-    ) -> Result<Registration, RegisterError> {
-        validate_registration_interest(interest)?;
-        // SAFETY: this function requires the caller to uphold the descriptor
-        // lifetime and identity invariant until the retained value is dropped.
-        let descriptor = unsafe { Descriptor::borrowed(source.as_fd()) };
-        self.register_descriptor(descriptor, key, interest, mode)
-    }
-
-    #[inline]
-    fn register_descriptor(
-        &mut self,
-        descriptor: Descriptor,
-        key: Key,
-        interest: Interest,
-        mode: Mode,
-    ) -> Result<Registration, RegisterError> {
-        let Self {
-            owner,
-            registrations,
-            driver,
-        } = self;
-        apply_registration(
-            owner,
-            registrations,
-            &mut **driver,
-            descriptor,
-            key,
-            interest,
-            mode,
-        )
-    }
-
     pub(crate) fn modify(
         &mut self,
         registration: &Registration,
+        interest: Interest,
+        mode: Mode,
+    ) -> Result<(), Error> {
+        self.modify_configuration(registration, None, interest, mode)
+    }
+
+    pub(crate) fn modify_with_key(
+        &mut self,
+        registration: &Registration,
+        key: Key,
+        interest: Interest,
+        mode: Mode,
+    ) -> Result<(), Error> {
+        self.modify_configuration(registration, Some(key), interest, mode)
+    }
+
+    fn modify_configuration(
+        &mut self,
+        registration: &Registration,
+        key: Option<Key>,
         interest: Interest,
         mode: Mode,
     ) -> Result<(), Error> {
@@ -129,73 +74,97 @@ impl<'state, Driver: MutationDriver> MutationSession<'state, Driver> {
                 desired_mode: mode,
             })
         };
-        if let Err(failure) = result {
-            match failure.commit() {
-                CommitStatus::NotApplied => {}
-                CommitStatus::Applied => {
-                    self.registrations
-                        .commit_modify(registration.id(), interest, mode)?;
-                }
-                CommitStatus::Unknown => {
-                    self.registrations.mark_uncertain(registration.id())?;
-                }
-            }
-            return Err(mutation_error(Operation::Modify, failure));
-        }
-        self.registrations
-            .commit_modify(registration.id(), interest, mode)
+        settle_modify(
+            self.registrations,
+            registration.id(),
+            key,
+            interest,
+            mode,
+            result,
+        )
     }
 
-    #[inline]
-    pub(crate) fn delete(&mut self, registration: Registration) -> Result<(), DeleteError> {
-        if let Err(error) = require_owner(self.owner.current(), &registration) {
-            return Err(DeleteError::new(error, registration));
-        }
-        let id = registration.id();
-        let prepared = self
-            .registrations
-            .prepare_registration_retire(registration.encoded_id(), true)
-            .map_err(|error| DeleteError::new(error, registration))?;
-        let binding = prepared
-            .binding()
-            .map_err(|error| DeleteError::new(error, registration))?;
-        let result = self.driver.delete(DeleteRequest {
-            descriptor: binding.descriptor,
-            registration: id,
-            interest: binding.interest,
-            state: binding.state,
-        });
-        if let Err(failure) = result {
-            let state_result = match failure.commit() {
-                CommitStatus::NotApplied => {
-                    prepared.keep();
-                    Ok(())
+    pub(crate) fn rearm(&mut self, registration: &Registration) -> Result<(), Error> {
+        require_owner(self.owner.current(), registration)?;
+        let modification = {
+            let binding = self.registrations.binding(registration.id(), false)?;
+            match (binding.mode, binding.state) {
+                (
+                    Mode::OneShot,
+                    RegistrationState::Registered {
+                        arm: ArmState::Disarmed,
+                    },
+                ) => Some((
+                    binding.interest,
+                    self.driver.modify(ModifyRequest {
+                        descriptor: binding.descriptor,
+                        registration: registration.id(),
+                        previous_interest: binding.interest,
+                        previous_mode: binding.mode,
+                        previous_arm: ArmState::Disarmed,
+                        desired_interest: binding.interest,
+                        desired_mode: Mode::OneShot,
+                    }),
+                )),
+                (
+                    _,
+                    RegistrationState::Registered {
+                        arm: ArmState::Armed,
+                    },
+                ) => None,
+                (_, RegistrationState::Uncertain) => {
+                    return Err(Error::Uncertain {
+                        registration: registration.id(),
+                    });
                 }
-                CommitStatus::Applied => prepared.retire(),
-                CommitStatus::Unknown => prepared.mark_uncertain(),
-            };
-            if let Err(error) = state_result {
-                return Err(DeleteError::new(error, registration));
+                (
+                    Mode::Level,
+                    RegistrationState::Registered {
+                        arm: ArmState::Disarmed,
+                    },
+                ) => {
+                    return Err(Error::Invariant);
+                }
             }
-            return Err(DeleteError::new(
-                mutation_error(Operation::Delete, failure),
-                registration,
-            ));
+        };
+        match modification {
+            Some((interest, result)) => settle_modify(
+                self.registrations,
+                registration.id(),
+                None,
+                interest,
+                Mode::OneShot,
+                result,
+            ),
+            None => Ok(()),
         }
-        prepared
-            .retire()
-            .map_err(|error| DeleteError::new(error, registration))
     }
 }
 
-#[inline]
-fn validate_registration_interest(interest: Interest) -> Result<(), RegisterError> {
-    (!interest.is_empty())
-        .then_some(())
-        .ok_or(RegisterError::new(Error::InvalidInterest, None))
+fn settle_modify(
+    registrations: &mut RegistrationTable,
+    registration: crate::RegistrationId,
+    key: Option<Key>,
+    interest: Interest,
+    mode: Mode,
+    result: Result<(), crate::sys::MutationFailure>,
+) -> Result<(), Error> {
+    if let Err(failure) = result {
+        match failure.commit() {
+            CommitStatus::NotApplied => {}
+            CommitStatus::Applied => {
+                registrations.commit_modify(registration, key, interest, mode)?;
+            }
+            CommitStatus::Unknown => {
+                registrations.mark_uncertain(registration)?;
+            }
+        }
+        return Err(mutation_error(Operation::Modify, failure));
+    }
+    registrations.commit_modify(registration, key, interest, mode)
 }
 
-fn mutation_error(operation: Operation, failure: crate::sys::MutationFailure) -> Error {
+pub(super) fn mutation_error(operation: Operation, failure: crate::sys::MutationFailure) -> Error {
     let commit = failure.commit();
     let source = failure.into_source();
     Error::Mutation(MutationError::new(operation, commit, source))

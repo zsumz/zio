@@ -26,11 +26,18 @@ pub(crate) fn execute(context: &mut SequenceContext, action: Action) -> Result<(
         } => register(context, outcome, key, interest, mode),
         Action::RegisterInvalid { key, mode } => register_invalid(context, key, mode),
         Action::Disarm => disarm(context),
+        Action::SetKey { key } => set_key(context, key),
         Action::Modify {
             outcome,
             interest,
             mode,
         } => modify(context, outcome, interest, mode),
+        Action::ModifyWithKey {
+            outcome,
+            key,
+            interest,
+            mode,
+        } => modify_with_key(context, outcome, key, interest, mode),
         Action::ModifyInvalid { mode } => modify_invalid(context, mode),
         Action::Delete { outcome } => delete(context, outcome),
         Action::ProbeStale => probe_stale(context),
@@ -86,7 +93,7 @@ fn register(
     };
     context
         .model
-        .complete_register(outcome, registration, interest, mode)
+        .complete_register(outcome, registration, key, interest, mode)
         .map_err(|actual| precondition("valid register transition", actual))
 }
 
@@ -105,9 +112,46 @@ fn disarm(context: &mut SequenceContext) -> Result<(), Divergence> {
         .map_err(|error| result_mismatch("successful delivered one-shot disarm", error))
 }
 
+fn set_key(context: &mut SequenceContext, key: Key) -> Result<(), Divergence> {
+    let entry = context
+        .model
+        .active()
+        .ok_or_else(|| precondition("active handle", "vacant slot"))?;
+    let calls = context.poll.calls().len();
+    context
+        .poll
+        .set_key(&entry.registration, key)
+        .map_err(|error| result_mismatch("successful set_key", error))?;
+    context
+        .model
+        .set_key(key)
+        .map_err(|actual| precondition("active handle", actual))?;
+    expect_call_count(calls, context.poll.calls().len(), "set_key")
+}
+
 fn modify(
     context: &mut SequenceContext,
     outcome: Outcome,
+    interest: Interest,
+    mode: Mode,
+) -> Result<(), Divergence> {
+    modify_configuration(context, outcome, None, interest, mode)
+}
+
+fn modify_with_key(
+    context: &mut SequenceContext,
+    outcome: Outcome,
+    key: Key,
+    interest: Interest,
+    mode: Mode,
+) -> Result<(), Divergence> {
+    modify_configuration(context, outcome, Some(key), interest, mode)
+}
+
+fn modify_configuration(
+    context: &mut SequenceContext,
+    outcome: Outcome,
+    key: Option<Key>,
     interest: Interest,
     mode: Mode,
 ) -> Result<(), Divergence> {
@@ -115,11 +159,16 @@ fn modify(
         .model
         .record_modify(interest, mode)
         .map_err(|actual| precondition("proven registered handle", actual))?;
-    let result = context.poll.modify(&entry.registration, interest, mode);
+    let result = match key {
+        Some(key) => context
+            .poll
+            .modify_with_key(&entry.registration, key, interest, mode),
+        None => context.poll.modify(&entry.registration, interest, mode),
+    };
     expect_mutation_result(result, outcome, Operation::Modify, io::ErrorKind::TimedOut)?;
     context
         .model
-        .complete_modify(outcome, interest, mode)
+        .complete_modify(outcome, key, interest, mode)
         .map_err(|actual| precondition("valid modify transition", actual))
 }
 

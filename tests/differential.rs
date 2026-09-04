@@ -42,7 +42,7 @@ fn native_readiness_agrees_with_mio() -> Result<(), Box<dyn std::error::Error>> 
     oracle.poll(&mut oracle_events, Some(Duration::from_secs(1)))?;
 
     assert!(events.iter().any(|event| {
-        matches!(event, Event::Resource { key, readiness }
+        matches!(event, Event::Resource { key, readiness, .. }
             if *key == Key::new(17) && readiness.is_readable())
     }));
     assert!(

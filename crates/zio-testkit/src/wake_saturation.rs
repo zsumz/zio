@@ -1,4 +1,17 @@
 //! Capacity-one resource and wake saturation conformance.
+#![cfg_attr(
+    not(any(
+        target_os = "linux",
+        target_os = "macos",
+        target_os = "freebsd",
+        target_os = "netbsd"
+    )),
+    allow(
+        dead_code,
+        unused_imports,
+        reason = "supported-path conformance remains visible in every source projection"
+    )
+)]
 
 use core::time::Duration;
 
@@ -116,7 +129,7 @@ fn observe_event(
     scenario: WakeScenario,
 ) -> Result<(), WakeFailure> {
     match event {
-        Event::Resource { key, readiness }
+        Event::Resource { key, readiness, .. }
             if key == RESOURCE_KEY && readiness.contains(zio::Readiness::READABLE) =>
         {
             if *saw_resource {
@@ -130,7 +143,7 @@ fn observe_event(
             *saw_resource = true;
             Ok(())
         }
-        Event::Wake { key } if key == WAKE_KEY => {
+        Event::Wake { key, .. } if key == WAKE_KEY => {
             if *saw_wake {
                 return mismatch(
                     scenario,

@@ -1,6 +1,6 @@
 //! Workspace-private, contract-driven readiness qualification.
 //!
-//! Zio's owned and borrowed tiers, Mio, and `polling` are independent
+//! `zio`'s owned and borrowed tiers, Mio, and `polling` are independent
 //! candidates. A passing observation means that candidate satisfied the
 //! declared contract; it never means that the candidate agreed with another
 //! library.
@@ -21,6 +21,8 @@ mod runner;
 mod zio_borrowed_candidate;
 mod zio_candidate;
 
+#[cfg(feature = "kqueue-skew")]
+pub use benchmark::run_kqueue_skew;
 pub use benchmark::run_perf;
 #[cfg(feature = "allocation-metrics")]
 pub use benchmark::run_perf_alloc;

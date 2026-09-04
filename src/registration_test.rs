@@ -7,11 +7,45 @@ use std::{
     sync::atomic::{AtomicU64, Ordering},
 };
 
-use crate::{Error, Interest, Key, Mode, registration::PollOwner, table::RegistrationTable};
+use crate::{
+    ArmState, CapacityKind, CapacityReason, Error, Interest, Key, Mode, RegistrationId,
+    RegistrationState, registration::PollOwner, table::RegistrationTable,
+};
+
+#[test]
+fn registration_ids_format_for_diagnostics() {
+    let id = RegistrationId::new(42);
+
+    assert_eq!(id.get(), 42);
+    assert_eq!(id.to_string(), "42");
+}
+
+#[test]
+fn registration_state_queries_preserve_uncertainty() {
+    let armed = RegistrationState::Registered {
+        arm: ArmState::Armed,
+    };
+    let uncertain = RegistrationState::Uncertain;
+
+    assert!(armed.is_registered());
+    assert!(!armed.is_uncertain());
+    assert_eq!(armed.arm(), Some(ArmState::Armed));
+    assert!(!uncertain.is_registered());
+    assert!(uncertain.is_uncertain());
+    assert_eq!(uncertain.arm(), None);
+}
 
 #[test]
 fn registration_handle_remains_sixteen_bytes() {
     assert_eq!(std::mem::size_of::<crate::Registration>(), 16);
+}
+
+#[test]
+fn registration_debug_hides_authority_encoding() {
+    assert_eq!(
+        format!("{:?}", crate::Registration::test(42)),
+        "Registration { id: 42, .. }"
+    );
 }
 
 #[test]
@@ -55,7 +89,14 @@ fn capacity_preflight_does_not_attempt_identity_assignment()
         owner.get_or_assign_from(&next)?;
     }
 
-    assert!(matches!(result, Err(Error::Capacity { limit: 1 })));
+    assert!(matches!(
+        result,
+        Err(Error::Capacity {
+            kind: CapacityKind::Registration,
+            limit: 1,
+            reason: CapacityReason::Exhausted,
+        })
+    ));
     assert!(owner.current().is_none());
     assert_eq!(next.load(Ordering::Relaxed), u64::MAX);
     Ok(())

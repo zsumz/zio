@@ -65,8 +65,8 @@ fn help_names_every_stable_scenario_for_each_binary() -> Result<(), String> {
     for metric in [Metric::Timing, Metric::Allocation] {
         let help = help(metric);
         check(
-            help.contains("Zio borrowed"),
-            "borrowed tier missing from help",
+            help.contains("qualification for zio owned, zio borrowed, Mio, and polling"),
+            "candidate summary missing from help",
         )?;
         for scenario in Scenario::ALL {
             check(help.contains(scenario.name()), "scenario missing from help")?;

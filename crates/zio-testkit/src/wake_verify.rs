@@ -11,7 +11,10 @@ pub(crate) fn poll(
     event_capacity: usize,
     registration_capacity: usize,
 ) -> Result<Poll, WakeFailure> {
-    Poll::with_capacity(event_capacity, registration_capacity)
+    Poll::builder()
+        .event_capacity(event_capacity)
+        .registration_capacity(registration_capacity)
+        .build()
         .map_err(|error| observed(scenario, WakeCheck::Setup, "constructed poller", &error))
 }
 
@@ -73,7 +76,7 @@ pub(crate) fn expect_single_wake(
     scenario: WakeScenario,
 ) -> Result<(), WakeFailure> {
     match events.as_slice() {
-        [Event::Wake { key: actual }] if *actual == key => Ok(()),
+        [Event::Wake { key: actual, .. }] if *actual == key => Ok(()),
         actual => mismatch(
             scenario,
             WakeCheck::Events,

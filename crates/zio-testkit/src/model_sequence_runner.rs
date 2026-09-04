@@ -71,7 +71,7 @@ pub fn run_model_sequences() -> ModelSequenceReport {
             ModelSequencePhase::Coverage,
             &trace,
             ModelSequenceCheck::Coverage,
-            "all mutation outcomes, disarm, rearm, reuse, stale, and wrong-poller probes",
+            "all outcomes, key-update states, and lifecycle probes",
             coverage.summary(),
         )
     });
@@ -146,14 +146,15 @@ fn mutation_step(action: Action) -> Option<MutationStep> {
         Action::Register { outcome, .. } => Some(MutationStep::Register(
             outcome.mutation(io::ErrorKind::PermissionDenied),
         )),
-        Action::Modify { outcome, .. } => Some(MutationStep::Modify(
-            outcome.mutation(io::ErrorKind::TimedOut),
-        )),
+        Action::Modify { outcome, .. } | Action::ModifyWithKey { outcome, .. } => Some(
+            MutationStep::Modify(outcome.mutation(io::ErrorKind::TimedOut)),
+        ),
         Action::Delete { outcome } => Some(MutationStep::Delete(
             outcome.mutation(io::ErrorKind::BrokenPipe),
         )),
         Action::RegisterInvalid { .. }
         | Action::Disarm
+        | Action::SetKey { .. }
         | Action::ModifyInvalid { .. }
         | Action::ProbeStale
         | Action::ProbeWrongPoller => None,

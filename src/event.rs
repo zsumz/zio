@@ -1,10 +1,18 @@
-//! Caller keys, portable readiness hints, and bounded event storage.
-use std::num::NonZeroUsize;
+//! Caller keys and portable readiness observations.
+use core::{fmt, num::TryFromIntError};
 
-use crate::Error;
+use crate::Registration;
+
+#[path = "event_predicates.rs"]
+mod predicates;
+#[path = "readiness_debug.rs"]
+mod readiness_debug;
+#[path = "readiness_ops.rs"]
+mod readiness_ops;
 
 /// Caller-selected value delivered with an observed event.
-#[repr(transparent)]
+///
+/// Checked `usize` conversions support slab indices across pointer widths.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Key(u64);
 
@@ -23,18 +31,47 @@ impl Key {
     }
 }
 
+impl From<u64> for Key {
+    fn from(value: u64) -> Self {
+        Self::new(value)
+    }
+}
+
+impl From<Key> for u64 {
+    fn from(key: Key) -> Self {
+        key.get()
+    }
+}
+
+impl TryFrom<usize> for Key {
+    type Error = TryFromIntError;
+
+    fn try_from(value: usize) -> Result<Self, Self::Error> {
+        u64::try_from(value).map(Self::new)
+    }
+}
+
+impl TryFrom<Key> for usize {
+    type Error = TryFromIntError;
+
+    fn try_from(key: Key) -> Result<Self, Self::Error> {
+        Self::try_from(key.get())
+    }
+}
+
+impl fmt::Display for Key {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(formatter)
+    }
+}
+
 /// Backend-neutral advisory readiness hints for one resource.
 ///
-/// Hints are a snapshot of what the backend reported, not a promise that a
-/// later operation will succeed or avoid blocking. Multiple hints may be
-/// present. In particular, closure or error hints may accompany an event even
-/// when the matching direction was not requested. Test flag membership and use
-/// the corresponding nonblocking operation as the source of truth. A closure
-/// hint identifies the operation direction to inspect, not the peer action that
-/// caused it; native backends may conservatively report an additional hint, and
-/// an absent closure hint does not prove that the direction remains open.
-#[repr(transparent)]
-#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
+/// Hints may combine, vary by platform, and appear without matching requested
+/// interest. They are snapshots, not promises that later I/O will succeed. Test
+/// membership and treat the corresponding nonblocking operation as
+/// authoritative. An absent closure hint does not prove a direction is open.
+#[derive(Clone, Copy, Default, Eq, Hash, PartialEq)]
 pub struct Readiness(u8);
 
 impl Readiness {
@@ -64,6 +101,8 @@ impl Readiness {
     /// This flag contains no error code. Inspect the nonblocking operation and,
     /// for sockets where appropriate, the pending socket error.
     pub const ERROR: Self = Self(1 << 4);
+    /// Every supported readiness hint.
+    pub const ALL: Self = Self(0b1_1111);
 
     /// Returns whether no readiness hint is present.
     pub const fn is_empty(self) -> bool {
@@ -75,10 +114,39 @@ impl Readiness {
         self.0 & other.0 == other.0
     }
 
+    /// Returns whether the sets share any readiness hint.
+    pub const fn intersects(self, other: Self) -> bool {
+        self.0 & other.0 != 0
+    }
+
     /// Returns the union of two readiness sets.
     #[must_use]
     pub const fn union(self, other: Self) -> Self {
         Self(self.0 | other.0)
+    }
+
+    /// Returns the readiness hints present in both sets.
+    #[must_use]
+    pub const fn intersection(self, other: Self) -> Self {
+        Self(self.0 & other.0)
+    }
+
+    /// Returns the readiness hints not present in `other`.
+    #[must_use]
+    pub const fn difference(self, other: Self) -> Self {
+        Self(self.0 & !other.0)
+    }
+
+    /// Returns readiness hints present in exactly one set.
+    #[must_use]
+    pub const fn symmetric_difference(self, other: Self) -> Self {
+        Self(self.0 ^ other.0)
+    }
+
+    /// Returns every supported readiness hint absent from this set.
+    #[must_use]
+    pub const fn complement(self) -> Self {
+        Self::ALL.difference(self)
     }
 
     /// Returns whether readable readiness is present.
@@ -111,16 +179,20 @@ impl Readiness {
 ///
 /// A wait coalesces split native hints for one registration into one resource
 /// event. Distinct registrations remain distinct even when their keys match.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum Event {
     /// Readiness observed for a registered resource.
+    #[non_exhaustive]
     Resource {
+        /// Exact registration that produced the event.
+        registration: Registration,
         /// Caller key supplied at registration.
         key: Key,
         /// The union of advisory readiness hints reported for the resource.
         readiness: Readiness,
     },
     /// An explicit wake observed by the poller.
+    #[non_exhaustive]
     Wake {
         /// Caller key configured for the wake capability.
         key: Key,
@@ -135,6 +207,14 @@ impl Event {
         }
     }
 
+    /// Returns the exact registration for a resource event.
+    pub const fn registration(self) -> Option<Registration> {
+        match self {
+            Self::Resource { registration, .. } => Some(registration),
+            Self::Wake { .. } => None,
+        }
+    }
+
     /// Returns readiness for a resource event.
     pub const fn readiness(self) -> Option<Readiness> {
         match self {
@@ -144,97 +224,6 @@ impl Event {
     }
 }
 
-/// Reusable fixed-capacity destination preserving native resource order.
-/// A wake follows resource events, and separate registrations may share a key.
-#[derive(Debug)]
-pub struct Events {
-    capacity: NonZeroUsize,
-    events: Vec<Event>,
-}
-
-impl Events {
-    /// Allocates an empty event destination with the supplied capacity.
-    pub fn with_capacity(capacity: usize) -> Result<Self, Error> {
-        let capacity = NonZeroUsize::new(capacity).ok_or(Error::EventsTooSmall {
-            required: 1,
-            actual: 0,
-        })?;
-        Self::new(capacity)
-    }
-
-    pub(crate) fn new(capacity: NonZeroUsize) -> Result<Self, Error> {
-        let mut events = Vec::new();
-        events
-            .try_reserve_exact(capacity.get())
-            .map_err(|_| Error::Capacity {
-                limit: capacity.get(),
-            })?;
-        Ok(Self { capacity, events })
-    }
-
-    /// Returns the fixed logical capacity.
-    pub const fn capacity(&self) -> usize {
-        self.capacity.get()
-    }
-
-    /// Returns the retained event count.
-    pub fn len(&self) -> usize {
-        self.events.len()
-    }
-
-    /// Returns whether no event is retained.
-    pub fn is_empty(&self) -> bool {
-        self.events.is_empty()
-    }
-
-    /// Borrows retained events in normalized delivery order.
-    pub fn as_slice(&self) -> &[Event] {
-        &self.events
-    }
-
-    /// Borrows the event at `index`, when present.
-    pub fn get(&self, index: usize) -> Option<&Event> {
-        self.events.get(index)
-    }
-
-    /// Iterates over retained events in normalized delivery order.
-    pub fn iter(&self) -> impl ExactSizeIterator<Item = &Event> + '_ {
-        self.events.iter()
-    }
-
-    /// Clears retained events while preserving allocated storage.
-    pub fn clear(&mut self) {
-        self.events.clear();
-    }
-
-    /// Drains all retained events in normalized delivery order.
-    pub fn drain(&mut self) -> impl ExactSizeIterator<Item = Event> + '_ {
-        self.events.drain(..)
-    }
-
-    #[cfg(target_os = "linux")]
-    pub(crate) fn linux_storage(&mut self) -> &mut Vec<Event> {
-        &mut self.events
-    }
-
-    #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
-    pub(crate) fn try_push(&mut self, event: Event) -> Result<(), Error> {
-        if self.events.len() >= self.capacity.get() {
-            return Err(Error::EventsTooSmall {
-                required: self.events.len().saturating_add(1),
-                actual: self.capacity.get(),
-            });
-        }
-        self.events.push(event);
-        Ok(())
-    }
-}
-
-impl<'a> IntoIterator for &'a Events {
-    type Item = &'a Event;
-    type IntoIter = core::slice::Iter<'a, Event>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.events.iter()
-    }
-}
+#[cfg(test)]
+#[path = "event_test.rs"]
+mod tests;

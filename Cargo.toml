@@ -13,7 +13,7 @@ repository = "https://github.com/zsumz/zio"
 homepage = "https://github.com/zsumz/zio"
 
 [workspace.dependencies]
-zio = { path = ".", version = "=0.0.1-dev.1", default-features = false, features = ["test-support"] }
+zio = { path = ".", version = "=0.0.1-dev.1", default-features = false, features = ["unstable-test-support"] }
 
 [package]
 name = "zio"
@@ -32,9 +32,13 @@ categories = ["asynchronous", "concurrency", "network-programming"]
 include = [
   "/src/**",
   "/tests/**",
+  "/examples/**",
   "/Cargo.toml",
   "/Cargo.lock",
+  "/CHANGELOG.md",
+  "/CONTRIBUTING.md",
   "/README.md",
+  "/SECURITY.md",
   "/docs/contracts.md",
   "/docs/performance.md",
   "/docs/qualification.md",
@@ -52,7 +56,7 @@ targets = [
 
 [features]
 default = []
-test-support = []
+unstable-test-support = []
 
 [target.'cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd", target_os = "netbsd"))'.dependencies]
 libc = "0.2.189"

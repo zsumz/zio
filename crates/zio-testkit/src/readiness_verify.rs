@@ -43,14 +43,18 @@ where
     A: FnOnce() -> Result<(), ReadinessFailure>,
     V: FnOnce(&mut F) -> Result<(), ReadinessFailure>,
 {
-    let mut poll = zio::Poll::with_capacity(4, 1).map_err(|error| {
-        observed(
-            scenario,
-            ReadinessCheck::Setup,
-            "constructed poller",
-            &error,
-        )
-    })?;
+    let mut poll = zio::Poll::builder()
+        .event_capacity(4)
+        .registration_capacity(1)
+        .build()
+        .map_err(|error| {
+            observed(
+                scenario,
+                ReadinessCheck::Setup,
+                "constructed poller",
+                &error,
+            )
+        })?;
     let registration = poll
         .register(source, RESOURCE_KEY, scenario.interest(), scenario.mode())
         .map_err(|error| {
@@ -173,7 +177,7 @@ fn single_readiness(
     scenario: ReadinessScenario,
 ) -> Result<Readiness, ReadinessFailure> {
     match events.as_slice() {
-        [Event::Resource { key, readiness }] if *key == RESOURCE_KEY => Ok(*readiness),
+        [Event::Resource { key, readiness, .. }] if *key == RESOURCE_KEY => Ok(*readiness),
         actual => mismatch(
             scenario,
             ReadinessCheck::Events,

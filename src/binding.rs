@@ -1,4 +1,13 @@
 //! Borrowed registration state used at native backend boundaries.
+#![cfg_attr(
+    not(any(
+        target_os = "linux",
+        target_os = "macos",
+        target_os = "freebsd",
+        target_os = "netbsd"
+    )),
+    allow(dead_code, reason = "matches the target-selected observation contract")
+)]
 
 use std::os::fd::{BorrowedFd, RawFd};
 

@@ -5,10 +5,43 @@ matching nonblocking operation is always authoritative.
 
 ## API evolution
 
-`Error` and `Operation` are open diagnostic vocabularies. Downstream matches
-must include a fallback arm. `Event`, `CommitStatus`, `Mode`, `Wait`,
-`ArmState`, and `RegistrationState` are intentionally closed domains; changing
-their cases is a breaking contract change.
+Public enums have two evolution contracts:
+
+- `Error`, `Operation`, `CapacityKind`, `CapacityReason`, and `Mode` are open.
+  Downstream matches need a fallback arm.
+- `Event`, `CommitStatus`, `DescriptorOwnership`, `Wait`, `ArmState`,
+  `RegistrationState`, `RegisterOwnedError`, and `DeleteOwnedError` are closed.
+  Variant changes are breaking. Event fields may grow; match with `..`.
+
+`Operation` names only failures a current backend can report.
+`Error::UnsupportedPlatform` has no associated operation.
+
+Use `Error` accessors for structured details. Match `Error::Capacity` with `..`;
+its diagnostic fields may grow.
+
+Public value layouts and flag encodings are opaque.
+`Key`, `Interest`, and `Readiness` default to zero. `PollBuilder` defaults to
+the named capacity constants.
+Copyable public values are debuggable, comparable, hashable, `Send`, and
+`Sync`. `Poll`, `Events`, `WaitReport`, and `Waker` are debuggable; wakers are
+cloneable.
+Public failures implement `std::error::Error`; I/O-backed chains retain the
+native error.
+`PollBuilder`, `Registration`, `WaitReport`, and `Waker` warn when discarded.
+`Key` construction and access, `Wait` queries, and `PollBuilder` configuration
+work in const contexts. `Interest` and `Readiness` set operations and queries do too.
+`Events` and `RecoveryFailure` cardinality and slice queries work in const
+contexts.
+
+The `unstable-test-support` Cargo feature and every item reachable only through
+it are test infrastructure, not stable API. They may change or disappear in any
+release without a semver-major version change.
+
+The minimum supported Rust version is 1.88. A future MSRV increase requires a
+minor release and an entry in `CHANGELOG.md`; patch releases do not raise it.
+
+`BackendLimit` rejects capacities that native or token representations cannot hold.
+`Error::capacity_limit` reports the configured or attempted logical capacity.
 
 ## Registration ownership
 
@@ -16,7 +49,39 @@ their cases is a breaking contract change.
 descriptor duplicate and exact generation, even for repeated registration of
 one source or its duplicated handles. Caller close and numeric descriptor reuse
 cannot redirect later mutations. Handles are poller-scoped; another poller
-rejects them. Keys need not be unique.
+rejects them. Keys need not be unique. Each resource event carries its exact
+registration handle.
+
+Interest and logical capacity are validated before the safe path borrows or
+duplicates the source descriptor. A full table therefore reports zio capacity
+rather than attempting a duplicate that cannot be retained.
+
+`Poll::register_owned` transfers an `OwnedFd` without duplication. Rejected and
+`NotApplied` calls return it; `Applied` and `Unknown` failures return the
+retained registration.
+`Poll::delete_owned` retires an owned registration and returns its exact
+descriptor. Borrowed registrations are rejected before backend work. An
+`Applied` failure returns the descriptor; other failures return the attempted
+handle. Inspect the cause before reuse.
+Dropping a poller closes retained owned descriptors; borrowed descriptors
+remain caller-owned.
+`Poll::registration_fd` safely borrows any retained resource descriptor,
+including one in uncertain backend state.
+`Poll::registrations` returns a bounded snapshot. `Poll::iter_registrations`
+borrows the same set without allocating. Both have unspecified order.
+`RegistrationInfo::descriptor_ownership` reports who owns the retained descriptor.
+Full means no slot is reservable. Remaining capacity excludes live and
+generation-exhausted slots. `CapacityReason::GenerationExhausted` means only a
+new poller can restore registration capacity.
+
+`Poll::set_key` changes only future resource-event routing and does no backend work.
+`Poll::modify_with_key` settles key, interest, and mode under one commit outcome.
+`RegistrationState::arm` returns `None` when backend state is uncertain.
+On supported targets, `Poll` implements `AsFd` and `AsRawFd` as a trusted native
+escape hatch. Its selector is close-on-exec; readability means a nonblocking
+wait may observe an event. Readiness nesting is supported, but waiting on or
+modifying the selector outside zio invalidates zio's exact-state guarantees.
+Draining a nested poller clears readiness; a later event reactivates it.
 
 ## Borrowed registration
 
@@ -38,16 +103,27 @@ any residual knotes.
 
 ## Registration lifetime
 
-`Registration` is `Copy`, `Clone`, `Eq`, `Hash`, `Send`, and `Sync`. Every copy
-names the same poller and exact generation; copying creates no backend
-registration. Dropping any or all copies does not delete it. Retain a copy
-outside cancellable work when early cleanup matters.
+`Registration` is `Copy`, `Clone`, `Eq`, `Ord`, `Hash`, `Send`, and `Sync`.
+Every copy names the same poller and exact generation; copying creates no
+backend registration. Dropping any or all copies does not delete it. Retain a
+copy outside cancellable work when early cleanup matters.
+
+Ordering supports ordered containers; it does not express registration age.
+Registration IDs support comparison, hashing, and diagnostic display.
 
 Successful deletion retires the generation and makes every copy stale. An
 `Applied` delete failure does the same; `NotApplied` preserves every copy's
 prior state; `Unknown` makes every copy uncertain and allows a delete retry.
 Stale and wrong-poller copies are rejected before backend work and cannot affect
 a reused slot.
+
+Registration consumes never-used slots before recycling retired slots. Once
+every slot has been used, retired slots are reused in FIFO order. This spreads
+generation churn across the fixed registration capacity while preserving the
+generation-exhaustion defense.
+
+`Poll::delete_all` validates retained handles, then stops at the first failure.
+Earlier deletions may have succeeded; later entries are untouched.
 
 `Applied` and `Unknown` register failures can carry an installed or uncertain
 handle. Inspect and retain it before propagating or consuming the error.
@@ -56,8 +132,8 @@ handle. Inspect and retain it before propagating or consuming the error.
 
 Level mode reports while a source remains ready. A successful one-shot wait
 disarms each delivered registration. Rearming requires an explicit,
-successfully applied modification. Recovery failures report the exact state
-described below.
+successfully applied mutation. `Poll::rearm` preserves interest and mode;
+`Poll::modify` replaces them. Recovery failures report the exact state below.
 
 ## Readiness contract
 
@@ -83,9 +159,13 @@ membership, not equality. For streams, consume positive-length reads until
 `WouldBlock`; a zero-length read confirms EOF. Readiness races are normal, so
 retry according to the operation result.
 
+Direct readiness predicates return `false` for wake events.
+
 One wait emits at most one event per registration and unions split native
 hints. Resource events retain first-observation order; a wake follows them.
 Separate registrations remain separate even when their keys match.
+Stable ready sets larger than event capacity rotate across waits. Repeated
+wakes do not starve ready resources.
 
 ## Recovery behavior
 
@@ -99,21 +179,41 @@ postcondition. Each submitted registration gets an exact outcome:
 | `NotApplied` | Armed |
 | `Unknown` | Uncertain |
 
+Each outcome carries the exact registration handle.
+
 `Poll::wait` returns `Ok(WaitReport)` after valid delivery. Process the retained
 resource and wake events first, then inspect `WaitReport::recovery`. A recovery
 failure owns every batch outcome, including successful peers, after the poller
-is reused. Returning `Err` means delivery failed and leaves `Events` empty.
+is reused. It borrows as the ordered outcome slice and iterates by reference.
+`WaitReport::is_complete` means no reconciliation is needed.
+After processing events, `WaitReport::into_result` supports direct propagation.
+Returning `Err` means delivery failed and leaves `Events` empty.
+`Events::is_full` describes the delivered batch; it does not prove more
+readiness is pending.
 
 ## Allocation contract
 
+Unsupported targets reject poll construction before capacity validation or allocation.
 Poll construction retains native-event, coalescing, mutation, receipt, and
 ownership scratch. Successful waits reuse it without growing zio-owned heap
-storage. A configured wake trigger and observation also allocate nothing.
+storage. Wake, observation, registration iteration, and successful bulk
+deletion allocate nothing.
 
-Kqueue retains observation space for both filters of every registration plus
-the wake filter so a delivered registration receives its complete split-filter
-snapshot. One-shot recovery plans and receipts are bounded separately by the
-smaller configured event and registration limit.
+Kqueue retains raw space for both filters of every registration plus the wake
+filter, and one coalesced entry per registration. A delivered registration
+therefore receives its complete split-filter snapshot. One-shot recovery plans
+and receipts are bounded separately by the smaller configured limit.
+
+For registration capacity `R` and event capacity `E`, the shared kqueue arena
+retains `max(2R + 1, 4 * min(E, R))` native `kevent` records. The registration
+table, coalesced entries, and slot-index map add storage linear in `R`; disarm
+plans add storage linear in `min(E, R)`. Exact bytes are ABI-dependent and are
+recorded by the construction-allocation qualification receipts.
+
+Consequently, kqueue collection work and retained native-event storage scale
+with registration capacity, even when event capacity is much smaller. This
+preserves complete split-filter snapshots and zio-controlled fairness; measure
+that tradeoff for workloads with highly skewed capacities.
 
 A failed post-delivery recovery alone creates one owned `Vec` snapshot, bounded
 by the smaller configured event and registration limit. Allocation exhaustion
@@ -123,17 +223,32 @@ operating-system internals are outside this guarantee.
 ## Wait behavior
 
 `Wait::NoBlock` and zero duration are nonblocking. Positive durations never
-collapse to nonblocking; a backend may round up to its supported resolution,
-and scheduling may delay return. Linux rounds up to milliseconds. Kqueue uses
-nanosecond fields. Large limits are clamped to the backend integer range, and
-interruption may return early.
+collapse to nonblocking; `Wait::is_nonblocking` recognizes both forms. A backend
+may round up to its supported resolution, and scheduling may delay return. Linux
+rounds up to milliseconds. Kqueue uses nanosecond fields. Large limits are
+clamped to the backend integer range. `Poll::wait_until` computes a monotonic
+remaining duration at entry; a reached deadline is nonblocking. An interrupted
+wait returns `Error::Io`. `Error::is_wait_interrupted` classifies only that
+non-mutation case. Conversions to and from `Option<Duration>` use
+`Wait::timeout`'s representation.
+
+Every wait replaces the supplied event batch; an error leaves it empty. A
+destination can be reused across pollers whose event capacity it meets.
+Clearing or draining preserves capacity. Borrowed, drained, and owned iteration
+preserve normalized delivery order; owned iteration consumes the destination.
 
 Use nonblocking descriptors and perform I/O until it would block.
 
 ## Wake behavior
 
+`Poll` is `Send` but not `Sync`. `Waker` is `Send + Sync`.
+A waker may outlive its poller but does not retain registered descriptors.
+Retain a `Waker` to signal the poller.
+
 A poller binds its wake source to one key. Same-key requests and clones share
-it. A conflicting key is rejected without replacing the original.
+it, and each `Waker` reports that key. A conflicting key is rejected without
+replacing the original. `Poll::waker_key` reports the current binding.
+`Waker::will_wake` compares keyed poller destinations.
 
 Triggers may coalesce. One observation consumes the pending notification, and a
 later trigger remains observable. Wake and resource events share the fixed event
@@ -151,3 +266,4 @@ backend state may remain:
 | `Unknown` | Return uncertain | Mark uncertain | Return uncertain and retryable |
 
 An uncertain outcome is never presented as a successful rollback.
+Capability-bearing errors return copyable handles and implement `AsRef<Error>`.

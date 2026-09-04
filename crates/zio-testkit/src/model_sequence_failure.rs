@@ -38,7 +38,7 @@ pub enum ModelSequenceCheck {
     Handle,
     /// A registration generation was repeated after retirement.
     Generation,
-    /// Portable registration state diverged from the reference model.
+    /// Retained registration configuration or state diverged from the model.
     State,
     /// Scripted backend state diverged from the reference model.
     Backend,

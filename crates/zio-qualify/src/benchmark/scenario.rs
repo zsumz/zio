@@ -126,6 +126,16 @@ impl Scenario {
         )
     }
 
+    pub(crate) const fn requires_polling_level_support(self) -> bool {
+        matches!(
+            self,
+            Self::PersistentSingle
+                | Self::PersistentBatch64
+                | Self::PersistentBatch1024
+                | Self::LevelRepeat
+        )
+    }
+
     pub(crate) const fn batch_size(self) -> usize {
         match self {
             Self::ReadyBatch64 | Self::PersistentBatch64 | Self::Register64 | Self::Delete64 => 64,

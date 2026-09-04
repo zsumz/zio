@@ -2,16 +2,16 @@
 
 #![allow(
     unsafe_code,
-    reason = "reviewed kqueue FFI is confined to this syscall leaf"
+    reason = "reviewed kqueue FFI and inert tokens are confined to this syscall leaf"
 )]
 
 #[cfg(not(target_pointer_width = "64"))]
-const _: [(); 8] = [(); core::mem::size_of::<usize>()];
+const KQUEUE_BACKEND_REQUIRES_64_BIT: [(); 8] = [(); core::mem::size_of::<usize>()];
 
 use std::{
-    io, mem,
+    io,
     mem::MaybeUninit,
-    os::fd::{AsRawFd, FromRawFd, OwnedFd},
+    os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, OwnedFd},
     ptr,
     time::Duration,
 };
@@ -29,6 +29,11 @@ pub(super) struct KeventBatch {
     pub(super) observed: usize,
     pub(super) receipts: usize,
 }
+
+// SAFETY: the batch is exclusively owned, no arena pointer escapes a
+// synchronous syscall, and `kevent::udata` is an inert integer token that zio
+// never dereferences.
+unsafe impl Send for KeventBatch {}
 
 /// One owned kqueue instance.
 #[derive(Debug)]
@@ -67,6 +72,10 @@ impl Kqueue {
             }
         }
         Ok(Self { descriptor })
+    }
+
+    pub(super) fn as_fd(&self) -> BorrowedFd<'_> {
+        self.descriptor.as_fd()
     }
 
     pub(super) fn wait(
@@ -200,9 +209,16 @@ pub(super) fn initialized_event(event: &MaybeUninit<libc::kevent>) -> &libc::kev
 }
 
 pub(super) fn empty_kevent() -> libc::kevent {
-    // SAFETY: kevent contains integer fields and an inert pointer; zero is a
-    // valid initialized staging value before submitted fields are assigned.
-    unsafe { mem::zeroed() }
+    libc::kevent {
+        ident: 0,
+        filter: 0,
+        flags: 0,
+        fflags: 0,
+        data: 0,
+        udata: ptr::null_mut(),
+        #[cfg(target_os = "freebsd")]
+        ext: [0; 4],
+    }
 }
 
 fn protocol_error() -> io::Error {

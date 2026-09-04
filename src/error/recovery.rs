@@ -2,7 +2,10 @@
 
 use std::{fmt, io};
 
-use crate::registration::{ArmState, RegistrationId, RegistrationState};
+use crate::{
+    Registration,
+    registration::{ArmState, RegistrationState},
+};
 
 use super::{CommitStatus, Operation};
 
@@ -11,13 +14,12 @@ use super::{CommitStatus, Operation};
 /// The commit status and authoritative state always agree: applied recovery
 /// leaves a one-shot registration disarmed, proven-not-applied recovery leaves
 /// it armed, and an unprovable recovery leaves it uncertain. This is an owned
-/// historical snapshot for the exact generation; later poller mutations do not
-/// change it.
+/// historical snapshot with its actionable handle; later poller mutations do
+/// not change it.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct RecoveryOutcome {
-    registration: RegistrationId,
+    registration: Registration,
     commit: CommitStatus,
-    state: RegistrationState,
 }
 
 impl RecoveryOutcome {
@@ -25,25 +27,15 @@ impl RecoveryOutcome {
         dead_code,
         reason = "only kqueue targets construct wait-time recovery outcomes"
     )]
-    pub(crate) const fn new(registration: RegistrationId, commit: CommitStatus) -> Self {
-        let state = match commit {
-            CommitStatus::Applied => RegistrationState::Registered {
-                arm: ArmState::Disarmed,
-            },
-            CommitStatus::NotApplied => RegistrationState::Registered {
-                arm: ArmState::Armed,
-            },
-            CommitStatus::Unknown => RegistrationState::Uncertain,
-        };
+    pub(crate) const fn new(registration: Registration, commit: CommitStatus) -> Self {
         Self {
             registration,
             commit,
-            state,
         }
     }
 
-    /// Returns the exact attempted registration generation.
-    pub const fn registration(&self) -> RegistrationId {
+    /// Returns the exact attempted registration handle.
+    pub const fn registration(&self) -> Registration {
         self.registration
     }
 
@@ -54,22 +46,28 @@ impl RecoveryOutcome {
 
     /// Returns the state established by this recovery attempt.
     pub const fn state(&self) -> RegistrationState {
-        self.state
+        match self.commit {
+            CommitStatus::Applied => RegistrationState::Registered {
+                arm: ArmState::Disarmed,
+            },
+            CommitStatus::NotApplied => RegistrationState::Registered {
+                arm: ArmState::Armed,
+            },
+            CommitStatus::Unknown => RegistrationState::Uncertain,
+        }
     }
 }
 
 /// A wait-time recovery failure with exact owned per-registration outcomes.
 ///
-/// Outcomes include every one-shot registration attempted by the failed
-/// recovery batch, in observation order. The source is the first native or
-/// receipt-protocol failure in submitted-change order.
+/// Outcomes cover every attempted one-shot registration in observation order.
+/// [`Self::source`] is the first native or receipt-protocol failure in submitted
+/// change order.
 ///
-/// Successful recovery does not create this report allocation. Each failed
-/// post-delivery recovery owns one `Vec` backing allocation containing at most
-/// the smaller of the poller's event and registration capacities. Retaining
-/// several reports retains one independent bounded allocation per failure and
-/// does not borrow the poller. Allocation exhaustion follows Rust's ordinary
-/// allocation-error policy.
+/// Each failure owns one `Vec` backing allocation, bounded by the smaller of the
+/// poller's event and registration capacities. Successful recovery creates no
+/// report allocation. Reports are independent, do not borrow the poller, and
+/// follow Rust's normal allocation-error policy.
 #[derive(Debug)]
 pub struct RecoveryFailure {
     operation: Operation,
@@ -97,8 +95,23 @@ impl RecoveryFailure {
     }
 
     /// Borrows every exact registration outcome in observation order.
-    pub fn outcomes(&self) -> &[RecoveryOutcome] {
-        &self.outcomes
+    pub const fn outcomes(&self) -> &[RecoveryOutcome] {
+        self.outcomes.as_slice()
+    }
+
+    /// Returns the number of exact registration outcomes.
+    pub const fn len(&self) -> usize {
+        self.outcomes.len()
+    }
+
+    /// Returns whether no registration outcome is retained.
+    pub const fn is_empty(&self) -> bool {
+        self.outcomes.is_empty()
+    }
+
+    /// Iterates over exact outcomes in observation order.
+    pub fn iter(&self) -> core::slice::Iter<'_, RecoveryOutcome> {
+        self.outcomes.iter()
     }
 
     /// Returns the first native or receipt-protocol failure in submission order.
@@ -113,13 +126,33 @@ impl RecoveryFailure {
     }
 }
 
+impl AsRef<[RecoveryOutcome]> for RecoveryFailure {
+    fn as_ref(&self) -> &[RecoveryOutcome] {
+        self.outcomes()
+    }
+}
+
+impl<'a> IntoIterator for &'a RecoveryFailure {
+    type Item = &'a RecoveryOutcome;
+    type IntoIter = core::slice::Iter<'a, RecoveryOutcome>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
 impl fmt::Display for RecoveryFailure {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let registration = if self.len() == 1 {
+            "registration"
+        } else {
+            "registrations"
+        };
         write!(
             formatter,
-            "{:?} recovery failed for {} registrations: {}",
+            "{} recovery failed for {} {registration}: {}",
             self.operation,
-            self.outcomes.len(),
+            self.len(),
             self.source
         )
     }

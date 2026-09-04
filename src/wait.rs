@@ -3,21 +3,30 @@
 use core::time::Duration;
 
 /// Requested blocking behavior for one readiness observation.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum Wait {
     /// Return without intentionally blocking.
     NoBlock,
     /// Wait for readiness for approximately the supplied duration.
     ///
     /// A backend may round a positive duration up to its native timeout
-    /// resolution. Zero remains nonblocking, and interruptions may return
-    /// before the timeout elapses.
+    /// resolution. Zero remains nonblocking. An interrupted backend wait
+    /// returns [`Error::Io`](crate::Error::Io) before the timeout elapses.
     For(Duration),
     /// Permit indefinite blocking until the backend returns.
     Forever,
 }
 
 impl Wait {
+    /// Returns whether this request is nonblocking.
+    pub const fn is_nonblocking(self) -> bool {
+        match self {
+            Self::NoBlock => true,
+            Self::For(duration) => duration.is_zero(),
+            Self::Forever => false,
+        }
+    }
+
     /// Returns the portable timeout representation.
     ///
     /// `None` represents an indefinite wait and zero represents a nonblocking
@@ -30,3 +39,28 @@ impl Wait {
         }
     }
 }
+
+impl From<Duration> for Wait {
+    fn from(duration: Duration) -> Self {
+        Self::For(duration)
+    }
+}
+
+impl From<Option<Duration>> for Wait {
+    fn from(timeout: Option<Duration>) -> Self {
+        match timeout {
+            Some(duration) => Self::For(duration),
+            None => Self::Forever,
+        }
+    }
+}
+
+impl From<Wait> for Option<Duration> {
+    fn from(wait: Wait) -> Self {
+        wait.timeout()
+    }
+}
+
+#[cfg(test)]
+#[path = "wait_test.rs"]
+mod tests;

@@ -90,7 +90,7 @@ fn settle_failure(
         Err(error) => error,
     };
     expect_commit(error.error(), commit)?;
-    let retained = error.registration().copied();
+    let retained = error.registration();
     match commit {
         CommitStatus::NotApplied => {
             ensure(retained.is_none(), "not-applied reuse retained a handle")?;

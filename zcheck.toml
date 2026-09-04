@@ -182,6 +182,16 @@ run = [
 ]
 tools = ["jq"]
 
+[tasks.stable-evidence-contract]
+description = "Reject malformed, stale, unbound, reused, or incomplete stable evidence."
+run = ["scripts/test-qualify-1.0"]
+tools = ["bash", "cargo", "git", "jq", "shasum"]
+
+[tasks.performance-fd-limit-contract]
+description = "Prove both performance captures can establish their required descriptor limit."
+run = ["scripts/test-performance-fd-limit"]
+tools = ["bash"]
+
 [tasks.check]
 description = "Run complete local zio qualification."
 needs = [
@@ -190,6 +200,8 @@ needs = [
   "rust-test",
   "package",
   "qualify-smoke-receipts",
+  "stable-evidence-contract",
+  "performance-fd-limit-contract",
 ]
 
 [tasks.release-rehearsal]

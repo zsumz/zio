@@ -1,0 +1,135 @@
+//! Error and recovery contracts.
+
+use zio::{
+    CapacityKind, CapacityReason, CommitStatus, DeleteAllError, DeleteError, DeleteOwnedError,
+    Error, Key, MutationError, Operation, RecoveryFailure, RecoveryOutcome, RegisterError,
+    RegisterOwnedError, Registration, WaitReport,
+};
+
+use super::support::*;
+
+#[test]
+fn errors_expose_common_diagnostics_without_matching() {
+    assert_eq!(Error::UnsupportedPlatform.operation(), None);
+    let _ = Error::operation as fn(&Error) -> Option<Operation>;
+    let _ = Error::commit as fn(&Error) -> Option<CommitStatus>;
+    let _ = Error::registration_id as fn(&Error) -> Option<zio::RegistrationId>;
+    let _ = Error::waker_key_conflict as fn(&Error) -> Option<(Key, Key)>;
+    let _ = Error::capacity_limit as fn(&Error) -> Option<usize>;
+    let _ = Error::capacity_kind as fn(&Error) -> Option<CapacityKind>;
+    let _ = Error::capacity_reason as fn(&Error) -> Option<CapacityReason>;
+    let _ = Error::event_capacity_mismatch as fn(&Error) -> Option<(usize, usize)>;
+    let _ = Error::io_error as fn(&Error) -> Option<&std::io::Error>;
+    let _ = Error::is_wait_interrupted as fn(&Error) -> bool;
+}
+
+#[test]
+fn public_errors_preserve_standard_source_chains() {
+    let error = Error::Io {
+        operation: Operation::Wait,
+        source: std::io::Error::other("native failure"),
+    };
+    let source = std::error::Error::source(&error);
+
+    assert_eq!(
+        source.map(ToString::to_string).as_deref(),
+        Some("native failure")
+    );
+    assert!(source.and_then(std::error::Error::source).is_none());
+    assert!(std::error::Error::source(&Error::Invariant).is_none());
+}
+
+#[test]
+fn capacity_diagnostics_are_open() {
+    assert_display::<CapacityKind>();
+    assert_display::<CapacityReason>();
+    assert_eq!(capacity_kind_class(CapacityKind::Event), "event");
+    assert_eq!(
+        capacity_kind_class(CapacityKind::Registration),
+        "registration"
+    );
+    assert_eq!(capacity_reason_class(CapacityReason::Zero), "zero");
+    assert_eq!(
+        capacity_reason_class(CapacityReason::BackendLimit),
+        "backend-limit"
+    );
+    assert_eq!(
+        capacity_reason_class(CapacityReason::StorageUnavailable),
+        "storage"
+    );
+    assert_eq!(
+        capacity_reason_class(CapacityReason::GenerationExhausted),
+        "generation-exhausted"
+    );
+}
+
+#[test]
+fn recovery_outcomes_return_registration_handles() {
+    let _ = RecoveryOutcome::registration as fn(&RecoveryOutcome) -> Registration;
+    let _ = RecoveryOutcome::commit as fn(&RecoveryOutcome) -> CommitStatus;
+    let _ = RecoveryOutcome::state as fn(&RecoveryOutcome) -> zio::RegistrationState;
+    let _ = RecoveryFailure::operation as fn(&RecoveryFailure) -> Operation;
+    let _ = RecoveryFailure::outcomes as fn(&RecoveryFailure) -> &[RecoveryOutcome];
+    let _ = RecoveryFailure::len as fn(&RecoveryFailure) -> usize;
+    let _ = RecoveryFailure::is_empty as fn(&RecoveryFailure) -> bool;
+    let _ = RecoveryFailure::source as fn(&RecoveryFailure) -> &std::io::Error;
+    let _ = RecoveryFailure::into_parts
+        as fn(RecoveryFailure) -> (Operation, Vec<RecoveryOutcome>, std::io::Error);
+    assert_slice::<RecoveryFailure, RecoveryOutcome>();
+    let _ = assert_recovery_iterator as fn(&RecoveryFailure);
+}
+
+#[test]
+fn wait_reports_expose_completion() {
+    let _ = WaitReport::is_complete as fn(&WaitReport) -> bool;
+    let _ = WaitReport::recovery as fn(&WaitReport) -> Option<&RecoveryFailure>;
+    let _ = WaitReport::into_recovery as fn(WaitReport) -> Option<RecoveryFailure>;
+    let _ = WaitReport::into_result as fn(WaitReport) -> Result<(), RecoveryFailure>;
+}
+
+#[test]
+fn errors_return_registration_handles() {
+    assert_error_ref::<RegisterError>();
+    assert_error_ref::<RegisterOwnedError>();
+    assert_error_ref::<DeleteError>();
+    assert_error_ref::<DeleteOwnedError>();
+    assert_error_ref::<DeleteAllError>();
+    let _ = RegisterError::error as fn(&RegisterError) -> &Error;
+    let _ = RegisterError::registration as fn(&RegisterError) -> Option<Registration>;
+    let _ = RegisterError::into_parts as fn(RegisterError) -> (Error, Option<Registration>);
+    let _ = RegisterOwnedError::error as fn(&RegisterOwnedError) -> &Error;
+    let _ =
+        RegisterOwnedError::descriptor as fn(&RegisterOwnedError) -> Option<&std::os::fd::OwnedFd>;
+    let _ = RegisterOwnedError::registration as fn(&RegisterOwnedError) -> Option<Registration>;
+    let _ = DeleteError::error as fn(&DeleteError) -> &Error;
+    let _ = DeleteError::into_parts as fn(DeleteError) -> (Error, Registration);
+    let _ = DeleteOwnedError::error as fn(&DeleteOwnedError) -> &Error;
+    let _ = DeleteOwnedError::descriptor as fn(&DeleteOwnedError) -> Option<&std::os::fd::OwnedFd>;
+    let _ = DeleteOwnedError::registration as fn(&DeleteOwnedError) -> Option<Registration>;
+    let _ = DeleteError::registration as fn(&DeleteError) -> Registration;
+    let _ = DeleteAllError::error as fn(&DeleteAllError) -> &Error;
+    let _ = DeleteAllError::registration as fn(&DeleteAllError) -> Option<Registration>;
+    let _ = DeleteAllError::into_parts as fn(DeleteAllError) -> (Error, Option<Registration>);
+    let _ = Error::registration as fn(&Error) -> Option<Registration>;
+}
+
+#[test]
+fn public_errors_remain_thread_portable() {
+    assert_thread_error::<Error>();
+    assert_thread_error::<MutationError>();
+    assert_thread_error::<RegisterError>();
+    assert_thread_error::<RegisterOwnedError>();
+    assert_thread_error::<DeleteError>();
+    assert_thread_error::<DeleteOwnedError>();
+    assert_thread_error::<DeleteAllError>();
+    assert_thread_error::<RecoveryFailure>();
+}
+
+#[test]
+fn mutation_errors_return_every_owned_detail() {
+    let _ = MutationError::operation as fn(&MutationError) -> Operation;
+    let _ = MutationError::commit as fn(&MutationError) -> CommitStatus;
+    let _ = MutationError::source as fn(&MutationError) -> &std::io::Error;
+    let _ =
+        MutationError::into_parts as fn(MutationError) -> (Operation, CommitStatus, std::io::Error);
+}

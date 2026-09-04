@@ -1,6 +1,6 @@
 //! Full-state comparison after every generated action.
 
-use zio::Error;
+use zio::{DescriptorOwnership, Error};
 
 use crate::{
     ModelSequenceCheck, model_sequence_failure::Divergence, model_sequence_probe::verify_stranger,
@@ -31,11 +31,24 @@ fn verify_active(context: &SequenceContext) -> Result<(), Divergence> {
     let Some(entry) = context.model.active() else {
         return Ok(());
     };
-    let actual = context
+    let expected = (
+        entry.key,
+        entry.interest,
+        entry.mode,
+        entry.state.portable(),
+        DescriptorOwnership::Owned,
+    );
+    let info = context
         .poll
-        .registration_state(&entry.registration)
-        .map_err(|error| state(entry.state.portable(), error))?;
-    let expected = entry.state.portable();
+        .registration_info(&entry.registration)
+        .map_err(|error| state(expected, error))?;
+    let actual = (
+        info.key(),
+        info.interest(),
+        info.mode(),
+        info.state(),
+        info.descriptor_ownership(),
+    );
     if actual == expected {
         Ok(())
     } else {

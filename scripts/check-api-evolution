@@ -43,23 +43,374 @@ printf '%s\n' \
   > "$consumer_dir/Cargo.toml"
 
 printf '%s\n' \
-  'use zio::{ArmState, CommitStatus, Error, Event, Key, Mode, Operation, RegistrationState, Wait};' \
+  'use zio::{ArmState, CapacityKind, CapacityReason, CommitStatus, DeleteAllError, DeleteError, DeleteOwnedError, DescriptorOwnership, Error, Event, Events, Key, Mode, MutationError, Operation, Poll, PollBuilder, RecoveryFailure, RecoveryOutcome, RegisterError, RegisterOwnedError, Registration, RegistrationId, RegistrationInfo, RegistrationState, Wait, WaitReport, Waker};' \
   '' \
   'fn main() {' \
   '    assert_eq!(classify_error(&Error::Invariant), 1);' \
+  '    assert_eq!(Error::Invariant.to_string(), "internal state failed validation");' \
+  '    let io_error = Error::Io { operation: Operation::Wait, source: std::io::Error::other("native failure") };' \
+  '    let io_source = std::error::Error::source(&io_error);' \
+  '    assert_eq!(io_source.map(ToString::to_string).as_deref(), Some("native failure"));' \
+  '    assert!(io_source.and_then(std::error::Error::source).is_none());' \
+  '    assert!(std::error::Error::source(&Error::Invariant).is_none());' \
+  '    assert_eq!(u64::from(Key::from(9_u64)), 9);' \
+  '    assert_eq!(Key::new(9).to_string(), "9");' \
+  '    assert_eq!(Key::default(), Key::ZERO);' \
+  '    assert_eq!(zio::Interest::default(), zio::Interest::EMPTY);' \
+  '    assert_eq!(zio::Readiness::default(), zio::Readiness::EMPTY);' \
+  '    assert_eq!(PollBuilder::default(), PollBuilder::new());' \
+  '    assert_copy_value::<Key>();' \
+  '    assert_copy_value::<zio::Interest>();' \
+  '    assert_copy_value::<zio::Readiness>();' \
+  '    assert_copy_value::<Event>();' \
+  '    assert_copy_value::<Mode>();' \
+  '    assert_copy_value::<Wait>();' \
+  '    assert_copy_value::<Registration>();' \
+  '    assert_copy_value::<RegistrationId>();' \
+  '    assert_copy_value::<RegistrationInfo>();' \
+  '    assert_copy_value::<RecoveryOutcome>();' \
+  '    assert_copy_value::<ArmState>();' \
+  '    assert_copy_value::<RegistrationState>();' \
+  '    assert_copy_value::<DescriptorOwnership>();' \
+  '    assert_copy_value::<Operation>();' \
+  '    assert_copy_value::<CommitStatus>();' \
+  '    assert_copy_value::<CapacityKind>();' \
+  '    assert_copy_value::<CapacityReason>();' \
+  '    assert_copy_value::<PollBuilder>();' \
+  '    assert_debug_thread_value::<Events>();' \
+  '    assert_debug_thread_value::<WaitReport>();' \
+  '    let _ = Key::new as fn(u64) -> Key;' \
+  '    let _ = Key::get as fn(Key) -> u64;' \
   '    assert_eq!(classify_operation(Operation::Wait), 1);' \
-  '    assert_eq!(classify_event(Event::Wake { key: Key::ZERO }), 1);' \
+  '    assert_eq!(Operation::Wait.to_string(), "wait");' \
+  '    assert_eq!(CommitStatus::Unknown.to_string(), "unknown");' \
+  '    assert_eq!(Error::UnsupportedPlatform.operation(), None);' \
+  '    let _ = Error::operation as fn(&Error) -> Option<Operation>;' \
+  '    let _ = Error::commit as fn(&Error) -> Option<CommitStatus>;' \
+  '    let _ = Error::registration_id as fn(&Error) -> Option<zio::RegistrationId>;' \
+  '    let _ = Error::registration as fn(&Error) -> Option<Registration>;' \
+  '    let _ = Error::waker_key_conflict as fn(&Error) -> Option<(Key, Key)>;' \
+  '    let _ = Error::capacity_limit as fn(&Error) -> Option<usize>;' \
+  '    let _ = Error::capacity_kind as fn(&Error) -> Option<CapacityKind>;' \
+  '    let _ = Error::capacity_reason as fn(&Error) -> Option<CapacityReason>;' \
+  '    let _ = Error::event_capacity_mismatch as fn(&Error) -> Option<(usize, usize)>;' \
+  '    let _ = Error::io_error as fn(&Error) -> Option<&std::io::Error>;' \
+  '    let _ = Error::is_wait_interrupted as fn(&Error) -> bool;' \
+  '    let _ = classify_event as fn(Event) -> u8;' \
+  '    let _ = Event::key as fn(Event) -> Key;' \
+  '    let _ = Event::registration as fn(Event) -> Option<Registration>;' \
+  '    let _ = Event::readiness as fn(Event) -> Option<zio::Readiness>;' \
+  '    let _ = Event::is_resource as fn(Event) -> bool;' \
+  '    let _ = Event::is_wake as fn(Event) -> bool;' \
+  '    let _ = Event::is_readable as fn(Event) -> bool;' \
+  '    let _ = Event::is_writable as fn(Event) -> bool;' \
+  '    let _ = Event::is_read_closed as fn(Event) -> bool;' \
+  '    let _ = Event::is_write_closed as fn(Event) -> bool;' \
+  '    let _ = Event::is_error as fn(Event) -> bool;' \
   '    assert_eq!(classify_commit(CommitStatus::Unknown), 2);' \
   '    assert_eq!(classify_mode(Mode::OneShot), 1);' \
   '    assert_eq!(classify_wait(Wait::Forever), 2);' \
+  '    let _ = Wait::is_nonblocking as fn(Wait) -> bool;' \
+  '    let _ = Wait::timeout as fn(Wait) -> Option<std::time::Duration>;' \
   '    assert_eq!(classify_arm(ArmState::Disarmed), 1);' \
   '    assert_eq!(classify_state(RegistrationState::Uncertain), 2);' \
+  '    assert_eq!(classify_ownership(DescriptorOwnership::Borrowed), 1);' \
+  '    let _ = RegistrationState::is_registered as fn(RegistrationState) -> bool;' \
+  '    let _ = RegistrationState::is_uncertain as fn(RegistrationState) -> bool;' \
+  '    let _ = RegistrationState::arm as fn(RegistrationState) -> Option<ArmState>;' \
+  '    let _ = RecoveryOutcome::registration as fn(&RecoveryOutcome) -> Registration;' \
+  '    let _ = RecoveryOutcome::commit as fn(&RecoveryOutcome) -> CommitStatus;' \
+  '    let _ = RecoveryOutcome::state as fn(&RecoveryOutcome) -> RegistrationState;' \
+  '    let _ = RecoveryFailure::operation as fn(&RecoveryFailure) -> Operation;' \
+  '    let _ = RecoveryFailure::outcomes as fn(&RecoveryFailure) -> &[RecoveryOutcome];' \
+  '    let _ = RecoveryFailure::len as fn(&RecoveryFailure) -> usize;' \
+  '    let _ = RecoveryFailure::is_empty as fn(&RecoveryFailure) -> bool;' \
+  '    let _ = RecoveryFailure::source as fn(&RecoveryFailure) -> &std::io::Error;' \
+  '    let _ = RecoveryFailure::into_parts as fn(RecoveryFailure) -> (Operation, Vec<RecoveryOutcome>, std::io::Error);' \
+  '    assert_slice::<RecoveryFailure, RecoveryOutcome>();' \
+  '    let _ = iterate_recovery as fn(&RecoveryFailure);' \
+  '    let _ = WaitReport::is_complete as fn(&WaitReport) -> bool;' \
+  '    let _ = WaitReport::recovery as fn(&WaitReport) -> Option<&RecoveryFailure>;' \
+  '    let _ = WaitReport::into_recovery as fn(WaitReport) -> Option<RecoveryFailure>;' \
+  '    let _ = WaitReport::into_result as fn(WaitReport) -> Result<(), RecoveryFailure>;' \
+  '    let _ = RegisterError::error as fn(&RegisterError) -> &Error;' \
+  '    let _ = RegisterError::registration as fn(&RegisterError) -> Option<Registration>;' \
+  '    let _ = RegisterError::into_parts as fn(RegisterError) -> (Error, Option<Registration>);' \
+  '    let _ = RegisterOwnedError::error as fn(&RegisterOwnedError) -> &Error;' \
+  '    let _ = RegisterOwnedError::descriptor as fn(&RegisterOwnedError) -> Option<&std::os::fd::OwnedFd>;' \
+  '    let _ = RegisterOwnedError::registration as fn(&RegisterOwnedError) -> Option<Registration>;' \
+  '    let _ = classify_owned_register_error as fn(&RegisterOwnedError) -> u8;' \
+  '    let _ = DeleteError::error as fn(&DeleteError) -> &Error;' \
+  '    let _ = DeleteError::registration as fn(&DeleteError) -> Registration;' \
+  '    let _ = DeleteError::into_parts as fn(DeleteError) -> (Error, Registration);' \
+  '    let _ = DeleteOwnedError::error as fn(&DeleteOwnedError) -> &Error;' \
+  '    let _ = DeleteOwnedError::descriptor as fn(&DeleteOwnedError) -> Option<&std::os::fd::OwnedFd>;' \
+  '    let _ = DeleteOwnedError::registration as fn(&DeleteOwnedError) -> Option<Registration>;' \
+  '    let _ = classify_owned_delete_error as fn(&DeleteOwnedError) -> u8;' \
+  '    let _ = DeleteAllError::error as fn(&DeleteAllError) -> &Error;' \
+  '    let _ = DeleteAllError::registration as fn(&DeleteAllError) -> Option<Registration>;' \
+  '    let _ = DeleteAllError::into_parts as fn(DeleteAllError) -> (Error, Option<Registration>);' \
+  '    assert_error_ref::<RegisterError>();' \
+  '    assert_error_ref::<RegisterOwnedError>();' \
+  '    assert_error_ref::<DeleteError>();' \
+  '    assert_error_ref::<DeleteOwnedError>();' \
+  '    assert_error_ref::<DeleteAllError>();' \
+  '    assert_thread_error::<Error>();' \
+  '    assert_thread_error::<MutationError>();' \
+  '    assert_thread_error::<RegisterError>();' \
+  '    assert_thread_error::<RegisterOwnedError>();' \
+  '    assert_thread_error::<DeleteError>();' \
+  '    assert_thread_error::<DeleteOwnedError>();' \
+  '    assert_thread_error::<DeleteAllError>();' \
+  '    assert_thread_error::<RecoveryFailure>();' \
+  '    let _ = MutationError::operation as fn(&MutationError) -> Operation;' \
+  '    let _ = MutationError::commit as fn(&MutationError) -> CommitStatus;' \
+  '    let _ = MutationError::source as fn(&MutationError) -> &std::io::Error;' \
+  '    let _ = MutationError::into_parts as fn(MutationError) -> (Operation, CommitStatus, std::io::Error);' \
+  '    let _ = Registration::id as fn(&Registration) -> RegistrationId;' \
+  '    assert_ordered::<Registration>();' \
+  '    assert_display::<RegistrationId>();' \
+  '    assert_hash::<Event>();' \
+  '    assert_hash::<Wait>();' \
+  '    assert_from::<Wait, std::time::Duration>();' \
+  '    assert_from::<Wait, Option<std::time::Duration>>();' \
+  '    assert_from::<Option<std::time::Duration>, Wait>();' \
+  '    let _: Result<Key, std::num::TryFromIntError> = Key::try_from(0_usize);' \
+  '    let _: Result<usize, std::num::TryFromIntError> = usize::try_from(Key::ZERO);' \
+  '    assert_display::<Key>();' \
+  '    assert_display::<Operation>();' \
+  '    assert_display::<CommitStatus>();' \
+  '    assert_display::<CapacityKind>();' \
+  '    assert_display::<CapacityReason>();' \
+  '    assert_eq!(classify_capacity(CapacityKind::Event), 0);' \
+  '    assert_eq!(classify_capacity_reason(CapacityReason::Zero), 0);' \
+  '    assert_debug_send::<Poll>();' \
+  '    assert_clone_debug_send_sync::<Waker>();' \
+  '    let _: usize = zio::DEFAULT_EVENT_CAPACITY;' \
+  '    let _: usize = zio::DEFAULT_REGISTRATION_CAPACITY;' \
+  '    let _ = Poll::has_native_backend as fn() -> bool;' \
+  '    let _ = Poll::new as fn() -> Result<Poll, Error>;' \
+  '    let _ = Poll::events as fn(&Poll) -> Result<Events, Error>;' \
+  '    let _ = Waker::key as fn(&Waker) -> Key;' \
+  '    let _ = Waker::will_wake as fn(&Waker, &Waker) -> bool;' \
+  '    let _ = Waker::wake as fn(&Waker) -> Result<(), Error>;' \
+  '    let _ = Poll::waker_key as fn(&Poll) -> Option<Key>;' \
+  '    let _ = Poll::waker as fn(&mut Poll, Key) -> Result<Waker, Error>;' \
+  '    let _ = Poll::builder as fn() -> PollBuilder;' \
+  '    let _ = PollBuilder::new as fn() -> PollBuilder;' \
+  '    let _ = PollBuilder::event_capacity as fn(PollBuilder, usize) -> PollBuilder;' \
+  '    let _ = PollBuilder::registration_capacity as fn(PollBuilder, usize) -> PollBuilder;' \
+  '    let _ = PollBuilder::build as fn(PollBuilder) -> Result<Poll, Error>;' \
+  '    let _ = const_key_contract as fn(u64) -> u64;' \
+  '    let _ = const_wait_contract as fn(Wait) -> (bool, Option<std::time::Duration>);' \
+  '    let _ = const_builder_contract as fn() -> [PollBuilder; 2];' \
+  '    let _ = Poll::modify as fn(&mut Poll, &Registration, zio::Interest, Mode) -> Result<(), Error>;' \
+  '    let _ = Poll::rearm as fn(&mut Poll, &Registration) -> Result<(), Error>;' \
+  '    let _ = Poll::modify_with_key as fn(&mut Poll, &Registration, Key, zio::Interest, Mode) -> Result<(), Error>;' \
+  '    let _ = Poll::delete as fn(&mut Poll, Registration) -> Result<(), DeleteError>;' \
+  '    let _ = Poll::delete_all as fn(&mut Poll) -> Result<(), DeleteAllError>;' \
+  '    let _ = Poll::delete_owned as fn(&mut Poll, Registration) -> Result<std::os::fd::OwnedFd, DeleteOwnedError>;' \
+  '    let _ = Poll::register::<std::os::fd::OwnedFd> as fn(&mut Poll, &std::os::fd::OwnedFd, Key, zio::Interest, Mode) -> Result<Registration, RegisterError>;' \
+  '    let _ = Poll::register_owned as fn(&mut Poll, std::os::fd::OwnedFd, Key, zio::Interest, Mode) -> Result<Registration, RegisterOwnedError>;' \
+  '    let _ = Poll::register_borrowed::<std::os::fd::OwnedFd> as unsafe fn(&mut Poll, &std::os::fd::OwnedFd, Key, zio::Interest, Mode) -> Result<Registration, RegisterError>;' \
+  '    let _ = Poll::registration_fd as for<'\''poll, '\''registration> fn(&'\''poll Poll, &'\''registration Registration) -> Result<std::os::fd::BorrowedFd<'\''poll>, Error>;' \
+  '    let _ = Poll::registrations as fn(&Poll) -> Result<Vec<Registration>, Error>;' \
+  '    let _ = iterate_registrations as fn(&Poll) -> Result<(), Error>;' \
+  '    let _ = Poll::event_capacity as fn(&Poll) -> usize;' \
+  '    let _ = Poll::registration_capacity as fn(&Poll) -> usize;' \
+  '    let _ = Poll::registration_count as fn(&Poll) -> usize;' \
+  '    let _ = Poll::remaining_registration_capacity as fn(&Poll) -> usize;' \
+  '    let _ = Poll::contains as fn(&Poll, &Registration) -> bool;' \
+  '    let _ = Poll::is_empty as fn(&Poll) -> bool;' \
+  '    let _ = Poll::is_full as fn(&Poll) -> bool;' \
+  '    let _ = Poll::registration_state as fn(&Poll, &Registration) -> Result<RegistrationState, Error>;' \
+  '    let _ = Poll::registration_info as fn(&Poll, &Registration) -> Result<RegistrationInfo, Error>;' \
+  '    let _ = Poll::set_key as fn(&mut Poll, &Registration, Key) -> Result<(), Error>;' \
+  '    let _ = RegistrationInfo::key as fn(&RegistrationInfo) -> Key;' \
+  '    let _ = RegistrationInfo::interest as fn(&RegistrationInfo) -> zio::Interest;' \
+  '    let _ = RegistrationInfo::mode as fn(&RegistrationInfo) -> Mode;' \
+  '    let _ = RegistrationInfo::state as fn(&RegistrationInfo) -> RegistrationState;' \
+  '    let _ = RegistrationInfo::descriptor_ownership as fn(&RegistrationInfo) -> DescriptorOwnership;' \
+  '    let _ = Poll::wait as fn(&mut Poll, &mut Events, Wait) -> Result<WaitReport, Error>;' \
+  '    let _ = Poll::wait_until as fn(&mut Poll, &mut Events, std::time::Instant) -> Result<WaitReport, Error>;' \
+  '    let mut interest = zio::Interest::READABLE;' \
+  '    let _: [zio::Interest; 4] = [zio::Interest::EMPTY, zio::Interest::READABLE, zio::Interest::WRITABLE, zio::Interest::ALL];' \
+  '    let _ = zio::Interest::is_empty as fn(zio::Interest) -> bool;' \
+  '    let _ = zio::Interest::contains as fn(zio::Interest, zio::Interest) -> bool;' \
+  '    let _ = zio::Interest::intersects as fn(zio::Interest, zio::Interest) -> bool;' \
+  '    let _ = zio::Interest::union as fn(zio::Interest, zio::Interest) -> zio::Interest;' \
+  '    let _ = zio::Interest::intersection as fn(zio::Interest, zio::Interest) -> zio::Interest;' \
+  '    let _ = zio::Interest::difference as fn(zio::Interest, zio::Interest) -> zio::Interest;' \
+  '    let _ = interest.symmetric_difference(zio::Interest::ALL);' \
+  '    let _ = interest.complement();' \
+  '    let _ = interest.is_readable();' \
+  '    let _ = interest.is_writable();' \
+  '    let _ = const_interest_contract as fn(zio::Interest) -> ([bool; 5], [zio::Interest; 5]);' \
+  '    let _ = !interest;' \
+  '    interest |= zio::Interest::WRITABLE;' \
+  '    interest &= zio::Interest::WRITABLE;' \
+  '    interest ^= zio::Interest::READABLE;' \
+  '    interest -= zio::Interest::WRITABLE;' \
+  '    let _ = interest;' \
+  '    let mut readiness = zio::Readiness::READABLE | zio::Readiness::READ_CLOSED;' \
+  '    let _: [zio::Readiness; 6] = [zio::Readiness::EMPTY, zio::Readiness::READABLE, zio::Readiness::WRITABLE, zio::Readiness::READ_CLOSED, zio::Readiness::WRITE_CLOSED, zio::Readiness::ERROR];' \
+  '    let _ = zio::Readiness::is_empty as fn(zio::Readiness) -> bool;' \
+  '    let _ = zio::Readiness::contains as fn(zio::Readiness, zio::Readiness) -> bool;' \
+  '    let _ = zio::Readiness::intersects as fn(zio::Readiness, zio::Readiness) -> bool;' \
+  '    let _ = zio::Readiness::union as fn(zio::Readiness, zio::Readiness) -> zio::Readiness;' \
+  '    let _ = zio::Readiness::intersection as fn(zio::Readiness, zio::Readiness) -> zio::Readiness;' \
+  '    let _ = zio::Readiness::difference as fn(zio::Readiness, zio::Readiness) -> zio::Readiness;' \
+  '    let _ = readiness.symmetric_difference(zio::Readiness::ALL);' \
+  '    let _ = readiness.complement();' \
+  '    let _ = !readiness;' \
+  '    let _ = readiness.intersects(zio::Readiness::READABLE);' \
+  '    let _ = readiness.is_readable();' \
+  '    let _ = readiness.is_writable();' \
+  '    let _ = readiness.is_read_closed();' \
+  '    let _ = readiness.is_write_closed();' \
+  '    let _ = readiness.is_error();' \
+  '    let _ = const_readiness_contract as fn(zio::Readiness) -> ([bool; 8], [zio::Readiness; 5]);' \
+  '    readiness |= zio::Readiness::ERROR;' \
+  '    readiness &= zio::Readiness::READ_CLOSED | zio::Readiness::ERROR;' \
+  '    readiness ^= zio::Readiness::READABLE;' \
+  '    readiness -= zio::Readiness::ERROR;' \
+  '    let _ = readiness;' \
+  '    let _ = reverse_events as fn(&mut zio::Events);' \
+  '    let _ = consume_events as fn(zio::Events);' \
+  '    let _ = Events::with_capacity as fn(usize) -> Result<Events, Error>;' \
+  '    let _ = Events::capacity as fn(&Events) -> usize;' \
+  '    let _ = Events::len as fn(&Events) -> usize;' \
+  '    let _ = Events::is_empty as fn(&Events) -> bool;' \
+  '    let _ = Events::as_slice as fn(&Events) -> &[Event];' \
+  '    let _ = Events::get as fn(&Events, usize) -> Option<&Event>;' \
+  '    let _ = Events::remaining_capacity as fn(&Events) -> usize;' \
+  '    let _ = Events::is_full as fn(&Events) -> bool;' \
+  '    let _ = Events::clear as fn(&mut Events);' \
+  '    let _ = event_cardinality as fn(&Events) -> (usize, bool, usize, bool);' \
+  '    let _ = recovery_cardinality as fn(&RecoveryFailure) -> (usize, bool);' \
+  '    let _ = event_slice as fn(&Events) -> &[Event];' \
+  '    let _ = recovery_slice as fn(&RecoveryFailure) -> &[RecoveryOutcome];' \
+  '}' \
+  '' \
+  'fn assert_ordered<T: Ord>() {}' \
+  '' \
+  'fn assert_hash<T: std::hash::Hash>() {}' \
+  '' \
+  'fn assert_display<T: std::fmt::Display>() {}' \
+  '' \
+  'fn assert_from<T: From<U>, U>() {}' \
+  '' \
+  'fn assert_slice<T: AsRef<[U]>, U>() {}' \
+  '' \
+  'fn assert_error_ref<T: AsRef<Error>>() {}' \
+  '' \
+  "fn assert_thread_error<T: std::error::Error + Send + Sync + 'static>() {}" \
+  '' \
+  "fn assert_copy_value<T: Copy + std::fmt::Debug + Eq + std::hash::Hash + Send + Sync + 'static>() {}" \
+  '' \
+  "fn assert_debug_thread_value<T: std::fmt::Debug + Send + Sync + 'static>() {}" \
+  '' \
+  'fn assert_debug_send<T: std::fmt::Debug + Send>() {}' \
+  '' \
+  'fn assert_clone_debug_send_sync<T: Clone + std::fmt::Debug + Send + Sync>() {}' \
+  '' \
+  'const fn const_key_contract(value: u64) -> u64 {' \
+  '    Key::new(value).get()' \
+  '}' \
+  '' \
+  'const fn const_wait_contract(wait: Wait) -> (bool, Option<std::time::Duration>) {' \
+  '    (wait.is_nonblocking(), wait.timeout())' \
+  '}' \
+  '' \
+  'const fn const_builder_contract() -> [PollBuilder; 2] {' \
+  '    [PollBuilder::new().event_capacity(17).registration_capacity(19), Poll::builder()]' \
+  '}' \
+  '' \
+  'const fn const_interest_contract(interest: zio::Interest) -> ([bool; 5], [zio::Interest; 5]) {' \
+  '    (' \
+  '        [interest.is_empty(), interest.contains(zio::Interest::READABLE), interest.intersects(zio::Interest::WRITABLE), interest.is_readable(), interest.is_writable()],' \
+  '        [interest.union(zio::Interest::READABLE), interest.intersection(zio::Interest::READABLE), interest.difference(zio::Interest::READABLE), interest.symmetric_difference(zio::Interest::READABLE), interest.complement()],' \
+  '    )' \
+  '}' \
+  '' \
+  'const fn const_readiness_contract(readiness: zio::Readiness) -> ([bool; 8], [zio::Readiness; 5]) {' \
+  '    (' \
+  '        [readiness.is_empty(), readiness.contains(zio::Readiness::READABLE), readiness.intersects(zio::Readiness::WRITABLE), readiness.is_readable(), readiness.is_writable(), readiness.is_read_closed(), readiness.is_write_closed(), readiness.is_error()],' \
+  '        [readiness.union(zio::Readiness::READABLE), readiness.intersection(zio::Readiness::READABLE), readiness.difference(zio::Readiness::READABLE), readiness.symmetric_difference(zio::Readiness::READABLE), readiness.complement()],' \
+  '    )' \
+  '}' \
+  '' \
+  'const fn event_cardinality(events: &Events) -> (usize, bool, usize, bool) {' \
+  '    (events.len(), events.is_empty(), events.remaining_capacity(), events.is_full())' \
+  '}' \
+  '' \
+  'const fn recovery_cardinality(failure: &RecoveryFailure) -> (usize, bool) {' \
+  '    (failure.len(), failure.is_empty())' \
+  '}' \
+  '' \
+  'const fn event_slice(events: &Events) -> &[Event] {' \
+  '    events.as_slice()' \
+  '}' \
+  '' \
+  'const fn recovery_slice(failure: &RecoveryFailure) -> &[RecoveryOutcome] {' \
+  '    failure.outcomes()' \
+  '}' \
+  '' \
+  'fn reverse_events(events: &mut zio::Events) {' \
+  '    let _ = events.iter().rev();' \
+  '    let _ = events.drain().rev();' \
+  '}' \
+  '' \
+  'fn consume_events(events: zio::Events) {' \
+  '    let _ = events.into_iter().rev();' \
+  '}' \
+  '' \
+  'fn iterate_recovery(failure: &RecoveryFailure) {' \
+  '    let _: Option<&RecoveryOutcome> = failure.iter().next();' \
+  '    let _: Option<&RecoveryOutcome> = failure.into_iter().next();' \
+  '}' \
+  '' \
+  'fn iterate_registrations(poll: &Poll) -> Result<(), Error> {' \
+  '    let _ = poll.iter_registrations()?;' \
+  '    Ok(())' \
   '}' \
   '' \
   'fn classify_error(error: &Error) -> u8 {' \
   '    match error {' \
   '        Error::Invariant => 1,' \
   '        _ => 0,' \
+  '    }' \
+  '}' \
+  '' \
+  'fn classify_owned_register_error(error: &RegisterOwnedError) -> u8 {' \
+  '    match error {' \
+  '        RegisterOwnedError::Returned { .. } => 0,' \
+  '        RegisterOwnedError::Retained { .. } => 1,' \
+  '    }' \
+  '}' \
+  '' \
+  'fn classify_owned_delete_error(error: &DeleteOwnedError) -> u8 {' \
+  '    match error {' \
+  '        DeleteOwnedError::Returned { .. } => 0,' \
+  '        DeleteOwnedError::Retained { .. } => 1,' \
+  '    }' \
+  '}' \
+  '' \
+  'fn classify_capacity(kind: CapacityKind) -> u8 {' \
+  '    match kind {' \
+  '        CapacityKind::Event => 0,' \
+  '        CapacityKind::Registration => 1,' \
+  '        _ => 2,' \
+  '    }' \
+  '}' \
+  '' \
+  'fn classify_capacity_reason(reason: CapacityReason) -> u8 {' \
+  '    match reason {' \
+  '        CapacityReason::Zero => 0,' \
+  '        CapacityReason::Exhausted => 1,' \
+  '        CapacityReason::GenerationExhausted => 2,' \
+  '        CapacityReason::StorageUnavailable => 3,' \
+  '        _ => 4,' \
   '    }' \
   '}' \
   '' \
@@ -89,6 +440,7 @@ printf '%s\n' \
   '    match mode {' \
   '        Mode::Level => 0,' \
   '        Mode::OneShot => 1,' \
+  '        _ => 2,' \
   '    }' \
   '}' \
   '' \
@@ -113,6 +465,13 @@ printf '%s\n' \
   '        RegistrationState::Uncertain => 2,' \
   '    }' \
   '}' \
+  '' \
+  'fn classify_ownership(ownership: DescriptorOwnership) -> u8 {' \
+  '    match ownership {' \
+  '        DescriptorOwnership::Owned => 0,' \
+  '        DescriptorOwnership::Borrowed => 1,' \
+  '    }' \
+  '}' \
   > "$consumer_dir/src/main.rs"
 
 printf '%s\n' \
@@ -131,12 +490,11 @@ printf '%s\n' \
   '        Error::InvalidInterest => 4,' \
   '        Error::Stale { .. } => 5,' \
   '        Error::Uncertain { .. } => 6,' \
-  '        Error::Capacity { .. } => 7,' \
-  '        Error::RegistrationSpaceExhausted => 8,' \
+  '        Error::DescriptorNotOwned { .. } => 7,' \
+  '        Error::Capacity { .. } => 8,' \
   '        Error::EventsTooSmall { .. } => 9,' \
-  '        Error::BackendOverflow => 10,' \
-  '        Error::Invariant => 11,' \
-  '        Error::UnsupportedPlatform => 12,' \
+  '        Error::Invariant => 10,' \
+  '        Error::UnsupportedPlatform => 11,' \
   '    }' \
   '}' \
   > "$consumer_dir/examples/error-without-wildcard.rs"
@@ -158,13 +516,146 @@ printf '%s\n' \
   '        Operation::Delete => 5,' \
   '        Operation::Wait => 6,' \
   '        Operation::TriggerWake => 7,' \
-  '        Operation::AcknowledgeWake => 8,' \
-  '        Operation::Disarm => 9,' \
-  '        Operation::Recover => 10,' \
-  '        Operation::UnsupportedPlatform => 11,' \
+  '        Operation::Disarm => 8,' \
   '    }' \
   '}' \
   > "$consumer_dir/examples/operation-without-wildcard.rs"
+
+printf '%s\n' \
+  'use zio::CapacityKind;' \
+  '' \
+  'fn main() {' \
+  '    let _ = classify(CapacityKind::Event);' \
+  '}' \
+  '' \
+  'fn classify(kind: CapacityKind) -> u8 {' \
+  '    match kind {' \
+  '        CapacityKind::Event => 0,' \
+  '        CapacityKind::Registration => 1,' \
+  '    }' \
+  '}' \
+  > "$consumer_dir/examples/capacity-kind-without-wildcard.rs"
+
+printf '%s\n' \
+  'use zio::CapacityReason;' \
+  '' \
+  'fn main() {' \
+  '    let _ = classify(CapacityReason::Zero);' \
+  '}' \
+  '' \
+  'fn classify(reason: CapacityReason) -> u8 {' \
+  '    match reason {' \
+  '        CapacityReason::Zero => 0,' \
+  '        CapacityReason::Exhausted => 1,' \
+  '        CapacityReason::GenerationExhausted => 2,' \
+  '        CapacityReason::StorageUnavailable => 3,' \
+  '        CapacityReason::BackendLimit => 4,' \
+  '    }' \
+  '}' \
+  > "$consumer_dir/examples/capacity-reason-without-wildcard.rs"
+
+printf '%s\n' \
+  'use zio::Mode;' \
+  '' \
+  'fn main() {' \
+  '    let _ = classify(Mode::Level);' \
+  '}' \
+  '' \
+  'fn classify(mode: Mode) -> u8 {' \
+  '    match mode {' \
+  '        Mode::Level => 0,' \
+  '        Mode::OneShot => 1,' \
+  '    }' \
+  '}' \
+  > "$consumer_dir/examples/mode-without-wildcard.rs"
+
+printf '%s\n' \
+  'use zio::Error;' \
+  '' \
+  'fn main() {' \
+  '    let _ = capacity as fn(&Error) -> Option<usize>;' \
+  '}' \
+  '' \
+  'fn capacity(error: &Error) -> Option<usize> {' \
+  '    match error {' \
+  '        Error::Capacity { kind: _, limit, reason: _ } => Some(*limit),' \
+  '        _ => None,' \
+  '    }' \
+  '}' \
+  > "$consumer_dir/examples/capacity-without-rest.rs"
+
+printf '%s\n' \
+  'use zio::{Event, Key};' \
+  '' \
+  'fn main() {' \
+  '    let _ = Event::Wake { key: Key::ZERO };' \
+  '}' \
+  > "$consumer_dir/examples/construct-wake.rs"
+
+printf '%s\n' \
+  'use zio::{Event, Key, Readiness, Registration};' \
+  '' \
+  'fn main() {' \
+  '    let _ = construct as fn(Registration) -> Event;' \
+  '}' \
+  '' \
+  'fn construct(registration: Registration) -> Event {' \
+  '    Event::Resource { registration, key: Key::ZERO, readiness: Readiness::EMPTY }' \
+  '}' \
+  > "$consumer_dir/examples/construct-resource.rs"
+
+printf '%s\n' \
+  'use zio::Poll;' \
+  '' \
+  'fn main() {' \
+  '    require_sync::<Poll>();' \
+  '}' \
+  '' \
+  'fn require_sync<T: Sync>() {}' \
+  > "$consumer_dir/examples/poll-is-not-sync.rs"
+
+printf '%s\n' \
+  '#![deny(unused_must_use)]' \
+  '' \
+  'use zio::{PollBuilder, Registration, WaitReport, Waker};' \
+  '' \
+  'fn main() {' \
+  '    PollBuilder::new();' \
+  '}' \
+  '' \
+  '#[allow(dead_code, path_statements)]' \
+  'fn discard(registration: Registration, report: WaitReport, waker: Waker) {' \
+  '    registration;' \
+  '    report;' \
+  '    waker;' \
+  '}' \
+  > "$consumer_dir/examples/must-use-values.rs"
+
+printf '%s\n' \
+  'use zio::{DeleteAllError, DeleteError, DeleteOwnedError, Error, Mode, MutationError, Poll, PollBuilder, RegisterError, RegisterOwnedError, RegistrationId};' \
+  '' \
+  'fn main() {}' \
+  '' \
+  '#[allow(dead_code)]' \
+  'fn omitted(error: MutationError, mode: Mode, id: RegistrationId) {' \
+  '    let _ = error.into_source();' \
+  '    let _ = mode.is_one_shot();' \
+  '    let _ = id.get();' \
+  '    let _ = PollBuilder::new().build_with_events();' \
+  '    let _ = Poll::with_capacity(1, 1);' \
+  '}' \
+  '' \
+  '#[allow(dead_code)]' \
+  'fn discard_register(error: RegisterError) -> Error { error.into() }' \
+  '#[allow(dead_code)]' \
+  'fn discard_owned_register(error: RegisterOwnedError) -> Error { error.into() }' \
+  '#[allow(dead_code)]' \
+  'fn discard_delete(error: DeleteError) -> Error { error.into() }' \
+  '#[allow(dead_code)]' \
+  'fn discard_owned_delete(error: DeleteOwnedError) -> Error { error.into() }' \
+  '#[allow(dead_code)]' \
+  'fn discard_delete_all(error: DeleteAllError) -> Error { error.into() }' \
+  > "$consumer_dir/examples/intentional-omissions.rs"
 
 cargo +1.88.0 generate-lockfile \
   --manifest-path "$consumer_dir/Cargo.toml" --offline
@@ -194,9 +685,119 @@ assert_non_exhaustive_match() {
     "$stderr_file"
 }
 
+assert_receive_only_variant() {
+  local toolchain="$1"
+  local example="$2"
+  local variant="$3"
+  local stderr_file="$receipt_dir/$example-$toolchain.stderr"
+
+  if CARGO_TERM_COLOR=never cargo "+$toolchain" check \
+    --manifest-path "$consumer_dir/Cargo.toml" \
+    --example "$example" --locked --offline \
+    > /dev/null 2> "$stderr_file"; then
+    echo "Event::$variant unexpectedly allowed downstream construction" >&2
+    exit 1
+  fi
+
+  test "$(grep -Ec '^error\[E[0-9]+\]:' "$stderr_file")" -eq 1
+  grep -Fq 'error[E0639]: cannot create non-exhaustive variant using struct expression' \
+    "$stderr_file"
+  grep -Fq "Event::$variant" "$stderr_file"
+}
+
+assert_non_exhaustive_fields() {
+  local toolchain="$1"
+  local stderr_file="$receipt_dir/capacity-without-rest-$toolchain.stderr"
+
+  if CARGO_TERM_COLOR=never cargo "+$toolchain" check \
+    --manifest-path "$consumer_dir/Cargo.toml" \
+    --example capacity-without-rest --locked --offline \
+    > /dev/null 2> "$stderr_file"; then
+    echo 'Error::Capacity unexpectedly allowed a closed field match' >&2
+    exit 1
+  fi
+
+  test "$(grep -Ec '^error\[E[0-9]+\]:' "$stderr_file")" -eq 1
+  grep -Fq 'error[E0638]: `..` required with variant marked as non-exhaustive' "$stderr_file"
+}
+
+assert_not_sync() {
+  local toolchain="$1"
+  local stderr_file="$receipt_dir/poll-is-not-sync-$toolchain.stderr"
+
+  if CARGO_TERM_COLOR=never cargo "+$toolchain" check \
+    --manifest-path "$consumer_dir/Cargo.toml" \
+    --example poll-is-not-sync --locked --offline \
+    > /dev/null 2> "$stderr_file"; then
+    echo 'Poll unexpectedly implemented Sync' >&2
+    exit 1
+  fi
+
+  local errors
+  local sync_errors
+  errors="$(grep -Ec '^error\[E[0-9]+\]:' "$stderr_file")"
+  sync_errors="$(grep -Ec '^error\[E0277\]:' "$stderr_file")"
+  test "$sync_errors" -ge 1
+  test "$errors" -eq "$sync_errors"
+  grep -Fq 'cannot be shared between threads safely' "$stderr_file"
+  grep -Fq 'within `zio::Poll`' "$stderr_file"
+}
+
+assert_must_use_values() {
+  local toolchain="$1"
+  local stderr_file="$receipt_dir/must-use-values-$toolchain.stderr"
+
+  if CARGO_TERM_COLOR=never cargo "+$toolchain" check \
+    --manifest-path "$consumer_dir/Cargo.toml" \
+    --example must-use-values --locked --offline \
+    > /dev/null 2> "$stderr_file"; then
+    echo 'discarded must-use values unexpectedly compiled' >&2
+    exit 1
+  fi
+
+  test "$(grep -Ec '^error: unused .* that must be used$' "$stderr_file")" -eq 4
+  grep -Fq 'call build to create a poller' "$stderr_file"
+  grep -Fq 'retain a registration handle for explicit early deletion' "$stderr_file"
+  grep -Fq 'process delivered events, then inspect the recovery report' "$stderr_file"
+  grep -Fq 'retain the waker to signal the poller' "$stderr_file"
+}
+
+assert_intentional_omissions() {
+  local toolchain="$1"
+  local stderr_file="$receipt_dir/intentional-omissions-$toolchain.stderr"
+
+  if CARGO_TERM_COLOR=never cargo "+$toolchain" check \
+    --manifest-path "$consumer_dir/Cargo.toml" \
+    --example intentional-omissions --locked --offline \
+    > /dev/null 2> "$stderr_file"; then
+    echo 'deliberately omitted public API unexpectedly compiled' >&2
+    exit 1
+  fi
+
+  test "$(grep -Ec '^error\[E[0-9]+\]:' "$stderr_file")" -eq 10
+  test "$(grep -Fc 'error[E0277]:' "$stderr_file")" -eq 5
+  test "$(grep -Fc 'error[E0599]:' "$stderr_file")" -eq 3
+  test "$(grep -Fc 'error[E0624]:' "$stderr_file")" -eq 2
+  grep -Fq 'no method named `into_source`' "$stderr_file"
+  grep -Fq 'method `is_one_shot` is private' "$stderr_file"
+  grep -Fq 'method `get` is private' "$stderr_file"
+  grep -Fq 'no method named `build_with_events`' "$stderr_file"
+}
+
 for toolchain in 1.88.0 1.97.1; do
   assert_non_exhaustive_match "$toolchain" error-without-wildcard Error zio::Error
   assert_non_exhaustive_match "$toolchain" operation-without-wildcard Operation Operation
+  assert_non_exhaustive_match \
+    "$toolchain" capacity-kind-without-wildcard CapacityKind CapacityKind
+  assert_non_exhaustive_match \
+    "$toolchain" capacity-reason-without-wildcard CapacityReason CapacityReason
+  assert_non_exhaustive_match "$toolchain" mode-without-wildcard Mode Mode
+  assert_non_exhaustive_fields "$toolchain"
+  assert_receive_only_variant "$toolchain" construct-resource Resource
+  assert_receive_only_variant "$toolchain" construct-wake Wake
+  assert_not_sync "$toolchain"
+  assert_must_use_values "$toolchain"
+  assert_intentional_omissions "$toolchain"
 done
 
 for receipt in "$receipt_dir"/*.stderr; do
@@ -207,13 +808,49 @@ error_msrv_sha256="$(shasum -a 256 "$receipt_dir/error-without-wildcard-1.88.0.s
 error_current_sha256="$(shasum -a 256 "$receipt_dir/error-without-wildcard-1.97.1.stderr" | awk '{print $1}')"
 operation_msrv_sha256="$(shasum -a 256 "$receipt_dir/operation-without-wildcard-1.88.0.stderr" | awk '{print $1}')"
 operation_current_sha256="$(shasum -a 256 "$receipt_dir/operation-without-wildcard-1.97.1.stderr" | awk '{print $1}')"
+capacity_kind_msrv_sha256="$(shasum -a 256 "$receipt_dir/capacity-kind-without-wildcard-1.88.0.stderr" | awk '{print $1}')"
+capacity_kind_current_sha256="$(shasum -a 256 "$receipt_dir/capacity-kind-without-wildcard-1.97.1.stderr" | awk '{print $1}')"
+capacity_reason_msrv_sha256="$(shasum -a 256 "$receipt_dir/capacity-reason-without-wildcard-1.88.0.stderr" | awk '{print $1}')"
+capacity_reason_current_sha256="$(shasum -a 256 "$receipt_dir/capacity-reason-without-wildcard-1.97.1.stderr" | awk '{print $1}')"
+mode_msrv_sha256="$(shasum -a 256 "$receipt_dir/mode-without-wildcard-1.88.0.stderr" | awk '{print $1}')"
+mode_current_sha256="$(shasum -a 256 "$receipt_dir/mode-without-wildcard-1.97.1.stderr" | awk '{print $1}')"
+capacity_msrv_sha256="$(shasum -a 256 "$receipt_dir/capacity-without-rest-1.88.0.stderr" | awk '{print $1}')"
+capacity_current_sha256="$(shasum -a 256 "$receipt_dir/capacity-without-rest-1.97.1.stderr" | awk '{print $1}')"
+resource_msrv_sha256="$(shasum -a 256 "$receipt_dir/construct-resource-1.88.0.stderr" | awk '{print $1}')"
+resource_current_sha256="$(shasum -a 256 "$receipt_dir/construct-resource-1.97.1.stderr" | awk '{print $1}')"
+wake_msrv_sha256="$(shasum -a 256 "$receipt_dir/construct-wake-1.88.0.stderr" | awk '{print $1}')"
+wake_current_sha256="$(shasum -a 256 "$receipt_dir/construct-wake-1.97.1.stderr" | awk '{print $1}')"
+poll_not_sync_msrv_sha256="$(shasum -a 256 "$receipt_dir/poll-is-not-sync-1.88.0.stderr" | awk '{print $1}')"
+poll_not_sync_current_sha256="$(shasum -a 256 "$receipt_dir/poll-is-not-sync-1.97.1.stderr" | awk '{print $1}')"
+must_use_msrv_sha256="$(shasum -a 256 "$receipt_dir/must-use-values-1.88.0.stderr" | awk '{print $1}')"
+must_use_current_sha256="$(shasum -a 256 "$receipt_dir/must-use-values-1.97.1.stderr" | awk '{print $1}')"
+omissions_msrv_sha256="$(shasum -a 256 "$receipt_dir/intentional-omissions-1.88.0.stderr" | awk '{print $1}')"
+omissions_current_sha256="$(shasum -a 256 "$receipt_dir/intentional-omissions-1.97.1.stderr" | awk '{print $1}')"
 jq -n \
   --arg version "$version" \
   --arg error_msrv_sha256 "$error_msrv_sha256" \
   --arg error_current_sha256 "$error_current_sha256" \
   --arg operation_msrv_sha256 "$operation_msrv_sha256" \
   --arg operation_current_sha256 "$operation_current_sha256" \
-  '{schema:"zio.public-api-contract.v1", status:"passed", version:$version, toolchains:["1.88.0","1.97.1"], open_enums:["Error","Operation"], closed_enums:["Event","CommitStatus","Mode","Wait","ArmState","RegistrationState"], diagnostics:{error_msrv:$error_msrv_sha256,error_current:$error_current_sha256,operation_msrv:$operation_msrv_sha256,operation_current:$operation_current_sha256}}' \
+  --arg capacity_kind_msrv_sha256 "$capacity_kind_msrv_sha256" \
+  --arg capacity_kind_current_sha256 "$capacity_kind_current_sha256" \
+  --arg capacity_reason_msrv_sha256 "$capacity_reason_msrv_sha256" \
+  --arg capacity_reason_current_sha256 "$capacity_reason_current_sha256" \
+  --arg mode_msrv_sha256 "$mode_msrv_sha256" \
+  --arg mode_current_sha256 "$mode_current_sha256" \
+  --arg capacity_msrv_sha256 "$capacity_msrv_sha256" \
+  --arg capacity_current_sha256 "$capacity_current_sha256" \
+  --arg resource_msrv_sha256 "$resource_msrv_sha256" \
+  --arg resource_current_sha256 "$resource_current_sha256" \
+  --arg wake_msrv_sha256 "$wake_msrv_sha256" \
+  --arg wake_current_sha256 "$wake_current_sha256" \
+  --arg poll_not_sync_msrv_sha256 "$poll_not_sync_msrv_sha256" \
+  --arg poll_not_sync_current_sha256 "$poll_not_sync_current_sha256" \
+  --arg must_use_msrv_sha256 "$must_use_msrv_sha256" \
+  --arg must_use_current_sha256 "$must_use_current_sha256" \
+  --arg omissions_msrv_sha256 "$omissions_msrv_sha256" \
+  --arg omissions_current_sha256 "$omissions_current_sha256" \
+  '{schema:"zio.public-api-contract.v1", status:"passed", version:$version, toolchains:["1.88.0","1.97.1"], open_enums:["Error","Operation","CapacityKind","CapacityReason","Mode"], closed_enums:["Event","CommitStatus","DescriptorOwnership","Wait","ArmState","RegistrationState","RegisterOwnedError","DeleteOwnedError"], field_extensible_variants:["Error::Capacity"], receive_only_variants:["Event::Resource","Event::Wake"], intentional_omissions:["MutationError::into_source","Mode::is_one_shot","RegistrationId::get","PollBuilder::build_with_events","Poll::with_capacity"], non_discarding_errors:["RegisterError","RegisterOwnedError","DeleteError","DeleteOwnedError","DeleteAllError"], must_use_types:["PollBuilder","Registration","WaitReport","Waker"], auto_traits:{poll_not_sync_msrv:$poll_not_sync_msrv_sha256,poll_not_sync_current:$poll_not_sync_current_sha256}, diagnostics:{error_msrv:$error_msrv_sha256,error_current:$error_current_sha256,operation_msrv:$operation_msrv_sha256,operation_current:$operation_current_sha256,capacity_kind_msrv:$capacity_kind_msrv_sha256,capacity_kind_current:$capacity_kind_current_sha256,capacity_reason_msrv:$capacity_reason_msrv_sha256,capacity_reason_current:$capacity_reason_current_sha256,mode_msrv:$mode_msrv_sha256,mode_current:$mode_current_sha256,capacity_msrv:$capacity_msrv_sha256,capacity_current:$capacity_current_sha256,resource_msrv:$resource_msrv_sha256,resource_current:$resource_current_sha256,wake_msrv:$wake_msrv_sha256,wake_current:$wake_current_sha256,must_use_msrv:$must_use_msrv_sha256,must_use_current:$must_use_current_sha256,omissions_msrv:$omissions_msrv_sha256,omissions_current:$omissions_current_sha256}}' \
   > "$evidence_dir/public-api-contract.json"
 
 printf 'API evolution contract passed: zio %s\n' "$version"

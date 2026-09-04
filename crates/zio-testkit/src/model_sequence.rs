@@ -83,8 +83,17 @@ pub(crate) enum Action {
         mode: Mode,
     },
     Disarm,
+    SetKey {
+        key: Key,
+    },
     Modify {
         outcome: Outcome,
+        interest: Interest,
+        mode: Mode,
+    },
+    ModifyWithKey {
+        outcome: Outcome,
+        key: Key,
         interest: Interest,
         mode: Mode,
     },
@@ -119,6 +128,7 @@ impl Action {
                 key.get(),
             ),
             Self::Disarm => "delivery.disarm".to_owned(),
+            Self::SetKey { key } => format!("set_key.key_{:016x}", key.get()),
             Self::Modify {
                 outcome,
                 interest,
@@ -128,6 +138,18 @@ impl Action {
                 outcome.name(),
                 interest_name(interest),
                 mode_name(mode)
+            ),
+            Self::ModifyWithKey {
+                outcome,
+                key,
+                interest,
+                mode,
+            } => format!(
+                "modify_with_key.{}.{}.{}.key_{:016x}",
+                outcome.name(),
+                interest_name(interest),
+                mode_name(mode),
+                key.get(),
             ),
             Self::ModifyInvalid { mode } => {
                 format!("modify.invalid_interest.{}", mode_name(mode))
@@ -166,5 +188,6 @@ const fn mode_name(mode: Mode) -> &'static str {
     match mode {
         Mode::Level => "level",
         Mode::OneShot => "one_shot",
+        _ => "unknown",
     }
 }

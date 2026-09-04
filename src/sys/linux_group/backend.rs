@@ -3,7 +3,7 @@
 use std::{io, os::fd::BorrowedFd, sync::Arc};
 
 use crate::{
-    ArmState, Error, Events, Interest, Key, Mode, Readiness, Wait,
+    ArmState, Error, Events, Interest, Key, Mode, Readiness, Registration, Wait,
     error::{CommitStatus, Operation},
 };
 
@@ -29,7 +29,7 @@ impl RawBatch {
         classify: F,
     ) -> Result<(), Error>
     where
-        F: FnMut(u64) -> Result<Option<Key>, Error>,
+        F: FnMut(u64) -> Result<Option<(Registration, Key)>, Error>,
     {
         self.raw.translate(events, observed, wake_key, classify)
     }
@@ -73,6 +73,10 @@ impl Backend {
             .add(wake.raw.as_fd(), 0, wake_flags)
             .map_err(|source| SetupFailure::new(Operation::RegisterWaker, source))?;
         Ok((Self { epoll }, wake))
+    }
+
+    pub(crate) fn as_fd(&self) -> BorrowedFd<'_> {
+        self.epoll.as_fd()
     }
 
     #[inline]
@@ -135,7 +139,7 @@ fn epoll_flags(token: u64, interest: Interest, mode: Mode) -> u32 {
     if interest.is_writable() {
         flags |= libc::EPOLLOUT.cast_unsigned();
     }
-    if mode == Mode::OneShot {
+    if mode.is_one_shot() {
         flags |= libc::EPOLLONESHOT.cast_unsigned();
     }
     flags

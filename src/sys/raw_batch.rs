@@ -19,23 +19,27 @@ pub(crate) struct RawBatch {
 }
 
 impl RawBatch {
-    pub(super) fn new(events: usize, registrations: usize) -> Option<Self> {
+    pub(super) fn new(events: usize, registrations: usize) -> Result<Self, crate::Error> {
         #[cfg(target_os = "linux")]
         {
             let _ = registrations;
-            super::linux_group::Backend::raw_batch(events).map(|linux| Self { linux })
+            super::linux_group::Backend::raw_batch(events)
+                .map(|linux| Self { linux })
+                .ok_or(crate::Error::Capacity {
+                    kind: crate::CapacityKind::Event,
+                    limit: events,
+                    reason: crate::CapacityReason::BackendLimit,
+                })
         }
         #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
         {
-            // Each registration can contribute separate read and write
-            // observations, plus one user-filter wake. Retaining the complete
-            // native batch lets translation fully union split observations.
-            let complete_observation_capacity = registrations.checked_mul(2)?.checked_add(1)?;
-            // Only delivered logical events can require one-shot recovery.
-            let recovery_capacity = events.min(registrations);
+            let capacity = super::batch_capacity::KqueueCapacity::new(events, registrations)?;
             super::kqueue_group::Backend::raw_batch(
-                complete_observation_capacity,
-                recovery_capacity,
+                capacity.native_events(),
+                capacity.native_changes(),
+                capacity.recoveries(),
+                capacity.arena_error(),
+                capacity.recovery_error(),
             )
             .map(|kqueue| Self { kqueue })
         }
@@ -47,7 +51,9 @@ impl RawBatch {
         )))]
         {
             let _ = registrations;
-            super::unsupported::Backend::raw_batch(events).map(|unsupported| Self { unsupported })
+            super::unsupported::Backend::raw_batch(events)
+                .map(|unsupported| Self { unsupported })
+                .ok_or(crate::Error::Invariant)
         }
     }
 
@@ -61,14 +67,14 @@ impl RawBatch {
         classify: F,
     ) -> Result<(), crate::Error>
     where
-        F: FnMut(u64) -> Result<Option<crate::Key>, crate::Error>,
+        F: FnMut(u64) -> Result<Option<(crate::Registration, crate::Key)>, crate::Error>,
     {
         self.linux.translate(events, observed, wake_key, classify)
     }
 
     #[cfg_attr(
-        target_os = "linux",
-        allow(dead_code, reason = "projection-stable non-Linux raw-event facade")
+        not(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd")),
+        allow(dead_code, reason = "matches the target-selected raw-event facade")
     )]
     pub(crate) fn event(&self, index: usize, observed: usize) -> Option<RawEvent> {
         #[cfg(target_os = "linux")]
@@ -109,7 +115,7 @@ impl RawBatch {
     #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
     pub(crate) fn disarm_outcomes(
         &self,
-    ) -> impl Clone + ExactSizeIterator<Item = crate::RecoveryOutcome> + '_ {
+    ) -> impl Clone + ExactSizeIterator<Item = crate::observe_recovery::DisarmOutcome> + '_ {
         self.kqueue.disarm_outcomes()
     }
 

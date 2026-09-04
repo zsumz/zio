@@ -13,7 +13,7 @@ use super::{
     model::BackendModel,
 };
 
-/// Stateful scripted driver kept behind the test-support feature.
+/// Stateful scripted driver kept behind the unstable test-support feature.
 #[derive(Debug)]
 pub(super) struct ScriptedDriver {
     steps: VecDeque<MutationStep>,

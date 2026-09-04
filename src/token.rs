@@ -13,6 +13,10 @@ pub(crate) const MAX_GENERATION: u32 = u32::MAX;
 pub(crate) struct EncodedRegistrationId(RegistrationId);
 
 impl EncodedRegistrationId {
+    pub(crate) const fn from_verified(id: RegistrationId) -> Self {
+        Self(id)
+    }
+
     pub(crate) const fn id(self) -> RegistrationId {
         self.0
     }
@@ -38,7 +42,7 @@ impl fmt::Debug for EncodedRegistrationId {
 
 pub(crate) fn encode(index: u32, generation: NonZeroU32) -> Option<EncodedRegistrationId> {
     let slot = index.checked_add(1)?;
-    Some(EncodedRegistrationId(RegistrationId::new(
+    Some(EncodedRegistrationId::from_verified(RegistrationId::new(
         (u64::from(generation.get()) << u32::BITS) | u64::from(slot),
     )))
 }

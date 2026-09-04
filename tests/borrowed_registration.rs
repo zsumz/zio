@@ -19,7 +19,10 @@ use std::{
     time::Duration,
 };
 
-use zio::{ArmState, Error, Event, Interest, Key, Mode, Poll, RegistrationState, Wait};
+use zio::{
+    ArmState, DeleteOwnedError, DescriptorOwnership, Error, Event, Interest, Key, Mode, Poll,
+    RegistrationState, Wait,
+};
 
 use support::require_no_recovery;
 
@@ -30,10 +33,18 @@ type TestResult = Result<(), Box<dyn std::error::Error>>;
 fn borrowed_registration_supports_the_full_lifecycle() -> TestResult {
     let (mut source, mut peer) = UnixStream::pair()?;
     source.set_nonblocking(true)?;
-    let mut poll = Poll::with_capacity(1, 1)?;
+    let mut poll = Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(1)
+        .build()?;
     // SAFETY: `source` remains open and unchanged through successful deletion.
     let registration =
         unsafe { poll.register_borrowed(&source, Key::new(1), Interest::READABLE, Mode::Level)? };
+    assert_eq!(
+        poll.registration_info(&registration)?
+            .descriptor_ownership(),
+        DescriptorOwnership::Borrowed
+    );
     let mut events = poll.events()?;
 
     peer.write_all(b"a")?;
@@ -64,7 +75,10 @@ fn borrowed_registration_supports_the_full_lifecycle() -> TestResult {
 #[test]
 fn dropping_poller_does_not_close_borrowed_source() -> TestResult {
     let (mut source, mut peer) = UnixStream::pair()?;
-    let mut poll = Poll::with_capacity(1, 1)?;
+    let mut poll = Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(1)
+        .build()?;
     // SAFETY: `source` remains open and unchanged until `poll` is dropped.
     let _registration =
         unsafe { poll.register_borrowed(&source, Key::new(2), Interest::READABLE, Mode::Level)? };
@@ -76,9 +90,41 @@ fn dropping_poller_does_not_close_borrowed_source() -> TestResult {
 }
 
 #[test]
+fn owned_deletion_rejects_a_borrowed_registration() -> TestResult {
+    let (source, _peer) = UnixStream::pair()?;
+    let mut poll = Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(1)
+        .build()?;
+    // SAFETY: `source` remains open and unchanged through successful deletion.
+    let registration =
+        unsafe { poll.register_borrowed(&source, Key::new(8), Interest::READABLE, Mode::Level)? };
+
+    let Err(DeleteOwnedError::Retained {
+        error,
+        registration: returned,
+    }) = poll.delete_owned(registration)
+    else {
+        return Err("owned deletion accepted a borrowed descriptor".into());
+    };
+
+    assert!(matches!(
+        error,
+        Error::DescriptorNotOwned { registration: id } if id == registration.id()
+    ));
+    assert_eq!(returned, registration);
+    assert!(poll.registration_state(&returned)?.is_registered());
+    poll.delete(returned)?;
+    Ok(())
+}
+
+#[test]
 fn borrowed_and_owned_slot_reuse_preserves_generations() -> TestResult {
     let (source, _peer) = UnixStream::pair()?;
-    let mut poll = Poll::with_capacity(1, 1)?;
+    let mut poll = Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(1)
+        .build()?;
     // SAFETY: `source` remains open and unchanged through successful deletion.
     let borrowed =
         unsafe { poll.register_borrowed(&source, Key::new(3), Interest::READABLE, Mode::Level)? };
@@ -111,7 +157,10 @@ fn duplicated_descriptors_have_independent_borrowed_registrations() -> TestResul
     let (source, mut peer) = UnixStream::pair()?;
     source.set_nonblocking(true)?;
     let duplicate = source.try_clone()?;
-    let mut poll = Poll::with_capacity(2, 2)?;
+    let mut poll = Poll::builder()
+        .event_capacity(2)
+        .registration_capacity(2)
+        .build()?;
     // SAFETY: both distinct descriptors remain open through successful deletion.
     let first =
         unsafe { poll.register_borrowed(&source, Key::new(6), Interest::READABLE, Mode::OneShot)? };
@@ -146,7 +195,7 @@ fn expect_readable(events: &zio::Events, expected: &[Key]) -> Result<(), std::io
         let found = events.iter().any(|event| {
             matches!(
                 event,
-                Event::Resource { key, readiness }
+                Event::Resource { key, readiness, .. }
                     if key == expected_key && readiness.is_readable()
             )
         });

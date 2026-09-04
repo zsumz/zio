@@ -2,16 +2,20 @@
 
 use std::{io, os::fd::BorrowedFd};
 
-use crate::{
-    ArmState, Events, Interest, Mode, RegistrationState, Wait,
-    mutation::{DeleteRequest, ModifyRequest, MutationDriver, RegisterRequest},
-};
+use crate::{ArmState, Events, Interest, Mode, RegistrationState, Wait};
 
 use super::{
     failure::{MutationFailure, SetupFailure},
     raw_batch::RawBatch,
     wake::Wake,
 };
+
+pub(crate) const HAS_NATIVE_BACKEND: bool = cfg!(any(
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "freebsd",
+    target_os = "netbsd"
+));
 
 /// Target-selected selector with no dynamic dispatch.
 #[derive(Debug)]
@@ -30,7 +34,7 @@ pub(crate) struct Backend {
 }
 
 impl Backend {
-    pub(crate) fn raw_batch(events: usize, registrations: usize) -> Option<RawBatch> {
+    pub(crate) fn raw_batch(events: usize, registrations: usize) -> Result<RawBatch, crate::Error> {
         RawBatch::new(events, registrations)
     }
 
@@ -54,6 +58,23 @@ impl Backend {
         {
             super::unsupported::Backend::new()
                 .map(|(unsupported, wake)| (Self { unsupported }, Wake { unsupported: wake }))
+        }
+    }
+
+    #[cfg(any(
+        target_os = "linux",
+        target_os = "macos",
+        target_os = "freebsd",
+        target_os = "netbsd"
+    ))]
+    pub(crate) fn as_fd(&self) -> BorrowedFd<'_> {
+        #[cfg(target_os = "linux")]
+        {
+            self.linux.as_fd()
+        }
+        #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
+        {
+            self.kqueue.as_fd()
         }
     }
 
@@ -199,38 +220,5 @@ impl Backend {
     #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
     pub(crate) fn submit_disarms(&self, batch: &mut RawBatch) -> io::Result<()> {
         self.kqueue.submit_disarms(&mut batch.kqueue)
-    }
-}
-
-impl MutationDriver for Backend {
-    #[inline]
-    fn register(&mut self, request: RegisterRequest<'_>) -> Result<(), MutationFailure> {
-        let _ = request.key;
-        Backend::register(
-            self,
-            request.descriptor,
-            request.registration.get(),
-            request.interest,
-            request.mode,
-        )
-    }
-
-    fn modify(&mut self, request: ModifyRequest<'_>) -> Result<(), MutationFailure> {
-        Backend::modify(
-            self,
-            request.descriptor,
-            request.registration.get(),
-            request.previous_interest,
-            request.previous_mode,
-            request.previous_arm,
-            request.desired_interest,
-            request.desired_mode,
-        )
-    }
-
-    #[inline]
-    fn delete(&mut self, request: DeleteRequest<'_>) -> Result<(), MutationFailure> {
-        let _ = request.registration;
-        Backend::delete(self, request.descriptor, request.interest, request.state)
     }
 }

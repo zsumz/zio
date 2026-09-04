@@ -66,8 +66,11 @@ inputs = [
     ".gitattributes",
     ".github/workflows/ci.yml",
     ".gitignore",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
     "Cargo.toml",
     "Cargo.lock",
+    "SECURITY.md",
     "README.md",
     "zio-logo.svg",
     "LICENSE",
@@ -75,14 +78,26 @@ inputs = [
     "rustfmt.toml",
     "clippy.toml",
     "crates/zio-qualify/Cargo.toml",
+    "crates/zio-qualify/perf-catalog.json",
     "crates/zio-qualify/README.md",
     "crates/zio-testkit/Cargo.toml",
     "crates/zio-testkit/README.md",
     "docs/contracts.md",
     "docs/performance.md",
     "docs/qualification.md",
+    "examples/borrowed.md",
+    "examples/level.rs",
+    "examples/nested.md",
+    "examples/one_shot.rs",
+    "examples/owned.rs",
+    "examples/recovery.rs",
     "scripts/check-api-evolution",
+    "scripts/configure-performance-fd-limit",
+    "scripts/qualify-1.0",
+    "scripts/record-performance-qualification",
     "scripts/rehearse-release",
+    "scripts/test-performance-fd-limit",
+    "scripts/test-qualify-1.0",
 ]
 kind = "local"
 name = "check"
@@ -105,6 +120,8 @@ inputs = [
     "Cargo.lock",
     "Cargo.toml",
     "crates/zio-qualify/Cargo.toml",
+    "crates/zio-qualify/perf-catalog.json",
+    "crates/zio-qualify/src/bin/zio-kqueue-skew.rs",
     "crates/zio-qualify/src/bin/zio-perf-alloc.rs",
     "crates/zio-qualify/src/bin/zio-perf.rs",
     "crates/zio-qualify/src/benchmark.rs",
@@ -118,6 +135,15 @@ inputs = [
     "crates/zio-qualify/src/benchmark/config_test.rs",
     "crates/zio-qualify/src/benchmark/json.rs",
     "crates/zio-qualify/src/benchmark/json_test.rs",
+    "crates/zio-qualify/src/benchmark/kqueue_skew.rs",
+    "crates/zio-qualify/src/benchmark/kqueue_skew/config.rs",
+    "crates/zio-qualify/src/benchmark/kqueue_skew/config_test.rs",
+    "crates/zio-qualify/src/benchmark/kqueue_skew/fixture.rs",
+    "crates/zio-qualify/src/benchmark/kqueue_skew/model.rs",
+    "crates/zio-qualify/src/benchmark/kqueue_skew/receipt.rs",
+    "crates/zio-qualify/src/benchmark/kqueue_skew/receipt_test.rs",
+    "crates/zio-qualify/src/benchmark/kqueue_skew/resource.rs",
+    "crates/zio-qualify/src/benchmark/kqueue_skew/runner.rs",
     "crates/zio-qualify/src/benchmark/lifecycle_workload.rs",
     "crates/zio-qualify/src/benchmark/measure.rs",
     "crates/zio-qualify/src/benchmark/measure_test.rs",
@@ -157,26 +183,45 @@ inputs = [
     "crates/zio-qualify/src/model.rs",
     "crates/zio-qualify/src/lib.rs",
     "crates/zio-qualify/src/polling_registration.rs",
+    "crates/zio-qualify/README.md",
     "docs/performance.md",
     "rust-toolchain.toml",
+    "src/observe.rs",
+    "src/poll.rs",
+    "src/test_support/mod.rs",
+    "src/test_support/wait_metrics.rs",
+    "scripts/configure-performance-fd-limit",
+    "scripts/qualify-1.0",
+    "scripts/record-performance-qualification",
+    "scripts/test-performance-fd-limit",
 ]
 kind = "ci"
 name = "performance"
 path = ".github/workflows/performance.yml"
-reason = "Hosted Linux and macOS runs retain reproducible timing, allocation, descriptor, and syscall receipts."
+reason = "Hosted Linux and macOS runs retain reproducible timing, allocation, descriptor, syscall, and kqueue skew smoke receipts."
 requires = ["check"]
 
 [[gate]]
 inputs = [
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
     "Cargo.lock",
     "Cargo.toml",
     "LICENSE",
     "README.md",
+    "SECURITY.md",
     "docs/contracts.md",
     "docs/performance.md",
     "docs/qualification.md",
+    "examples/borrowed.md",
+    "examples/level.rs",
+    "examples/nested.md",
+    "examples/one_shot.rs",
+    "examples/owned.rs",
+    "examples/recovery.rs",
     "rust-toolchain.toml",
     "scripts/check-api-evolution",
+    "scripts/qualify-1.0",
     "scripts/rehearse-release",
     "zcheck.toml",
     "zio-logo.svg",
@@ -198,7 +243,47 @@ evidence = [
 ]
 id = "API-01"
 status = "enforced"
-title = "Diagnostics stay extensible while semantic domains stay closed"
+title = "Public enums keep their declared open or closed evolution contracts"
+
+[[invariant]]
+document = "docs/contracts.md#api-evolution"
+evidence = [
+    "rust-test:tests/api_evolution/values.rs::public_defaults_are_named_values",
+    "gate:check",
+    "gate:ci",
+]
+id = "API-DEFAULT-01"
+status = "enforced"
+title = "Public defaults remain named zero or capacity values"
+
+[[invariant]]
+document = "docs/contracts.md#api-evolution"
+evidence = [
+    "rust-test:tests/api_evolution/diagnostics.rs::public_errors_preserve_standard_source_chains",
+    "rust-test:src/error/details_test.rs::error_sources_preserve_every_layer",
+    "rust-test:src/error/details_test.rs::capability_error_sources_preserve_underlying_error",
+    "rust-test:src/error/recovery_test.rs::recovery_failure_preserves_one_owned_snapshot",
+    "rust-test:tests/api_evolution/values.rs::public_values_keep_common_traits",
+    "gate:check",
+    "gate:ci",
+]
+id = "API-TRAIT-01"
+status = "enforced"
+title = "Public value, capability, and error traits remain stable"
+
+[[invariant]]
+document = "docs/contracts.md#api-evolution"
+evidence = [
+    "rust-test:tests/api_evolution/events.rs::flag_set_operations_and_queries_are_const",
+    "rust-test:tests/api_evolution/values.rs::caller_configuration_values_are_const",
+    "rust-test:tests/api_evolution/values.rs::fixed_batch_cardinality_queries_are_const",
+    "rust-test:tests/api_evolution/values.rs::fixed_batch_slice_queries_are_const",
+    "gate:check",
+    "gate:ci",
+]
+id = "API-CONST-01"
+status = "enforced"
+title = "Public configuration and fixed-batch queries remain const"
 
 [[invariant]]
 document = "docs/contracts.md#registration-ownership"
@@ -206,8 +291,14 @@ evidence = [
     "rust-test:tests/descriptor_identity.rs::numeric_descriptor_reuse_does_not_alias_retained_registration",
     "rust-test:tests/descriptor_identity.rs::duplicated_handles_have_independent_registrations",
     "rust-test:tests/descriptor_identity.rs::one_handle_can_have_independent_registrations",
+    "rust-test:crates/zio-testkit/tests/owned_registration.rs::owned_register_failures_return_the_exact_capability",
+    "rust-test:crates/zio-testkit/tests/owned_registration_preflight.rs::owned_capacity_failure_returns_exact_descriptor_without_backend_work",
+    "rust-test:crates/zio-testkit/tests/owned_registration_preflight.rs::owned_invalid_interest_returns_exact_descriptor_without_backend_work",
+    "rust-test:crates/zio-testkit/tests/owned_registration.rs::owned_delete_failures_return_the_exact_capability",
     "rust-test:crates/zio-testkit/tests/terminal_identity.rs::delete_applied_stale_handle_survives_slot_reuse",
     "rust-test:crates/zio-testkit/tests/terminal_ownership.rs::wrong_poller_delete_returns_exact_handle_to_owner",
+    "rust-test:crates/zio-testkit/tests/terminal_ownership.rs::wrong_poller_delete_owned_returns_exact_handle_to_owner",
+    "rust-test:src/registration_ops_test.rs::full_safe_registration_does_not_borrow_or_duplicate_the_source",
     "gate:check",
     "gate:ci",
 ]
@@ -216,13 +307,39 @@ status = "enforced"
 title = "Safe registration retains a distinct descriptor and exact generation"
 
 [[invariant]]
+document = "docs/contracts.md#registration-ownership"
+evidence = [
+    "rust-test:tests/registration_lifetime.rs::dropping_poller_closes_a_transferred_descriptor",
+    "rust-test:tests/registration_lifetime.rs::live_waker_does_not_retain_a_transferred_descriptor",
+    "rust-test:tests/borrowed_registration.rs::dropping_poller_does_not_close_borrowed_source",
+    "gate:check",
+    "gate:ci",
+]
+id = "OWNERSHIP-DROP-01"
+status = "enforced"
+title = "Poller drop closes owned descriptors and preserves borrowed descriptors"
+
+[[invariant]]
+document = "docs/contracts.md#registration-ownership"
+evidence = [
+    "rust-test:tests/poller_descriptor.rs::nested_poller_readiness_clears_and_reactivates",
+    "gate:check",
+    "gate:ci",
+]
+id = "SELECTOR-01"
+status = "enforced"
+title = "Nested poller readiness clears and reactivates"
+
+[[invariant]]
 document = "docs/contracts.md#registration-lifetime"
 evidence = [
     "rust-test:tests/registration_lifetime.rs::registration_handle_traits_are_stable",
     "rust-test:tests/registration_lifetime.rs::reactor_copy_reclaims_after_task_copy_is_abandoned",
     "rust-test:tests/registration_lifetime.rs::successful_delete_stales_every_surviving_copy",
     "rust-test:tests/registration_lifetime.rs::stale_copy_cannot_target_reused_generation",
+    "rust-test:src/token_test.rs::encoded_identity_round_trips_across_deterministic_samples",
     "rust-test:crates/zio-testkit/tests/lifetime_delete.rs::delete_outcome_branches_update_every_surviving_copy",
+    "rust-test:crates/zio-testkit/tests/stale_delete_owned.rs::stale_capabilities_cannot_target_reused_generation",
     "rust-test:crates/zio-testkit/tests/lifetime_ownership.rs::copied_handle_rejects_wrong_poller_without_backend_calls",
     "rust-test:crates/zio-testkit/tests/lifetime_register_error.rs::register_error_handles_can_be_copied_before_error_consumption",
     "gate:check",
@@ -231,6 +348,21 @@ evidence = [
 id = "LIFETIME-01"
 status = "enforced"
 title = "Copyable handles preserve exact-generation cleanup authority"
+
+[[invariant]]
+document = "docs/contracts.md#registration-lifetime"
+evidence = [
+    "rust-test:src/table_churn_test.rs::sustained_single_registration_churn_rotates_evenly",
+    "rust-test:src/table_test.rs::virgin_slots_are_used_before_any_generation_is_recycled",
+    "rust-test:src/table_test.rs::virgin_capacity_precedes_a_nearly_exhausted_reusable_slot",
+    "rust-test:src/table_test.rs::retired_slots_are_reused_in_fifo_order",
+    "rust-test:src/table_reserve_test.rs::retire_appends_to_the_fifo_free_queue",
+    "gate:check",
+    "gate:ci",
+]
+id = "LIFETIME-CHURN-01"
+status = "enforced"
+title = "Slot allocation distributes generation churn across fixed capacity"
 
 [[invariant]]
 document = "docs/contracts.md#borrowed-registration"
@@ -246,6 +378,7 @@ evidence = [
     "rust-test:crates/zio-testkit/tests/borrowed_registration.rs::borrowed_register_failures_preserve_exact_lifetime_state",
     "rust-test:crates/zio-testkit/tests/borrowed_modify.rs::borrowed_modify_failures_preserve_exact_lifetime_state",
     "rust-test:crates/zio-testkit/tests/borrowed_registration.rs::borrowed_delete_failures_preserve_exact_lifetime_state",
+    "rust-test:crates/zio-testkit/tests/borrowed_delete_owned.rs::borrowed_delete_owned_returns_handle_without_backend_work",
     "gate:check",
     "gate:ci",
     "gate:performance",
@@ -291,6 +424,24 @@ evidence = [
 id = "READINESS-01"
 status = "enforced"
 title = "Portable readiness preserves directional closure and resource errors"
+
+[[invariant]]
+document = "docs/contracts.md#readiness-contract"
+evidence = [
+    "rust-test:tests/readiness_fairness.rs::ready_set_larger_than_event_capacity_makes_progress",
+    "rust-test:src/pending_kqueue_test.rs::delivery_rotates_with_full_batches_without_reordering_output",
+    "rust-test:src/pending_kqueue_test.rs::capacity_plus_one_and_two_keep_every_batch_full",
+    "rust-test:src/pending_kqueue_test.rs::capacity_one_cycles_across_the_ready_set",
+    "rust-test:src/pending_kqueue_test.rs::a_disappeared_cursor_restarts_at_first_observation",
+    "rust-test:src/pending_kqueue_test.rs::cyclic_selection_properties_hold_across_small_capacity_pairs",
+    "rust-test:src/observe_selection_test.rs::wrapped_selection_preserves_output_and_one_shot_disarm_order",
+    "rust-test:tests/wake.rs::repeated_wakes_do_not_shrink_wrapped_resource_batches",
+    "gate:check",
+    "gate:ci",
+]
+id = "FAIRNESS-01"
+status = "enforced"
+title = "Kqueue fills cyclic batches while preserving observation order"
 
 [[invariant]]
 document = "docs/contracts.md#recovery-behavior"
@@ -348,8 +499,11 @@ title = "Waits reuse retained storage and recovery owns one bounded snapshot"
 [[invariant]]
 document = "docs/contracts.md#wait-behavior"
 evidence = [
+    "rust-test:src/wait_test.rs::standard_timeouts_convert_without_losing_semantics",
     "rust-test:src/sys/linux_group/backend_test.rs::zero_timeouts_remain_nonblocking",
     "rust-test:src/sys/linux_group/backend_test.rs::one_nanosecond_rounds_up_to_one_millisecond",
+    "rust-test:src/sys/kqueue_group/kqueue_timeout_test.rs::timeouts_preserve_precision_and_clamp_seconds",
+    "rust-test:tests/readiness.rs::future_deadline_wait_is_wakeable",
     "gate:check",
     "gate:ci",
 ]
@@ -358,10 +512,29 @@ status = "enforced"
 title = "Positive waits never collapse to nonblocking observations"
 
 [[invariant]]
+document = "docs/contracts.md#wait-behavior"
+evidence = [
+    "rust-test:tests/event_destination.rs::drain_preserves_capacity_for_reuse",
+    "rust-test:tests/event_destination.rs::larger_destination_is_reusable_across_pollers",
+    "rust-test:tests/event_destination.rs::owned_iteration_preserves_delivery_order",
+    "rust-test:tests/readiness.rs::wait_rejection_clears_a_previous_observation",
+    "gate:check",
+    "gate:ci",
+]
+id = "EVENTS-01"
+status = "enforced"
+title = "Waits replace event batches and clear failures"
+
+[[invariant]]
 document = "docs/contracts.md#wake-behavior"
 evidence = [
-    "rust-test:tests/readiness.rs::wake_before_wait_is_observable",
-    "rust-test:tests/readiness.rs::wake_interrupts_a_blocked_wait",
+    "rust-test:tests/wake.rs::wake_before_wait_is_observable",
+    "rust-test:tests/wake.rs::wake_and_resource_share_capacity_without_loss",
+    "rust-test:tests/wake.rs::wake_coalesces_drains_and_remains_reusable",
+    "rust-test:tests/wake.rs::wake_completes_a_blocked_wait",
+    "rust-test:tests/wake.rs::repeated_wakes_do_not_starve_a_ready_resource",
+    "rust-test:tests/wake.rs::repeated_wakes_preserve_ready_set_fairness",
+    "rust-test:src/poll_test.rs::undersized_destination_does_not_consume_deferred_wake",
     "rust-test:src/sys/linux_group/eventfd_test.rs::saturated_counter_is_reset_and_retriggered",
     "rust-test:crates/zio-testkit/tests/wake_conformance.rs::wake_report_covers_every_scenario",
     "rust-test:crates/zio-testkit/tests/wake_conformance.rs::wake_scenario_names_are_stable",
@@ -396,6 +569,7 @@ evidence = [
     "rust-test:crates/zio-testkit/tests/register_conformance.rs::register_branches_preserve_error_state_and_capabilities",
     "rust-test:crates/zio-testkit/tests/modify_conformance.rs::modify_branches_preserve_error_state_and_retries",
     "rust-test:crates/zio-testkit/tests/delete_conformance.rs::delete_branches_preserve_returned_handles_and_retries",
+    "rust-test:crates/zio-testkit/tests/delete_all.rs::delete_all_stops_and_returns_the_failed_registration",
     "gate:check",
     "gate:ci",
 ]
@@ -411,6 +585,7 @@ evidence = [
     "rust-test:crates/zio-testkit/tests/model_sequence.rs::model_sequence_results_replay_by_reported_seed",
     "rust-test:crates/zio-testkit/src/model_sequence_preflight_test.rs::invalid_register_does_not_consume_a_generation",
     "rust-test:crates/zio-testkit/src/model_sequence_preflight_test.rs::invalid_modify_preserves_the_exact_prior_tuple",
+    "rust-test:crates/zio-testkit/src/model_sequence_preflight_test.rs::invalid_keyed_modify_preserves_the_exact_prior_tuple",
     "rust-test:crates/zio-testkit/src/model_sequence_runner_test.rs::failing_sequence_keeps_seed_and_minimal_replay_prefix",
     "rust-test:crates/zio-testkit/src/model_sequence_runner_test.rs::sentinel_action_fingerprints_are_stable",
     "gate:check",
@@ -452,6 +627,12 @@ document = "docs/performance.md#performance"
 evidence = [
     "rust-test:crates/zio-qualify/src/benchmark/config_test.rs::defaults_are_scenario_aware_and_explicit_is_exact",
     "rust-test:crates/zio-qualify/src/benchmark/config_test.rs::help_names_every_stable_scenario_for_each_binary",
+    "rust-test:crates/zio-qualify/src/benchmark/kqueue_skew/config_test.rs::default_matrix_is_exact",
+    "rust-test:crates/zio-qualify/src/benchmark/kqueue_skew/config_test.rs::full_matrix_requires_an_explicit_run_id",
+    "rust-test:crates/zio-qualify/src/benchmark/kqueue_skew/config_test.rs::smoke_is_small_and_explicit",
+    "rust-test:crates/zio-qualify/src/benchmark/kqueue_skew/receipt_test.rs::passed_receipt_names_every_required_metric",
+    "rust-test:crates/zio-qualify/src/benchmark/kqueue_skew/receipt_test.rs::unsupported_receipt_preserves_parameters_and_limits",
+    "rust-test:crates/zio-qualify/src/benchmark/perf_catalog_test.rs::checked_in_catalog_matches_the_benchmark_model",
     "rust-test:crates/zio-qualify/src/benchmark/receipt_test.rs::timing_receipt_has_timing_and_no_allocation_fields",
     "rust-test:crates/zio-qualify/src/benchmark/receipt_test.rs::allocation_receipt_has_allocations_and_no_timing_fields",
     "rust-test:crates/zio-qualify/src/benchmark/receipt_test.rs::source_and_exact_versions_are_stable",
@@ -473,6 +654,26 @@ title = "Performance receipts preserve method, provenance, resources, and delive
 [[invariant]]
 document = "docs/qualification.md#coverage"
 evidence = [
+    "rust-test:tests/api_evolution/poll.rs::poll_exposes_construction_and_observation",
+    "gate:ci",
+]
+id = "PLATFORM-LINUX-ARCH-01"
+status = "enforced"
+title = "Linux APIs compile on 32-bit x86 and 64-bit Arm"
+
+[[invariant]]
+document = "docs/qualification.md#coverage"
+evidence = [
+    "rust-test:tests/api_evolution/poll.rs::poll_exposes_selector_composition",
+    "gate:ci",
+]
+id = "PLATFORM-MACOS-ARCH-01"
+status = "enforced"
+title = "macOS APIs compile on 64-bit x86 and Arm"
+
+[[invariant]]
+document = "docs/qualification.md#coverage"
+evidence = [
     "rust-test:src/sys/kqueue_group/kqueue_disarm_test.rs::freebsd_and_netbsd_interruptions_are_applied",
     "rust-test:src/sys/kqueue_group/kqueue_disarm_matrix_test.rs::target_selected_interruption_policy_is_exact",
     "gate:ci",
@@ -484,12 +685,24 @@ title = "FreeBSD and NetBSD execute the native qualification suite"
 [[invariant]]
 document = "docs/qualification.md#release-rehearsal"
 evidence = [
-    "rust-test:tests/readiness.rs::wake_before_wait_is_observable",
+    "rust-test:tests/wake.rs::wake_before_wait_is_observable",
     "gate:release",
 ]
 id = "RELEASE-01"
 status = "enforced"
 title = "The clean release-shaped package builds and runs outside the workspace"
+
+[[invariant]]
+document = "docs/qualification.md#stable-10-evidence-gate"
+evidence = [
+    "rust-test:crates/zio-qualify/tests/stable_evidence_gate.rs::incomplete_or_stale_release_evidence_is_rejected",
+    "gate:check",
+    "gate:performance",
+    "gate:release",
+]
+id = "RELEASE-STABLE-01"
+status = "enforced"
+title = "Stable release requires complete exact-commit native and hosted receipts"
 
 [[layer]]
 may_depend_on = []
@@ -595,7 +808,7 @@ target = "src/descriptor.rs"
 [[ratchet]]
 reason = "The mutation seam explicitly propagates the public borrowed-descriptor lifetime contract into fixed storage."
 rule = "rust.hygiene.unsafe"
-target = "src/mutation/machine.rs"
+target = "src/mutation/register_session.rs"
 
 [[ratchet]]
 reason = "The public borrowed-registration entrypoint states the complete caller-managed descriptor lifetime contract."

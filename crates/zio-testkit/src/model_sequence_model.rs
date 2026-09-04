@@ -12,6 +12,10 @@ pub(crate) enum ExpectedState {
 }
 
 impl ExpectedState {
+    const ARMED: Self = Self::Registered {
+        arm: ArmState::Armed,
+    };
+
     pub(crate) const fn portable(self) -> RegistrationState {
         match self {
             Self::Registered { arm } => RegistrationState::Registered { arm },
@@ -23,6 +27,7 @@ impl ExpectedState {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct Entry {
     pub(crate) registration: Registration,
+    pub(crate) key: Key,
     pub(crate) interest: Interest,
     pub(crate) mode: Mode,
     pub(crate) state: ExpectedState,
@@ -112,42 +117,40 @@ impl ReferenceModel {
         &mut self,
         outcome: Outcome,
         registration: Option<Registration>,
+        key: Key,
         interest: Interest,
         mode: Mode,
     ) -> Result<(), &'static str> {
-        self.active = match outcome {
+        let state = match outcome {
             Outcome::NotApplied => {
                 if registration.is_some() {
                     return Err("not-applied register retained a handle");
                 }
-                None
+                self.active = None;
+                return Ok(());
             }
-            Outcome::Success | Outcome::Applied => Some(Entry {
-                registration: registration.ok_or("register omitted its retained handle")?,
-                interest,
-                mode,
-                state: ExpectedState::Registered {
-                    arm: ArmState::Armed,
-                },
-            }),
-            Outcome::Unknown => Some(Entry {
-                registration: registration.ok_or("unknown register omitted its handle")?,
-                interest,
-                mode,
-                state: ExpectedState::Uncertain,
-            }),
+            Outcome::Success | Outcome::Applied => ExpectedState::ARMED,
+            Outcome::Unknown => ExpectedState::Uncertain,
         };
+        self.active = Some(Entry {
+            registration: registration.ok_or("retaining register omitted its handle")?,
+            key,
+            interest,
+            mode,
+            state,
+        });
+        Ok(())
+    }
+
+    pub(crate) fn set_key(&mut self, key: Key) -> Result<(), &'static str> {
+        let entry = self.active.as_mut().ok_or("set_key requires a handle")?;
+        entry.key = key;
         Ok(())
     }
 
     pub(crate) fn disarm(&mut self) -> Result<RegistrationId, &'static str> {
         let entry = self.active.as_mut().ok_or("disarm requires a handle")?;
-        if entry.mode != Mode::OneShot
-            || entry.state
-                != (ExpectedState::Registered {
-                    arm: ArmState::Armed,
-                })
-        {
+        if entry.mode != Mode::OneShot || entry.state != ExpectedState::ARMED {
             return Err("disarm requires an armed one-shot registration");
         }
         let registration = entry.registration.id();
@@ -182,20 +185,19 @@ impl ReferenceModel {
     pub(crate) fn complete_modify(
         &mut self,
         outcome: Outcome,
+        key: Option<Key>,
         interest: Interest,
         mode: Mode,
     ) -> Result<(), &'static str> {
-        let entry = self
-            .active
-            .as_mut()
-            .ok_or("modify lost its active handle")?;
+        let entry = self.active.as_mut().ok_or("modify lost active handle")?;
         match outcome {
             Outcome::Success | Outcome::Applied => {
+                if let Some(key) = key {
+                    entry.key = key;
+                }
                 entry.interest = interest;
                 entry.mode = mode;
-                entry.state = ExpectedState::Registered {
-                    arm: ArmState::Armed,
-                };
+                entry.state = ExpectedState::ARMED;
             }
             Outcome::NotApplied => {}
             Outcome::Unknown => entry.state = ExpectedState::Uncertain,
@@ -221,10 +223,7 @@ impl ReferenceModel {
             }
             Outcome::NotApplied => {}
             Outcome::Unknown => {
-                let entry = self
-                    .active
-                    .as_mut()
-                    .ok_or("delete lost its active handle")?;
+                let entry = self.active.as_mut().ok_or("delete lost active handle")?;
                 entry.state = ExpectedState::Uncertain;
             }
         }

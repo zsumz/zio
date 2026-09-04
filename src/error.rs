@@ -1,21 +1,30 @@
 //! Portable setup, mutation, wait, wake, and recovery failures.
 
+mod accessors;
+mod capacity;
+mod delete_owned;
 mod details;
+#[cfg(test)]
+mod details_test;
 mod recovery;
+mod register_owned;
 
 #[cfg(test)]
 mod recovery_test;
 
 use std::{fmt, io};
 
-use crate::{Key, RegistrationId};
+use crate::{Key, Registration, RegistrationId};
 
-pub use details::{DeleteError, MutationError, RegisterError};
+pub use capacity::{CapacityKind, CapacityReason};
+pub use delete_owned::DeleteOwnedError;
+pub use details::{DeleteAllError, DeleteError, MutationError, RegisterError};
 pub use recovery::{RecoveryFailure, RecoveryOutcome};
+pub use register_owned::RegisterOwnedError;
 
 /// Poller or backend operation associated with a failure.
 ///
-/// This diagnostic vocabulary may grow as Zio gains backend operations.
+/// This diagnostic vocabulary may grow as zio gains backend operations.
 /// Downstream matches must include a fallback arm.
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -36,14 +45,24 @@ pub enum Operation {
     Wait,
     /// Trigger the configured wake source.
     TriggerWake,
-    /// Acknowledge an observed wake.
-    AcknowledgeWake,
     /// Disable a delivered one-shot registration.
     Disarm,
-    /// Restore state after a partial backend mutation.
-    Recover,
-    /// Report that the current target has no backend.
-    UnsupportedPlatform,
+}
+
+impl fmt::Display for Operation {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(match self {
+            Self::CreatePoller => "create poller",
+            Self::CreateWaker => "create waker",
+            Self::RegisterWaker => "register waker",
+            Self::Register => "register",
+            Self::Modify => "modify",
+            Self::Delete => "delete",
+            Self::Wait => "wait",
+            Self::TriggerWake => "trigger wake",
+            Self::Disarm => "disarm",
+        })
+    }
 }
 
 /// What a failed synchronous mutation changed in the backend.
@@ -55,6 +74,16 @@ pub enum CommitStatus {
     Applied,
     /// The resulting backend state cannot be proven.
     Unknown,
+}
+
+impl fmt::Display for CommitStatus {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(match self {
+            Self::NotApplied => "not applied",
+            Self::Applied => "applied",
+            Self::Unknown => "unknown",
+        })
+    }
 }
 
 /// Portable poller failure.
@@ -82,10 +111,10 @@ pub enum Error {
     },
     /// The registration belongs to another poller.
     WrongPoller {
-        /// Rejected registration.
-        registration: RegistrationId,
+        /// Exact rejected registration handle.
+        registration: Registration,
     },
-    /// The requested readiness interest is empty or unsupported.
+    /// The requested readiness interest is empty.
     InvalidInterest,
     /// The registration generation is no longer retained.
     Stale {
@@ -97,13 +126,21 @@ pub enum Error {
         /// Affected registration.
         registration: RegistrationId,
     },
-    /// A fixed registration or event capacity was reached or invalid.
-    Capacity {
-        /// Configured capacity.
-        limit: usize,
+    /// The registration retains a borrowed descriptor.
+    DescriptorNotOwned {
+        /// Rejected registration.
+        registration: RegistrationId,
     },
-    /// Every registration generation in the fixed table is exhausted.
-    RegistrationSpaceExhausted,
+    /// A logical capacity was invalid, exhausted, or unavailable.
+    #[non_exhaustive]
+    Capacity {
+        /// Affected storage category.
+        kind: CapacityKind,
+        /// Logical capacity involved in the failure.
+        limit: usize,
+        /// Reason for the failure.
+        reason: CapacityReason,
+    },
     /// The supplied event destination cannot hold a complete batch.
     EventsTooSmall {
         /// Required logical capacity.
@@ -111,9 +148,7 @@ pub enum Error {
         /// Supplied logical capacity.
         actual: usize,
     },
-    /// The backend integer domain cannot express the configured capacity.
-    BackendOverflow,
-    /// A validated internal invariant diverged.
+    /// Internal state failed validation.
     Invariant,
     /// The current target has no supported readiness backend.
     UnsupportedPlatform,
@@ -122,41 +157,48 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Io { operation, source } => write!(formatter, "{operation:?} failed: {source}"),
+            Self::Io { operation, source } => write!(formatter, "{operation} failed: {source}"),
             Self::Mutation(error) => error.fmt(formatter),
             Self::WakerAlreadyConfigured {
                 existing,
                 requested,
             } => write!(
                 formatter,
-                "poller wake key is {existing:?}, not requested key {requested:?}"
+                "poller wake key is {existing}, not requested key {requested}"
             ),
             Self::WrongPoller { registration } => {
                 write!(
                     formatter,
-                    "registration {registration:?} belongs to another poller"
+                    "registration {} belongs to another poller",
+                    registration.id()
                 )
             }
             Self::InvalidInterest => formatter.write_str("readiness interest must not be empty"),
             Self::Stale { registration } => {
-                write!(formatter, "registration {registration:?} is stale")
+                write!(formatter, "registration {registration} is stale")
             }
             Self::Uncertain { registration } => write!(
                 formatter,
-                "registration {registration:?} has uncertain backend state"
+                "registration {registration} has uncertain backend state"
             ),
-            Self::Capacity { limit } => write!(formatter, "fixed capacity {limit} was reached"),
-            Self::RegistrationSpaceExhausted => {
-                formatter.write_str("registration generation space is exhausted")
+            Self::DescriptorNotOwned { registration } => {
+                write!(
+                    formatter,
+                    "registration {registration} does not own its descriptor"
+                )
+            }
+            Self::Capacity {
+                kind,
+                limit,
+                reason,
+            } => {
+                write!(formatter, "{kind} capacity {limit} {reason}")
             }
             Self::EventsTooSmall { required, actual } => write!(
                 formatter,
                 "event capacity {actual} is smaller than required capacity {required}"
             ),
-            Self::BackendOverflow => {
-                formatter.write_str("configured capacity exceeds the backend integer domain")
-            }
-            Self::Invariant => formatter.write_str("validated internal invariant diverged"),
+            Self::Invariant => formatter.write_str("internal state failed validation"),
             Self::UnsupportedPlatform => {
                 formatter.write_str("the current target has no supported readiness backend")
             }

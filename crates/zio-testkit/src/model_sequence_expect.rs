@@ -32,7 +32,7 @@ pub(crate) fn failed_register(
     let Err(error) = result else {
         return Err(result_mismatch("register failure", "success"));
     };
-    let borrowed = error.registration().copied();
+    let retained = error.registration();
     let (cause, returned) = error.into_parts();
     expect_mutation_error(
         cause,
@@ -40,8 +40,8 @@ pub(crate) fn failed_register(
         Operation::Register,
         io::ErrorKind::PermissionDenied,
     )?;
-    if borrowed != returned {
-        return Err(handle(format!("{borrowed:?}"), format!("{returned:?}")));
+    if retained != returned {
+        return Err(handle(format!("{retained:?}"), format!("{returned:?}")));
     }
     match outcome {
         Outcome::NotApplied if returned.is_none() => Ok(None),
@@ -79,10 +79,10 @@ pub(crate) fn expect_delete_error(
     let Err(error) = result else {
         return Err(result_mismatch("delete failure", "success"));
     };
-    let borrowed = *error.registration();
+    let retained = error.registration();
     let (cause, returned) = error.into_parts();
-    if borrowed != expected || returned != expected {
-        return Err(handle(expected, (borrowed, returned)));
+    if retained != expected || returned != expected {
+        return Err(handle(expected, (retained, returned)));
     }
     expect_mutation_error(cause, outcome, Operation::Delete, io::ErrorKind::BrokenPipe)
 }

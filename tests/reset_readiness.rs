@@ -38,7 +38,10 @@ fn verify_abortive_close(mode: Mode) -> Result<(), Box<dyn std::error::Error>> {
     let (mut source, peer) = tcp_pair()?;
     source.set_nonblocking(true)?;
 
-    let mut poll = zio::Poll::with_capacity(1, 1)?;
+    let mut poll = zio::Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(1)
+        .build()?;
     let registration = poll.register(&source, KEY, Interest::READABLE, mode)?;
     let mut events = poll.events()?;
 
@@ -47,7 +50,7 @@ fn verify_abortive_close(mode: Mode) -> Result<(), Box<dyn std::error::Error>> {
     let report = poll.wait(&mut events, Wait::For(DEADLINE))?;
 
     let readiness = match events.as_slice() {
-        [Event::Resource { key, readiness }] if *key == KEY => *readiness,
+        [Event::Resource { key, readiness, .. }] if *key == KEY => *readiness,
         actual => return Err(failure("one abortive-close resource event", actual).into()),
     };
     let required = Readiness::READ_CLOSED.union(Readiness::ERROR);

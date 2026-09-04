@@ -57,12 +57,12 @@ fn construction_setup_discloses_wake_normalization() -> Result<(), String> {
     check(
         Scenario::Construct1024.candidate_setup(Implementation::Zio)
             == "eager_native_wake_source_without_public_waker",
-        "Zio eager wake disclosure",
+        "zio eager wake disclosure",
     )?;
     check(
         Scenario::Construct1024.candidate_setup(Implementation::ZioBorrowed)
             == "eager_native_wake_source_without_public_waker",
-        "Zio borrowed eager wake disclosure",
+        "zio borrowed eager wake disclosure",
     )?;
     check(
         Scenario::ConstructWaker1024.candidate_setup(Implementation::Mio)

@@ -3,19 +3,31 @@
 use std::num::NonZeroUsize;
 
 use crate::binding::{Binding, Observation};
-use crate::token::{MAX_REGISTRATIONS, decode};
-use crate::{ArmState, CommitStatus, Error, Interest, Mode, RegistrationId, RegistrationState};
+use crate::token::decode;
+use crate::{
+    ArmState, CapacityKind, CapacityReason, CommitStatus, Error, Interest, Key, Mode,
+    RegistrationId, RegistrationInfo, RegistrationState,
+};
 
+#[path = "table_capacity.rs"]
+mod capacity;
+#[path = "table_free_queue.rs"]
+mod free_queue;
+#[path = "table_permit.rs"]
+mod permit;
 #[path = "table_reserve.rs"]
 mod reserve;
 #[path = "table_retire.rs"]
 mod retire;
 #[path = "table_slot.rs"]
 mod slot;
+#[path = "table_snapshot.rs"]
+mod snapshot;
 
 use slot::{Entry, FREE_END, Slot};
 
-pub(crate) use reserve::Reservation;
+pub(crate) use permit::Reservation;
+pub(crate) use snapshot::RegistrationIter;
 
 /// Owner-local fixed slot table.
 #[derive(Debug)]
@@ -23,24 +35,45 @@ pub(crate) struct RegistrationTable {
     limit: NonZeroUsize,
     slots: Vec<Slot>,
     free_head: u32,
+    free_tail: u32,
     exhausted: usize,
+    live: usize,
 }
 
 impl RegistrationTable {
     pub(crate) fn new(limit: NonZeroUsize) -> Result<Self, Error> {
-        if limit.get() > MAX_REGISTRATIONS {
-            return Err(Error::BackendOverflow);
-        }
+        Self::validate_capacity(limit)?;
         let mut slots = Vec::new();
         slots
             .try_reserve_exact(limit.get())
-            .map_err(|_| Error::Capacity { limit: limit.get() })?;
+            .map_err(|_| Error::Capacity {
+                kind: CapacityKind::Registration,
+                limit: limit.get(),
+                reason: CapacityReason::StorageUnavailable,
+            })?;
         Ok(Self {
             limit,
             slots,
             free_head: FREE_END,
+            free_tail: FREE_END,
             exhausted: 0,
+            live: 0,
         })
+    }
+
+    pub(crate) const fn capacity(&self) -> usize {
+        self.limit.get()
+    }
+
+    pub(crate) const fn len(&self) -> usize {
+        self.live
+    }
+
+    pub(crate) const fn remaining(&self) -> usize {
+        self.limit
+            .get()
+            .saturating_sub(self.live)
+            .saturating_sub(self.exhausted)
     }
 
     pub(crate) fn binding(
@@ -60,6 +93,15 @@ impl RegistrationTable {
         })
     }
 
+    #[cfg_attr(
+        not(any(
+            target_os = "linux",
+            target_os = "macos",
+            target_os = "freebsd",
+            target_os = "netbsd"
+        )),
+        allow(dead_code, reason = "matches supported observation lookup")
+    )]
     pub(crate) fn resolve(&self, token: u64) -> Option<Observation> {
         let id = RegistrationId::new(token);
         let entry = self.entry(id).ok()?;
@@ -76,13 +118,33 @@ impl RegistrationTable {
         self.entry(id).map(|entry| entry.state)
     }
 
+    pub(crate) fn info(&self, id: RegistrationId) -> Result<RegistrationInfo, Error> {
+        let entry = self.entry(id)?;
+        Ok(RegistrationInfo::new(
+            entry.key,
+            entry.interest,
+            entry.mode,
+            entry.state,
+            entry.descriptor.ownership(),
+        ))
+    }
+
+    pub(crate) fn set_key(&mut self, id: RegistrationId, key: Key) -> Result<(), Error> {
+        self.entry_mut(id)?.key = key;
+        Ok(())
+    }
+
     pub(crate) fn commit_modify(
         &mut self,
         id: RegistrationId,
+        key: Option<Key>,
         interest: Interest,
         mode: Mode,
     ) -> Result<(), Error> {
         let entry = self.entry_mut(id)?;
+        if let Some(key) = key {
+            entry.key = key;
+        }
         entry.interest = interest;
         entry.mode = mode;
         entry.state = RegistrationState::Registered {
@@ -96,6 +158,15 @@ impl RegistrationTable {
         Ok(())
     }
 
+    #[cfg_attr(
+        not(any(
+            target_os = "linux",
+            target_os = "macos",
+            target_os = "freebsd",
+            target_os = "netbsd"
+        )),
+        allow(dead_code, reason = "only native backends disarm registrations")
+    )]
     pub(crate) fn apply_disarm(
         &mut self,
         id: RegistrationId,
@@ -105,7 +176,7 @@ impl RegistrationTable {
         let armed = RegistrationState::Registered {
             arm: ArmState::Armed,
         };
-        if entry.mode != Mode::OneShot || entry.state != armed {
+        if !entry.mode.is_one_shot() || entry.state != armed {
             return Err(Error::Invariant);
         }
         entry.state = match commit {
@@ -153,8 +224,17 @@ impl RegistrationTable {
 }
 
 #[cfg(test)]
+#[path = "table_churn_test.rs"]
+mod churn_tests;
+#[cfg(test)]
+#[path = "table_count_test.rs"]
+mod count_tests;
+#[cfg(test)]
 #[path = "table_reserve_test.rs"]
 mod reserve_tests;
+#[cfg(test)]
+#[path = "table_support_test.rs"]
+mod test_support;
 #[cfg(test)]
 #[path = "table_test.rs"]
 mod tests;

@@ -291,7 +291,7 @@ fn read_change(descriptor: i32) -> Change {
 fn assert_statuses(batch: &DisarmBatch, expected: &[CommitStatus]) {
     let actual = batch
         .outcomes()
-        .map(|outcome| outcome.commit())
+        .map(crate::observe_recovery::DisarmOutcome::commit)
         .collect::<Vec<_>>();
     assert_eq!(actual, expected);
 }
