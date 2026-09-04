@@ -11,8 +11,9 @@ impl Poll {
     ///
     /// `events` must match or exceed [`Self::event_capacity`]. It is cleared on
     /// entry and left empty on error. A successful report may carry one-shot
-    /// recovery trouble; process every event before reconciling it. Without a
-    /// pending wake, stable ready sets larger than the batch rotate across calls.
+    /// recovery trouble; process every event before reconciling it. Stable
+    /// ready sets larger than the batch rotate across calls, even with repeated
+    /// wakes.
     pub fn wait(&mut self, events: &mut Events, wait: Wait) -> Result<WaitReport, Error> {
         events.clear();
         self.pending.clear();
@@ -43,6 +44,15 @@ impl Poll {
                 required: self.event_capacity.get(),
                 actual: events.capacity(),
             });
+        }
+        #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
+        if self.deferred_wake {
+            let key = self.wake_key.ok_or(Error::Invariant)?;
+            events
+                .try_push(crate::Event::Wake { key })
+                .map_err(|_| Error::Invariant)?;
+            self.deferred_wake = false;
+            return Ok(WaitReport::new(None));
         }
         let observed = self
             .backend
@@ -118,8 +128,13 @@ impl Poll {
             self.pending
                 .add(resource.id, resource.key, raw.readiness())?;
         }
-        let resource_limit = self.event_capacity.get() - usize::from(woke);
-        let delivery = self.pending.delivery_range(resource_limit);
+        let capacity = self.event_capacity.get();
+        let delivery = self.pending.delivery_range(capacity);
+        let deliver_wake = woke && delivery.len() < capacity;
+        if woke && self.wake_key.is_none() {
+            return Err(Error::Invariant);
+        }
+        self.deferred_wake = woke;
         self.prepare_disarms(delivery.clone())?;
         let recovery = self.backend.submit_disarms(&mut self.raw_events).err();
         let pending = self
@@ -127,17 +142,21 @@ impl Poll {
             .as_slice()
             .get(delivery)
             .ok_or(Error::Invariant)?;
-        crate::observe_recovery::finish(
+        let result = crate::observe_recovery::finish(
             owner,
             &mut self.registrations,
             events,
             pending,
             pending.len(),
-            woke,
+            deliver_wake,
             self.wake_key,
             self.raw_events.disarm_outcomes(),
             recovery,
-        )
+        );
+        if result.is_ok() && deliver_wake {
+            self.deferred_wake = false;
+        }
+        result
     }
 
     #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]

@@ -376,6 +376,7 @@ evidence = [
     "rust-test:tests/wake.rs::wake_and_resource_share_capacity_without_loss",
     "rust-test:tests/wake.rs::wake_coalesces_drains_and_remains_reusable",
     "rust-test:tests/wake.rs::wake_completes_a_blocked_wait",
+    "rust-test:tests/wake.rs::repeated_wakes_do_not_starve_a_ready_resource",
     "rust-test:src/sys/linux_group/eventfd_test.rs::saturated_counter_is_reset_and_retriggered",
     "rust-test:crates/zio-testkit/tests/wake_conformance.rs::wake_report_covers_every_scenario",
     "rust-test:crates/zio-testkit/tests/wake_conformance.rs::wake_scenario_names_are_stable",

@@ -133,8 +133,8 @@ Direct readiness predicates return `false` for wake events.
 One wait emits at most one event per registration and unions split native
 hints. Resource events retain first-observation order; a wake follows them.
 Separate registrations remain separate even when their keys match.
-Without a pending wake, stable ready sets larger than event capacity rotate
-across waits.
+Stable ready sets larger than event capacity rotate across waits. Repeated
+wakes do not starve ready resources.
 
 ## Recovery behavior
 

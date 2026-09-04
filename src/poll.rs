@@ -75,6 +75,8 @@ pub struct Poll {
     pub(crate) event_capacity: NonZeroUsize,
     pub(crate) wake: Wake,
     pub(crate) wake_key: Option<Key>,
+    #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
+    pub(crate) deferred_wake: bool,
     pub(crate) pending: crate::pending::PendingBatch,
     _owner_local: OwnerLocal,
 }
@@ -170,6 +172,8 @@ impl Poll {
             event_capacity,
             wake,
             wake_key: None,
+            #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
+            deferred_wake: false,
             pending: crate::pending::PendingBatch::new(registration_capacity)?,
             _owner_local: OwnerLocal(PhantomData),
         })

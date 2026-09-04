@@ -93,6 +93,41 @@ fn wake_and_resource_share_capacity_without_loss() -> Result<(), Box<dyn std::er
 }
 
 #[test]
+fn repeated_wakes_do_not_starve_a_ready_resource() -> Result<(), Box<dyn std::error::Error>> {
+    let (source, mut peer) = UnixStream::pair()?;
+    source.set_nonblocking(true)?;
+    let mut poll = Poll::with_capacity(1, 1)?;
+    let resource_key = Key::new(104);
+    let registration = poll.register(&source, resource_key, Interest::READABLE, Mode::Level)?;
+    let waker = poll.waker(Key::new(105))?;
+    let mut events = poll.events()?;
+    peer.write_all(b"ready")?;
+
+    let mut observed = false;
+    for _ in 0..4 {
+        waker.wake()?;
+        require_no_recovery(poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?)?;
+        observed = events.iter().any(|event| {
+            matches!(
+                event,
+                Event::Resource {
+                    registration: actual,
+                    key,
+                    ..
+                } if *actual == registration && *key == resource_key
+            )
+        });
+        if observed {
+            break;
+        }
+    }
+
+    assert!(observed, "repeated wakes starved a ready resource");
+    poll.delete(registration)?;
+    Ok(())
+}
+
+#[test]
 fn wake_completes_a_blocked_wait() -> Result<(), Box<dyn std::error::Error>> {
     let mut poll = Poll::new()?;
     let waker = poll.waker(Key::new(100))?;
