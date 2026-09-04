@@ -2,18 +2,18 @@
 schema = 2
 semantics = 3
 producer = "0.0.3-rc.4"
-contract_sha256 = "1961ecfd4c4e23c56345763952fd8e50c1b50c4b02985c0459615efff60609e8"
+contract_sha256 = "577bfa0cbddfb27cea27b56fcb56fa34b3aa6f4772549f2ae7d3c5941254d068"
 
 [analysis]
-inventory_sha256 = "357ed00bf8be8bf6d60fecc883830e8e27a3442e388d1df30e67624039d9d2cc"
+inventory_sha256 = "902ff988d72218a7f63da5c69e42484c017e2a4f96fa7c3e33650534c618e446"
 exclusions_sha256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 cargo_lock_sha256 = "c57d02582afe8069129844f4f07aa867b3a1a9391d77b4be4e5ca0013a6d1687"
 packages = 3
-targets = 43
-physical_rust_files = 281
-base_source_contexts = 469
+targets = 44
+physical_rust_files = 282
+base_source_contexts = 470
 derived_source_contexts = 0
-source_facts = 85111
+source_facts = 85167
 projection_queries = 0
 projected_facts = 0
 unresolved_bindings = 0
@@ -21,7 +21,7 @@ analyzer_semantics = 3
 
 [[analysis.contract_source]]
 path = "zrail.toml"
-sha256 = "4e0ca1c25807a21a357479dc10a188ced2ca29aa59273b01a23c2079b08956c2"
+sha256 = "9777fc4848ee52bc01f0e69f50c6eef5d46679c9c2784e12c05e22bdf3f3d003"
 
 [[package]]
 name = "zio"
