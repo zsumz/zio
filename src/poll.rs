@@ -3,10 +3,11 @@
 use std::{cell::Cell, fmt, marker::PhantomData, num::NonZeroUsize, panic::RefUnwindSafe};
 
 use crate::{
-    CapacityKind, CapacityReason, Error, Events, Key, Operation,
+    CapacityKind, CapacityReason, Error, Events, Key,
     registration::PollOwner,
     sys::{Backend, RawBatch, Wake},
     table::RegistrationTable,
+    waker::Waker,
 };
 
 #[path = "poll_builder.rs"]
@@ -17,50 +18,6 @@ pub use builder::PollBuilder;
 pub const DEFAULT_EVENT_CAPACITY: usize = 1_024;
 /// Default number of registrations retained by one poller.
 pub const DEFAULT_REGISTRATION_CAPACITY: usize = 1_024;
-
-/// Cloneable cross-thread capability for keyed [`Event::Wake`](crate::Event::Wake) observations.
-///
-/// Clones may outlive the poller. They retain its native wake resource, not
-/// registered descriptors; later triggers have no observer.
-#[must_use = "retain the waker to signal the poller"]
-#[derive(Clone)]
-pub struct Waker {
-    wake: Wake,
-    key: Key,
-}
-
-impl fmt::Debug for Waker {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter
-            .debug_struct("Waker")
-            .field("key", &self.key)
-            .finish_non_exhaustive()
-    }
-}
-
-impl Waker {
-    /// Returns the key carried by this waker's observations.
-    pub const fn key(&self) -> Key {
-        self.key
-    }
-
-    /// Returns whether both capabilities produce the same keyed observation.
-    pub fn will_wake(&self, other: &Self) -> bool {
-        self.key == other.key && self.wake.same_target(&other.wake)
-    }
-
-    /// Requests the poller's configured wake observation.
-    ///
-    /// Wake delivery is a successful observation, not an interrupted-wait
-    /// error. Multiple triggers may coalesce into one wake event; observations
-    /// are notifications rather than a count of calls to this method.
-    pub fn wake(&self) -> Result<(), Error> {
-        self.wake.wake().map_err(|source| Error::Io {
-            operation: Operation::TriggerWake,
-            source,
-        })
-    }
-}
 
 /// Owner-local portable readiness poller.
 ///
@@ -228,10 +185,7 @@ impl Poll {
                 });
             }
         }
-        Ok(Waker {
-            wake: self.wake.clone(),
-            key,
-        })
+        Ok(Waker::new(self.wake.clone(), key))
     }
 }
 

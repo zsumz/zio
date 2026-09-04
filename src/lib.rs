@@ -1,7 +1,5 @@
 //! Synchronous, fixed-capacity epoll/kqueue I/O with duplicate-by-default descriptors.
 //!
-//! # Quick start
-//!
 //! ```no_run
 //! use std::{net::TcpListener, time::Duration};
 //! use zio::{Interest, Key, Mode, Poll, Wait};
@@ -63,18 +61,20 @@ mod wait;
 mod wait_report;
 #[cfg(test)]
 mod wait_report_test;
+mod waker;
 
 pub use error::{
     CapacityKind, CapacityReason, CommitStatus, DeleteAllError, DeleteError, DeleteOwnedError,
-    Error, MutationError,
+    Error, MutationError, Operation, RecoveryFailure, RecoveryOutcome, RegisterError,
+    RegisterOwnedError,
 };
-pub use error::{Operation, RecoveryFailure, RecoveryOutcome, RegisterError, RegisterOwnedError};
 pub use event::{Event, Key, Readiness};
 pub use events::Events;
 pub use interest::Interest;
 pub use mode::Mode;
-pub use poll::{DEFAULT_EVENT_CAPACITY, DEFAULT_REGISTRATION_CAPACITY, Poll, PollBuilder, Waker};
+pub use poll::{DEFAULT_EVENT_CAPACITY, DEFAULT_REGISTRATION_CAPACITY, Poll, PollBuilder};
 pub use registration::{ArmState, DescriptorOwnership, RegistrationState};
 pub use registration::{Registration, RegistrationId, RegistrationInfo};
 pub use wait::Wait;
 pub use wait_report::WaitReport;
+pub use waker::Waker;
