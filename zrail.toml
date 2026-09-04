@@ -482,6 +482,7 @@ evidence = [
     "rust-test:crates/zio-testkit/tests/register_conformance.rs::register_branches_preserve_error_state_and_capabilities",
     "rust-test:crates/zio-testkit/tests/modify_conformance.rs::modify_branches_preserve_error_state_and_retries",
     "rust-test:crates/zio-testkit/tests/delete_conformance.rs::delete_branches_preserve_returned_handles_and_retries",
+    "rust-test:crates/zio-testkit/tests/delete_all.rs::delete_all_stops_and_returns_the_failed_registration",
     "gate:check",
     "gate:ci",
 ]
