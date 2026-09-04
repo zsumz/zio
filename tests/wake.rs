@@ -9,7 +9,7 @@
 
 mod support;
 
-use std::{io, io::Write, os::unix::net::UnixStream, thread, time::Duration};
+use std::{collections::HashSet, io, io::Write, os::unix::net::UnixStream, thread, time::Duration};
 
 use zio::{Event, Interest, Key, Mode, Poll, Wait};
 
@@ -124,6 +124,52 @@ fn repeated_wakes_do_not_starve_a_ready_resource() -> Result<(), Box<dyn std::er
 
     assert!(observed, "repeated wakes starved a ready resource");
     poll.delete(registration)?;
+    Ok(())
+}
+
+#[test]
+fn repeated_wakes_preserve_ready_set_fairness() -> Result<(), Box<dyn std::error::Error>> {
+    let mut poll = Poll::with_capacity(1, 3)?;
+    let mut sources = Vec::new();
+    let mut peers = Vec::new();
+    let mut registrations = Vec::new();
+    let keys = [Key::new(110), Key::new(111), Key::new(112)];
+    let expected = HashSet::from(keys);
+    for key in keys {
+        let (source, mut peer) = UnixStream::pair()?;
+        source.set_nonblocking(true)?;
+        peer.write_all(b"ready")?;
+        registrations.push(poll.register(&source, key, Interest::READABLE, Mode::Level)?);
+        sources.push(source);
+        peers.push(peer);
+    }
+    let wake_key = Key::new(113);
+    let waker = poll.waker(wake_key)?;
+    let mut events = poll.events()?;
+    let mut seen = HashSet::new();
+    let mut saw_wake = false;
+
+    for _ in 0..12 {
+        waker.wake()?;
+        require_no_recovery(poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?)?;
+        for event in &events {
+            match event {
+                Event::Resource { key, .. } => {
+                    seen.insert(*key);
+                }
+                Event::Wake { key, .. } => saw_wake |= *key == wake_key,
+            }
+        }
+        if seen == expected && saw_wake {
+            break;
+        }
+    }
+
+    assert_eq!(seen, expected);
+    assert_eq!(seen.len(), registrations.len());
+    assert!(saw_wake);
+    poll.delete_all()?;
+    drop((sources, peers));
     Ok(())
 }
 
