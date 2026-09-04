@@ -1,5 +1,4 @@
-//! Consumer-visible mutation, wake, and readiness conformance for [`zio`].
-//! Native wake and readiness checks use only the public [`zio::Poll`] API.
+//! Public-API mutation, wake, and native readiness conformance for [`zio`].
 #![deny(unsafe_code)]
 
 mod calls;
@@ -20,6 +19,7 @@ mod model_sequence_runner;
 #[cfg(test)]
 mod model_sequence_runner_test;
 mod model_sequence_step;
+mod model_sequence_transition;
 mod model_sequence_verify;
 mod modify;
 mod modify_commit;
