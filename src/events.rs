@@ -6,6 +6,7 @@ use crate::{CapacityKind, CapacityReason, Error, Event};
 
 /// Fixed-capacity destination preserving native resource order.
 /// A wake follows resource events, and registrations may share a key.
+/// One destination may serve any poller whose event capacity it meets.
 #[derive(Debug)]
 pub struct Events {
     capacity: NonZeroUsize,
