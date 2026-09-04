@@ -250,6 +250,7 @@ evidence = [
     "rust-test:crates/zio-testkit/tests/owned_registration.rs::owned_delete_failures_return_the_exact_capability",
     "rust-test:crates/zio-testkit/tests/terminal_identity.rs::delete_applied_stale_handle_survives_slot_reuse",
     "rust-test:crates/zio-testkit/tests/terminal_ownership.rs::wrong_poller_delete_returns_exact_handle_to_owner",
+    "rust-test:crates/zio-testkit/tests/terminal_ownership.rs::wrong_poller_delete_owned_returns_exact_handle_to_owner",
     "gate:check",
     "gate:ci",
 ]
