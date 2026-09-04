@@ -21,7 +21,7 @@
 //! ```
 //!
 //! Readiness is advisory; perform nonblocking I/O until it returns `WouldBlock`.
-#![deny(missing_docs)]
+#![deny(missing_debug_implementations, missing_docs, unreachable_pub)]
 #![deny(unsafe_code)]
 mod binding;
 #[cfg(test)]
