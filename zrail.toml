@@ -225,6 +225,8 @@ title = "Public value and capability traits remain stable"
 [[invariant]]
 document = "docs/contracts.md#api-evolution"
 evidence = [
+    "rust-test:tests/api_evolution/events.rs::flag_set_operations_and_queries_are_const",
+    "rust-test:tests/api_evolution/values.rs::caller_configuration_values_are_const",
     "rust-test:tests/api_evolution/values.rs::fixed_batch_cardinality_queries_are_const",
     "rust-test:tests/api_evolution/values.rs::fixed_batch_slice_queries_are_const",
     "gate:check",
@@ -232,7 +234,7 @@ evidence = [
 ]
 id = "API-CONST-01"
 status = "enforced"
-title = "Fixed-batch queries remain const"
+title = "Public configuration and fixed-batch queries remain const"
 
 [[invariant]]
 document = "docs/contracts.md#registration-ownership"
