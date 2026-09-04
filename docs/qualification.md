@@ -23,7 +23,7 @@ contents, and diff hygiene.
 
 | Platform | Evidence |
 | --- | --- |
-| Linux | Native tests through the canonical graph |
+| Linux | Native tests plus 32-bit x86 and 64-bit Arm API checks |
 | macOS | Native kqueue tests, Clippy, and rustdoc |
 | FreeBSD, NetBSD | Pinned native guest workflow plus MSRV and Clippy cross-builds |
 

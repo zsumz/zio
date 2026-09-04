@@ -504,6 +504,16 @@ title = "Performance receipts preserve method, provenance, resources, and delive
 [[invariant]]
 document = "docs/qualification.md#coverage"
 evidence = [
+    "rust-test:tests/api_evolution/poll.rs::poll_exposes_construction_and_observation",
+    "gate:ci",
+]
+id = "PLATFORM-LINUX-ARCH-01"
+status = "enforced"
+title = "Linux APIs compile on 32-bit x86 and 64-bit Arm"
+
+[[invariant]]
+document = "docs/qualification.md#coverage"
+evidence = [
     "rust-test:src/sys/kqueue_group/kqueue_disarm_test.rs::freebsd_and_netbsd_interruptions_are_applied",
     "rust-test:src/sys/kqueue_group/kqueue_disarm_matrix_test.rs::target_selected_interruption_policy_is_exact",
     "gate:ci",
