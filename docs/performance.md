@@ -75,8 +75,10 @@ The `sparse` row makes 1,024 of the million registrations ready. Run the fixed
 matrix with:
 
 ```sh
+run_id="$(uuidgen | tr '[:upper:]' '[:lower:]')"
 cargo run -p zio-qualify --release --no-default-features \
   --features kqueue-skew --bin zio-kqueue-skew -- \
+  --run-id "$run_id" \
   --output target/kqueue-skew.ndjson
 ```
 
@@ -85,7 +87,8 @@ Each row measures one complete fair cycle for level and one-shot delivery. Its
 delivered, nanoseconds per delivered event, waits required to complete the
 cycle, receipt-checked one-shot disarm submission cost, and currently retained
 heap bytes. It also records the file-descriptor limit and skips a row explicitly
-when the host cannot support it. `--smoke` replaces the matrix with five
+when the host cannot support it. The explicit run UUID binds all five rows to
+one dedicated-host capture. `--smoke` replaces the matrix with five
 registrations, capacity two, and three ready registrations.
 
 The runner uses the semver-exempt `unstable-test-support` wait counters; they are
@@ -98,7 +101,15 @@ weaker coalescing contract.
 The `Performance qualification` workflow records five independent Linux and
 macOS replicas. Linux also records lifecycle, persistent-readiness, and wake
 syscall summaries; traced timing output is discarded. Timings are evidence, not
-a CI threshold. Each successful matrix job emits a
-`zio.performance-qualification.v1` summary binding its 78 timing and 78
-allocation receipts to the exact clean commit, host OS, and replica. Compare
-equivalent hosts and inspect raw paired rounds before drawing conclusions.
+a CI threshold. The checked-in `crates/zio-qualify/perf-catalog.json` is
+byte-for-byte synchronized with the Rust candidate and scenario model.
+
+Each successful matrix job emits a `zio.performance-qualification.v2` summary.
+The recorder requires the exact 78-pair catalog in both raw files, 96 timing
+samples, 12 allocation samples, release binaries, every zio tier passing, and
+only catalogued peer limitations reported as unsupported. The summary retains
+SHA-256 digests of both raw files and the catalog, their recording timestamps,
+host and toolchain identity, and the GitHub run, attempt, job, OS, and replica.
+Stable qualification reopens the sibling raw files and reproduces every
+summary before accepting it. Compare equivalent hosts and inspect raw paired
+rounds before drawing conclusions.

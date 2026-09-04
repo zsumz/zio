@@ -81,15 +81,18 @@ jobs:
         if: runner.os == 'macOS'
         env:
           PERF_DIR: ${{ runner.temp }}/zio-performance
+          KQUEUE_RUN_ID: github-${{ github.run_id }}-${{ github.run_attempt }}-${{ runner.os }}-${{ matrix.replica }}
         run: |
           cargo +1.97.1 build -p zio-qualify --bin zio-kqueue-skew \
             --release --no-default-features --features kqueue-skew \
             --locked --offline
           target/release/zio-kqueue-skew --smoke \
+            --run-id "$KQUEUE_RUN_ID" \
             --output "$PERF_DIR/kqueue-skew-smoke.ndjson"
-          jq -e '
+          jq -e --arg run_id "$KQUEUE_RUN_ID" '
             .schema == "zio.kqueue-skew.v1" and
             .status == "passed" and
+            .run_id == $run_id and
             .git.sha == env.GITHUB_SHA and
             .git.dirty == false and
             .parameters.registrations == 5 and

@@ -21,6 +21,8 @@ mod measure;
 mod measure_test;
 mod metadata;
 mod mio_backend;
+#[cfg(test)]
+mod perf_catalog_test;
 mod persistent_workload;
 mod polling_backend;
 mod polling_direct;

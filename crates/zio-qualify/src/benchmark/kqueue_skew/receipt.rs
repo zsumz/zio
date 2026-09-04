@@ -8,6 +8,7 @@ use crate::benchmark::{json, metadata::Metadata};
 
 pub(super) fn encode(
     metadata: &Metadata,
+    run_id: &str,
     row: Row,
     resources: Resources,
     outcome: &Outcome,
@@ -26,6 +27,7 @@ pub(super) fn encode(
         },
         true,
     );
+    json::field_string(&mut output, "run_id", run_id, true);
     context(&mut output, metadata);
     parameters(&mut output, row);
     resource_limit(&mut output, resources);

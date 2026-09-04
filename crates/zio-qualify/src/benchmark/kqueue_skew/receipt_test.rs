@@ -11,6 +11,7 @@ use crate::benchmark::metadata;
 fn unsupported_receipt_preserves_parameters_and_limits() {
     let receipt = encode(
         &metadata::fixture(),
+        "01234567-89ab-4cde-8f01-23456789abcd",
         MATRIX[0],
         Resources {
             open_fds: Some(11),
@@ -24,6 +25,7 @@ fn unsupported_receipt_preserves_parameters_and_limits() {
         },
     );
     assert!(receipt.contains("\"schema\":\"zio.kqueue-skew.v1\""));
+    assert!(receipt.contains("\"run_id\":\"01234567-89ab-4cde-8f01-23456789abcd\""));
     assert!(receipt.contains("\"registrations\":100000"));
     assert!(receipt.contains("\"event_capacity\":64"));
     assert!(receipt.contains("\"ready_registrations\":100"));
@@ -50,6 +52,7 @@ fn passed_receipt_names_every_required_metric() {
     };
     let receipt = encode(
         &metadata::fixture(),
+        "01234567-89ab-4cde-8f01-23456789abcd",
         MATRIX[0],
         Resources {
             open_fds: Some(11),

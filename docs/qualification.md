@@ -83,16 +83,25 @@ scripts/qualify-1.0 \
 ```
 
 The macOS and BSD inputs must each contain the five exact full-matrix rows,
-with no missing, duplicate, unsupported, failed, dirty, or foreign-commit
-receipt. The validator also checks complete fair cycles and exact one-shot
-disarm counts. Performance evidence must contain all five clean Linux and five
-clean macOS replica summaries. The release rehearsal, performance summaries,
-and both native kqueue runs must name the same candidate SHA and crate version.
+with no missing, duplicate, unsupported, failed, dirty, malformed, or
+foreign-commit receipt. The validator requires release builds, one consistent
+host/run context, a distinct generated run UUID for each platform, integer
+metrics, complete fair cycles, and exact one-shot disarm counts.
 
-`scripts/test-qualify-1.0` constructs valid evidence and proves that missing
-rows, duplicates, unsupported results, dirty trees, foreign SHAs, incomplete
-performance replicas, and a mismatched release rehearsal are rejected by the
-canonical local gate.
+The performance path must contain all five Linux and five macOS artifact
+directories. Every `qualification-receipt.json` must retain sibling
+`timing.ndjson` and `allocation.ndjson` files. The gate revalidates their exact
+catalogs, pass states, sample counts, release profile, host/toolchain context,
+and SHA-256 digests, then rejects reused raw bytes across replica labels or
+summaries from different workflow runs. The release rehearsal, performance
+evidence, and both native kqueue runs must name the same candidate SHA and crate
+version.
+
+`scripts/test-qualify-1.0` constructs valid evidence and attacks both producer
+and consumer. It covers invented or mismatched benchmark pairs, invalid pass
+states, sample/profile drift, malformed numeric types, raw-file tampering,
+reused replica bytes, mixed workflow runs, incomplete matrices, dirty or
+foreign commits, and a mismatched release rehearsal.
 
 ## Dependency roles
 

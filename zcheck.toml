@@ -183,9 +183,9 @@ run = [
 tools = ["jq"]
 
 [tasks.stable-evidence-contract]
-description = "Reject incomplete, stale, dirty, or duplicated stable-release evidence."
+description = "Reject malformed, stale, unbound, reused, or incomplete stable evidence."
 run = ["scripts/test-qualify-1.0"]
-tools = ["bash", "jq"]
+tools = ["bash", "jq", "shasum"]
 
 [tasks.check]
 description = "Run complete local zio qualification."

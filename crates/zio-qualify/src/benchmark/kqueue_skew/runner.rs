@@ -23,18 +23,31 @@ pub fn run(args: impl IntoIterator<Item = OsString>) -> Result<(), String> {
     }
     let metadata = Metadata::collect();
     match config.output.as_deref() {
-        None => execute(config.rows(), &metadata, &mut io::stdout().lock()),
-        Some(path) if path == Path::new("-") => {
-            execute(config.rows(), &metadata, &mut io::stdout().lock())
-        }
+        None => execute(
+            config.rows(),
+            &config.run_id,
+            &metadata,
+            &mut io::stdout().lock(),
+        ),
+        Some(path) if path == Path::new("-") => execute(
+            config.rows(),
+            &config.run_id,
+            &metadata,
+            &mut io::stdout().lock(),
+        ),
         Some(path) => {
             let mut output = File::create(path).map_err(display)?;
-            execute(config.rows(), &metadata, &mut output)
+            execute(config.rows(), &config.run_id, &metadata, &mut output)
         }
     }
 }
 
-fn execute(rows: &[Row], metadata: &Metadata, output: &mut impl Write) -> Result<(), String> {
+fn execute(
+    rows: &[Row],
+    run_id: &str,
+    metadata: &Metadata,
+    output: &mut impl Write,
+) -> Result<(), String> {
     let mut failures = 0_usize;
     for &row in rows {
         let resources = resource::inspect(row)?;
@@ -46,7 +59,7 @@ fn execute(rows: &[Row], metadata: &Metadata, output: &mut impl Write) -> Result
         writeln!(
             output,
             "{}",
-            receipt::encode(metadata, row, resources, &outcome)
+            receipt::encode(metadata, run_id, row, resources, &outcome)
         )
         .map_err(display)?;
     }

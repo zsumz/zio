@@ -20,5 +20,23 @@ fn default_matrix_is_exact() {
 fn smoke_is_small_and_explicit() -> Result<(), String> {
     let config = Config::parse(["--smoke".into()])?;
     assert_eq!(config.rows(), &[Row::new(5, 2, 3, "smoke")]);
+    assert_eq!(config.run_id, "smoke-unbound");
+    Ok(())
+}
+
+#[test]
+fn full_matrix_requires_an_explicit_run_id() -> Result<(), String> {
+    let error = Config::parse([])
+        .err()
+        .ok_or_else(|| "full matrix accepted a missing run ID".to_owned())?;
+    assert_eq!(error, "--run-id is required for the full matrix");
+    let error = Config::parse(["--run-id".into(), "not-a-uuid".into()])
+        .err()
+        .ok_or_else(|| "full matrix accepted a malformed run ID".to_owned())?;
+    assert_eq!(error, "--run-id must be one lowercase hyphenated UUID");
+    let run_id = "01234567-89ab-4cde-8f01-23456789abcd";
+    let config = Config::parse(["--run-id".into(), run_id.into()])?;
+    assert_eq!(config.rows(), &MATRIX);
+    assert_eq!(config.run_id, run_id);
     Ok(())
 }

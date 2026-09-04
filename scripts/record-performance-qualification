@@ -8,12 +8,17 @@ if [[ "$#" -ne 6 ]]; then
   exit 2
 fi
 
+repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+catalog="$repository_root/crates/zio-qualify/perf-catalog.json"
 commit="$1"
 raw_os="$2"
 replica="$3"
 timing="$4"
 allocation="$5"
 output="$6"
+run_id="${GITHUB_RUN_ID:-}"
+run_attempt="${GITHUB_RUN_ATTEMPT:-}"
+job="${GITHUB_JOB:-}"
 
 [[ "$commit" =~ ^[0-9a-f]{40}$ ]] || {
   printf 'performance qualification requires one full lowercase Git SHA\n' >&2
@@ -28,8 +33,24 @@ esac
   printf 'performance qualification replica must be between 1 and 5\n' >&2
   exit 2
 }
-[[ -f "$timing" && -f "$allocation" ]] || {
-  printf 'performance qualification requires timing and allocation receipts\n' >&2
+[[ "$run_id" =~ ^[1-9][0-9]*$ ]] || {
+  printf 'performance qualification requires GITHUB_RUN_ID\n' >&2
+  exit 2
+}
+[[ "$run_attempt" =~ ^[1-9][0-9]*$ ]] || {
+  printf 'performance qualification requires GITHUB_RUN_ATTEMPT\n' >&2
+  exit 2
+}
+[[ "$job" =~ ^[A-Za-z0-9_.-]+$ ]] || {
+  printf 'performance qualification requires GITHUB_JOB\n' >&2
+  exit 2
+}
+[[ -f "$catalog" && -f "$timing" && -f "$allocation" ]] || {
+  printf 'performance qualification requires catalog, timing, and allocation receipts\n' >&2
+  exit 2
+}
+[[ "${timing##*/}" == 'timing.ndjson' && "${allocation##*/}" == 'allocation.ndjson' ]] || {
+  printf 'performance raw receipts must be named timing.ndjson and allocation.ndjson\n' >&2
   exit 2
 }
 [[ -d "$(dirname "$output")" ]] || {
@@ -37,6 +58,9 @@ esac
   exit 2
 }
 
+read -r catalog_sha256 _ < <(shasum -a 256 "$catalog")
+read -r timing_sha256 _ < <(shasum -a 256 "$timing")
+read -r allocation_sha256 _ < <(shasum -a 256 "$allocation")
 temporary="$(mktemp "$output.XXXXXX")"
 cleanup() {
   if [[ -n "$temporary" ]]; then
@@ -46,39 +70,164 @@ cleanup() {
 trap cleanup EXIT
 
 jq -e -n \
+  --slurpfile catalog "$catalog" \
   --slurpfile timing "$timing" \
   --slurpfile allocation "$allocation" \
   --arg commit "$commit" \
   --arg os "$os" \
-  --argjson replica "$replica" '
+  --argjson replica "$replica" \
+  --arg run_id "$run_id" \
+  --arg run_attempt "$run_attempt" \
+  --arg job "$job" \
+  --arg catalog_sha256 "$catalog_sha256" \
+  --arg timing_sha256 "$timing_sha256" \
+  --arg allocation_sha256 "$allocation_sha256" '
+  def integer: type == "number" and floor == .;
+  def natural: integer and . >= 0;
+  def positive: integer and . > 0;
+  def text: type == "string" and length > 0;
+  def natural_array($count):
+    type == "array" and length == $count and all(.[]; natural);
+  def positive_array($count):
+    type == "array" and length == $count and all(.[]; positive);
+  def expected_pairs($catalog):
+    [
+      $catalog.candidates[] as $candidate |
+      $catalog.scenarios[] as $scenario |
+      [$candidate, $scenario] |
+      select(. as $pair | (any($catalog.excluded_pairs[]; . == $pair) | not))
+    ] | sort;
+  def pairs: map([.candidate.name, .scenario.name]) | sort;
+  def outcomes:
+    map([.candidate.name, .scenario.name, .status, (.reason_code // null)]) | sort;
+  def known_unsupported($catalog):
+    . as $receipt |
+    any($catalog.known_unsupported[];
+      . == [$receipt.candidate.name, $receipt.scenario.name, $receipt.reason_code]);
+  def candidate_version($comparison):
+    if .candidate.name == "zio" then $comparison.zio
+    elif .candidate.name == "zio-borrowed" then $comparison.zio_borrowed
+    elif .candidate.name == "mio" then $comparison.mio
+    elif .candidate.name == "polling" then $comparison.polling
+    else null
+    end;
+  def passed_payload($metric; $samples):
+    if .status != "passed" then true
+    elif $metric == "timing" then
+      (.raw.round | natural_array($samples)) and
+      (.raw.order_position | natural_array($samples)) and
+      (.raw.operations | positive_array($samples)) and
+      (.raw.events | natural_array($samples)) and
+      (.raw.measured_elapsed_ns | positive_array($samples)) and
+      (.raw.sample_mean_ns_per_operation | positive_array($samples))
+    else
+      (.raw.round | natural_array($samples)) and
+      (.raw.order_position | natural_array($samples)) and
+      (.raw.operations | positive_array($samples)) and
+      (.raw.events | natural_array($samples)) and
+      (.raw.allocation_count_total | natural_array($samples)) and
+      (.raw.allocation_count_peak | natural_array($samples)) and
+      (.raw.allocation_bytes_total | natural_array($samples)) and
+      (.raw.allocation_bytes_peak | natural_array($samples)) and
+      (.raw.allocation_count_current | natural_array($samples)) and
+      (.raw.allocation_bytes_current | natural_array($samples))
+    end;
+  ($catalog[0]) as $catalog |
   ($timing + $allocation) as $all |
-  ($all[0].comparison_set.zio) as $version |
+  ($all[0].comparison_set) as $comparison |
+  ($timing[0].host.recorded_unix_ms) as $timing_recorded |
+  ($allocation[0].host.recorded_unix_ms) as $allocation_recorded |
+  (expected_pairs($catalog)) as $expected |
   if
+    ($catalog.schema == "zio.performance-catalog.v1") and
+    ($catalog.candidates | type) == "array" and
+    ($catalog.candidates | length) == 4 and
+    ($catalog.candidates | unique | length) == 4 and
+    ($catalog.scenarios | type) == "array" and
+    ($catalog.scenarios | length) == 20 and
+    ($catalog.scenarios | unique | length) == 20 and
+    ($catalog.excluded_pairs | type) == "array" and
+    ($catalog.excluded_pairs | length) == 2 and
+    ($catalog.excluded_pairs | unique | length) == 2 and
+    ($catalog.known_unsupported | type) == "array" and
+    ($catalog.known_unsupported | length) == 4 and
+    ($catalog.known_unsupported | unique | length) == 4 and
+    ($expected | length) == 78 and
     ($timing | length) == 78 and
     ($allocation | length) == 78 and
-    ([$timing[] | [.candidate.name, .scenario.name]] | unique | length) == 78 and
-    ([$allocation[] | [.candidate.name, .scenario.name]] | unique | length) == 78 and
-    all($timing[]; .metric == "timing") and
-    all($allocation[]; .metric == "allocation") and
+    ($timing | pairs) == $expected and
+    ($allocation | pairs) == $expected and
+    ($timing | outcomes) == ($allocation | outcomes) and
+    ($catalog.samples.timing | positive) and
+    ($catalog.samples.allocation | positive) and
+    ($catalog.build_profile == "release") and
+    ($timing_recorded | positive) and
+    ($allocation_recorded | positive) and
+    ($comparison.zio | text) and
+    $comparison.zio_borrowed == $comparison.zio and
+    ($comparison.mio | text) and
+    ($comparison.polling | text) and
+    ([$all[] | [.host.os, .host.os_version, .host.arch, .host.cpu]] | unique | length) == 1 and
+    ([$all[] | [.toolchain.rustc, .toolchain.rustflags, .toolchain.build_profile]] |
+      unique | length) == 1 and
+    all($timing[]; .host.recorded_unix_ms == $timing_recorded) and
+    all($allocation[]; .host.recorded_unix_ms == $allocation_recorded) and
     all($all[];
       .schema == "zio.perf.v2" and
-      (.status == "passed" or .status == "unsupported") and
+      .kind == "measurement" and
+      (.status == "passed" or
+        (.status == "unsupported" and known_unsupported($catalog) and (.reason | text))) and
       .git.sha == $commit and
       .git.dirty == false and
       .host.os == $os and
-      .comparison_set.zio == $version
+      (.host.os_version | text) and
+      (.host.arch | text) and
+      (.host.cpu | text) and
+      (.host.recorded_unix_ms | positive) and
+      (.toolchain.rustc | text) and
+      (.toolchain.rustflags | text) and
+      .toolchain.build_profile == $catalog.build_profile and
+      .comparison_set == $comparison and
+      .candidate.version == candidate_version($comparison) and
+      .harness.crate == "zio-qualify" and
+      .harness.version == $comparison.zio and
+      (.parameters.iterations | positive) and
+      (.parameters.warmup_iterations | natural) and
+      passed_payload(.metric; .parameters.samples)
+    ) and
+    all($timing[];
+      .metric == "timing" and .parameters.samples == $catalog.samples.timing
+    ) and
+    all($allocation[];
+      .metric == "allocation" and .parameters.samples == $catalog.samples.allocation
     )
   then {
-    schema: "zio.performance-qualification.v1",
+    schema: "zio.performance-qualification.v2",
     status: "passed",
-    zio_version: $version,
+    zio_version: $comparison.zio,
     git: {sha: $commit, dirty: false},
-    host: {os: $os},
+    host: {
+      os: $os,
+      os_version: $all[0].host.os_version,
+      arch: $all[0].host.arch,
+      cpu: $all[0].host.cpu
+    },
+    toolchain: {
+      rustc: $all[0].toolchain.rustc,
+      rustflags: $all[0].toolchain.rustflags,
+      build_profile: $catalog.build_profile
+    },
+    github: {run_id: $run_id, run_attempt: $run_attempt, job: $job},
     replica: $replica,
     timing_receipts: ($timing | length),
-    allocation_receipts: ($allocation | length)
+    allocation_receipts: ($allocation | length),
+    timing_recorded_unix_ms: $timing_recorded,
+    allocation_recorded_unix_ms: $allocation_recorded,
+    timing_sha256: $timing_sha256,
+    allocation_sha256: $allocation_sha256,
+    catalog_sha256: $catalog_sha256
   }
-  else error("performance receipts do not prove this clean matrix job")
+  else error("performance receipts do not prove this clean catalog job")
   end
 ' > "$temporary"
 mv "$temporary" "$output"

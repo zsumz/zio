@@ -13,6 +13,9 @@ zcheck run check --jobs 2
 zrail diff --base origin/main --deny-grants
 ```
 
+The stable-evidence task and its Rust integration test require Bash, `jq`, and
+`shasum` on the developer host.
+
 See [Qualification](docs/qualification.md) for platform and evidence lanes.
 Changes to ownership, registration generations, unsafe code, event storage, or
 kqueue receipts should include focused failure-path tests and an updated safety

@@ -32,9 +32,7 @@ pub(crate) fn support(
     if let Some(reason) = resource_limit::preflight(implementation, scenario)? {
         return Ok(Support::Unavailable(reason));
     }
-    if implementation == Implementation::Polling
-        && (scenario == Scenario::LevelRepeat || scenario.is_persistent())
-    {
+    if implementation == Implementation::Polling && scenario.requires_polling_level_support() {
         return PollingBackend::supports_level().map(|supported| {
             if supported {
                 Support::Available
