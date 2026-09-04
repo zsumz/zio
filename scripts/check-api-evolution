@@ -144,6 +144,7 @@ printf '%s\n' \
   '    assert_hash::<Wait>();' \
   '    assert_from::<Wait, std::time::Duration>();' \
   '    assert_from::<Wait, Option<std::time::Duration>>();' \
+  '    assert_from::<Option<std::time::Duration>, Wait>();' \
   '    let _: Result<Key, std::num::TryFromIntError> = Key::try_from(0_usize);' \
   '    let _: Result<usize, std::num::TryFromIntError> = usize::try_from(Key::ZERO);' \
   '    assert_display::<Key>();' \
