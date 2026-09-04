@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+helper="$repository_root/scripts/configure-performance-fd-limit"
+
+(
+  hard_limit="$(ulimit -Hn)"
+  expected_limit=8192
+  if [[ "$hard_limit" != unlimited ]]; then
+    [[ "$hard_limit" =~ ^[0-9]+$ ]] || {
+      printf 'unexpected hard descriptor limit: %s\n' "$hard_limit" >&2
+      exit 1
+    }
+    if [[ "$hard_limit" -lt "$expected_limit" ]]; then
+      expected_limit="$hard_limit"
+    fi
+  fi
+
+  source "$helper"
+
+  [[ "$ZIO_PERFORMANCE_FD_SOFT_LIMIT" == "$expected_limit" ]] || {
+    printf 'configured descriptor limit does not match the bounded target\n' >&2
+    exit 1
+  }
+  [[ "$(ulimit -Sn)" == "$ZIO_PERFORMANCE_FD_SOFT_LIMIT" ]] || {
+    printf 'configured descriptor limit did not affect the current shell\n' >&2
+    exit 1
+  }
+  child_limit="$(bash -c 'printf "%s" "$ZIO_PERFORMANCE_FD_SOFT_LIMIT"')"
+  [[ "$child_limit" == "$ZIO_PERFORMANCE_FD_SOFT_LIMIT" ]] || {
+    printf 'configured descriptor limit was not exported\n' >&2
+    exit 1
+  }
+)
+
+printf 'performance descriptor limit contract passed\n'

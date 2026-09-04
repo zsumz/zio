@@ -6,7 +6,8 @@ record_performance="$repository_root/scripts/record-performance-qualification"
 
 usage() {
   printf '%s\n' \
-    'usage: scripts/qualify-1.0 --commit SHA --macos-receipts PATH' \
+    'usage: scripts/qualify-1.0 --commit SHA --version VERSION' \
+    '       --macos-receipts PATH' \
     '       --bsd-receipts PATH --performance-receipts PATH' \
     '       --release-rehearsal-receipt FILE'
 }
@@ -17,6 +18,7 @@ fail() {
 }
 
 commit=''
+expected_version=''
 macos_receipts=''
 bsd_receipts=''
 performance_receipts=''
@@ -28,6 +30,12 @@ while (($# > 0)); do
       (($# >= 2)) || fail '--commit requires a value'
       [[ -z "$commit" ]] || fail '--commit may be supplied only once'
       commit="$2"
+      shift 2
+      ;;
+    --version)
+      (($# >= 2)) || fail '--version requires a value'
+      [[ -z "$expected_version" ]] || fail '--version may be supplied only once'
+      expected_version="$2"
       shift 2
       ;;
     --macos-receipts)
@@ -66,10 +74,33 @@ while (($# > 0)); do
 done
 
 [[ "$commit" =~ ^[0-9a-f]{40}$ ]] || fail '--commit must be one full lowercase Git SHA'
+[[ "$expected_version" == '1.0.0' ||
+  "$expected_version" =~ ^1\.0\.0-rc\.[1-9][0-9]*$ ]] || \
+  fail '--version must be 1.0.0 or 1.0.0-rc.N'
 [[ -n "$macos_receipts" ]] || fail '--macos-receipts is required'
 [[ -n "$bsd_receipts" ]] || fail '--bsd-receipts is required'
 [[ -n "$performance_receipts" ]] || fail '--performance-receipts is required'
 [[ -f "$release_receipt" ]] || fail 'release-rehearsal receipt must be a file'
+
+checkout_commit="$(git -C "$repository_root" rev-parse --verify HEAD 2>/dev/null)" || \
+  fail 'repository checkout does not have a readable HEAD'
+[[ "$checkout_commit" == "$commit" ]] || fail 'current checkout is not the candidate commit'
+[[ -z "$(git -C "$repository_root" status --porcelain --untracked-files=all)" ]] || \
+  fail 'current checkout is dirty'
+
+workspace_version="$({
+  cargo metadata --manifest-path "$repository_root/Cargo.toml" \
+    --no-deps --format-version 1 --locked --offline |
+    jq -er '
+      [.packages[] | select(.name == "zio")] as $packages |
+      if ($packages | length) == 1
+      then $packages[0].version
+      else error("workspace must contain exactly one zio package")
+      end
+    '
+} 2>/dev/null)" || fail 'workspace zio version could not be read'
+[[ "$workspace_version" == "$expected_version" ]] || \
+  fail 'workspace zio version does not match --version'
 
 scratch="$(mktemp -d "${TMPDIR:-/tmp}/zio-1.0-evidence.XXXXXX")"
 cleanup() {
@@ -171,14 +202,14 @@ collect_performance() {
 }
 
 release_version="$({
-  jq -er --arg commit "$commit" '
+  jq -er --arg commit "$commit" --arg version "$expected_version" '
     if
       .schema == "zio.release-rehearsal.v1" and
       .status == "passed" and
       .commit == $commit and
       .git.sha == $commit and
       .git.dirty == false and
-      (.version | type == "string" and length > 0) and
+      .version == $version and
       (.archive_sha256 | test("^[0-9a-f]{64}$"))
     then .version
     else error("release receipt does not prove the clean candidate")

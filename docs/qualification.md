@@ -76,11 +76,18 @@ Stable release evidence is accepted only through the repository validator:
 ```sh
 scripts/qualify-1.0 \
   --commit "$(git rev-parse HEAD)" \
-  --macos-receipts evidence/kqueue/macos.ndjson \
-  --bsd-receipts evidence/kqueue/freebsd.ndjson \
-  --performance-receipts evidence/performance \
-  --release-rehearsal-receipt evidence/release/receipt.json
+  --version "1.0.0-rc.1" \
+  --macos-receipts ../zio-evidence/kqueue/macos.ndjson \
+  --bsd-receipts ../zio-evidence/kqueue/freebsd.ndjson \
+  --performance-receipts ../zio-evidence/performance \
+  --release-rehearsal-receipt ../zio-evidence/release/receipt.json
 ```
+
+Use the exact intended version: `1.0.0-rc.N` while qualifying a release
+candidate and `1.0.0` for stable. Before reading evidence, the validator
+requires the repository checkout to be clean, requires `HEAD` to equal
+`--commit`, and resolves the workspace's zio version through Cargo metadata to
+prove that it equals `--version`.
 
 The macOS and BSD inputs must each contain the five exact full-matrix rows,
 with no missing, duplicate, unsupported, failed, dirty, malformed, or

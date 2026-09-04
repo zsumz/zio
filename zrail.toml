@@ -92,9 +92,11 @@ inputs = [
     "examples/owned.rs",
     "examples/recovery.rs",
     "scripts/check-api-evolution",
+    "scripts/configure-performance-fd-limit",
     "scripts/qualify-1.0",
     "scripts/record-performance-qualification",
     "scripts/rehearse-release",
+    "scripts/test-performance-fd-limit",
     "scripts/test-qualify-1.0",
 ]
 kind = "local"
@@ -188,8 +190,10 @@ inputs = [
     "src/poll.rs",
     "src/test_support/mod.rs",
     "src/test_support/wait_metrics.rs",
+    "scripts/configure-performance-fd-limit",
     "scripts/qualify-1.0",
     "scripts/record-performance-qualification",
+    "scripts/test-performance-fd-limit",
 ]
 kind = "ci"
 name = "performance"

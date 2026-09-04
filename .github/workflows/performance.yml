@@ -46,18 +46,13 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$PERF_DIR"
-          hard_limit="$(ulimit -Hn)"
-          desired_limit=8192
-          if [[ "$hard_limit" != unlimited && "$hard_limit" -lt "$desired_limit" ]]; then
-            desired_limit="$hard_limit"
-          fi
-          ulimit -Sn "$desired_limit"
+          source scripts/configure-performance-fd-limit
           {
             uname -a
             rustc +1.97.1 -vV
             git rev-parse HEAD
             printf 'replica=%s\n' '${{ matrix.replica }}'
-            printf 'open-file-soft-limit=%s\n' "$(ulimit -n)"
+            printf 'open-file-soft-limit=%s\n' "$ZIO_PERFORMANCE_FD_SOFT_LIMIT"
           } > "$PERF_DIR/platform.txt"
           target/release/zio-perf \
             --output "$PERF_DIR/timing.ndjson" \
@@ -72,10 +67,14 @@ jobs:
       - name: Capture instrumented allocation receipts
         env:
           PERF_DIR: ${{ runner.temp }}/zio-performance
-        run: >-
-          target/release/zio-perf-alloc
-          --output "$PERF_DIR/allocation.ndjson"
-          2> "$PERF_DIR/allocation-summary.txt"
+        run: |
+          set -euo pipefail
+          source scripts/configure-performance-fd-limit
+          printf 'allocation-open-file-soft-limit=%s\n' \
+            "$ZIO_PERFORMANCE_FD_SOFT_LIMIT" >> "$PERF_DIR/platform.txt"
+          target/release/zio-perf-alloc \
+            --output "$PERF_DIR/allocation.ndjson" \
+            2> "$PERF_DIR/allocation-summary.txt"
 
       - name: Validate kqueue skew receipt path
         if: runner.os == 'macOS'

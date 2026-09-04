@@ -51,6 +51,9 @@ descriptor duplicate; its unsafe tier borrows each caller-owned descriptor.
 Initial readiness includes registration and deletion. Persistent readiness
 isolates the already-registered hot path. Large batches are skipped with a
 structured reason when the process file-descriptor limit is too small.
+The hosted workflow sources `scripts/configure-performance-fd-limit` in both
+capture steps, establishing the same soft limit for timing and allocation and
+recording both observed limits in the uploaded platform receipt.
 
 ## Kqueue skew gate
 

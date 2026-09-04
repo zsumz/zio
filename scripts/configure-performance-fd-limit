@@ -1,0 +1,14 @@
+# This file is sourced so the raised soft limit applies to the benchmark process.
+
+_zio_performance_fd_hard_limit="$(ulimit -Hn)"
+ZIO_PERFORMANCE_FD_SOFT_LIMIT=8192
+
+if [[ "$_zio_performance_fd_hard_limit" != unlimited &&
+  "$_zio_performance_fd_hard_limit" -lt "$ZIO_PERFORMANCE_FD_SOFT_LIMIT" ]]; then
+  ZIO_PERFORMANCE_FD_SOFT_LIMIT="$_zio_performance_fd_hard_limit"
+fi
+
+ulimit -Sn "$ZIO_PERFORMANCE_FD_SOFT_LIMIT"
+ZIO_PERFORMANCE_FD_SOFT_LIMIT="$(ulimit -Sn)"
+export ZIO_PERFORMANCE_FD_SOFT_LIMIT
+unset _zio_performance_fd_hard_limit
