@@ -21,15 +21,38 @@ fn copied_handle_rejects_wrong_poller_without_backend_calls() -> Result<(), Box<
     let registration = owner.register(&source, KEY, Interest::READABLE, Mode::OneShot)?;
     let id = registration.id();
     let state_copy = registration;
+    let info_copy = registration;
+    let descriptor_copy = registration;
+    let key_copy = registration;
     let modify_copy = registration;
+    let keyed_modify_copy = registration;
+    let rearm_copy = registration;
     let delete_copy = registration;
     let cleanup_copy = registration;
 
-    expect_wrong_poller_state(stranger.registration_state(&state_copy), state_copy)?;
+    expect_wrong_poller(stranger.registration_state(&state_copy), state_copy)?;
+    expect_wrong_poller(stranger.registration_info(&info_copy), info_copy)?;
+    expect_wrong_poller(stranger.registration_fd(&descriptor_copy), descriptor_copy)?;
+    check_eq(
+        &stranger.contains(&registration),
+        &false,
+        "stranger membership",
+    )?;
+    expect_wrong_poller(stranger.set_key(&key_copy, Key::new(803)), key_copy)?;
     expect_wrong_poller(
         stranger.modify(&modify_copy, Interest::WRITABLE, Mode::Level),
         modify_copy,
     )?;
+    expect_wrong_poller(
+        stranger.modify_with_key(
+            &keyed_modify_copy,
+            Key::new(804),
+            Interest::WRITABLE,
+            Mode::Level,
+        ),
+        keyed_modify_copy,
+    )?;
+    expect_wrong_poller(stranger.rearm(&rearm_copy), rearm_copy)?;
     let returned = expect_wrong_poller_delete(stranger.delete(delete_copy), delete_copy)?;
     check_eq(&returned, &registration, "wrong-poller returned copy")?;
     check_eq(&stranger.calls().len(), &0, "stranger backend calls")?;
@@ -45,6 +68,11 @@ fn copied_handle_rejects_wrong_poller_without_backend_calls() -> Result<(), Box<
         &backend_registered(),
         "owner backend state",
     )?;
+    check_eq(
+        &owner.registration_info(&registration)?.key(),
+        &KEY,
+        "owner key",
+    )?;
     owner.delete(cleanup_copy)?;
     check_eq(&owner.calls().len(), &2, "owner cleanup calls")?;
     owner.finish()?;
@@ -52,17 +80,10 @@ fn copied_handle_rejects_wrong_poller_without_backend_calls() -> Result<(), Box<
     Ok(())
 }
 
-fn expect_wrong_poller_state(
-    result: Result<RegistrationState, Error>,
+fn expect_wrong_poller<T: Debug>(
+    result: Result<T, Error>,
     expected: Registration,
 ) -> Result<(), io::Error> {
-    match result {
-        Err(error) => expect_wrong_poller(Err(error), expected),
-        Ok(actual) => Err(failure("WrongPoller state error", actual)),
-    }
-}
-
-fn expect_wrong_poller(result: Result<(), Error>, expected: Registration) -> Result<(), io::Error> {
     match result {
         Err(Error::WrongPoller { registration }) => {
             check_eq(&registration, &expected, "wrong-poller identity")
@@ -80,7 +101,7 @@ fn expect_wrong_poller_delete(
     };
     let retained = error.registration();
     let (cause, returned) = error.into_parts();
-    expect_wrong_poller(Err(cause), expected)?;
+    expect_wrong_poller::<()>(Err(cause), expected)?;
     check_eq(&retained, &returned, "wrong-poller error copies")?;
     Ok(returned)
 }
