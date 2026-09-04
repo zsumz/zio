@@ -54,6 +54,53 @@ fn flag_sets_support_standard_set_operators() {
 }
 
 #[test]
+fn flag_set_operations_and_queries_are_const() {
+    const fn interest_contract(interest: zio::Interest) -> ([bool; 5], [zio::Interest; 5]) {
+        (
+            [
+                interest.is_empty(),
+                interest.contains(zio::Interest::READABLE),
+                interest.intersects(zio::Interest::WRITABLE),
+                interest.is_readable(),
+                interest.is_writable(),
+            ],
+            [
+                interest.union(zio::Interest::READABLE),
+                interest.intersection(zio::Interest::READABLE),
+                interest.difference(zio::Interest::READABLE),
+                interest.symmetric_difference(zio::Interest::READABLE),
+                interest.complement(),
+            ],
+        )
+    }
+
+    const fn readiness_contract(readiness: Readiness) -> ([bool; 8], [Readiness; 5]) {
+        (
+            [
+                readiness.is_empty(),
+                readiness.contains(Readiness::READABLE),
+                readiness.intersects(Readiness::WRITABLE),
+                readiness.is_readable(),
+                readiness.is_writable(),
+                readiness.is_read_closed(),
+                readiness.is_write_closed(),
+                readiness.is_error(),
+            ],
+            [
+                readiness.union(Readiness::READABLE),
+                readiness.intersection(Readiness::READABLE),
+                readiness.difference(Readiness::READABLE),
+                readiness.symmetric_difference(Readiness::READABLE),
+                readiness.complement(),
+            ],
+        )
+    }
+
+    let _ = interest_contract as fn(zio::Interest) -> ([bool; 5], [zio::Interest; 5]);
+    let _ = readiness_contract as fn(Readiness) -> ([bool; 8], [Readiness; 5]);
+}
+
+#[test]
 fn event_and_wait_values_are_hashable() {
     assert_hash::<Event>();
     assert_hash::<Wait>();

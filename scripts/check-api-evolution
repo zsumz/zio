@@ -238,6 +238,7 @@ printf '%s\n' \
   '    let _ = interest.complement();' \
   '    let _ = interest.is_readable();' \
   '    let _ = interest.is_writable();' \
+  '    let _ = const_interest_contract as fn(zio::Interest) -> ([bool; 5], [zio::Interest; 5]);' \
   '    let _ = !interest;' \
   '    interest |= zio::Interest::WRITABLE;' \
   '    interest &= zio::Interest::WRITABLE;' \
@@ -261,6 +262,7 @@ printf '%s\n' \
   '    let _ = readiness.is_read_closed();' \
   '    let _ = readiness.is_write_closed();' \
   '    let _ = readiness.is_error();' \
+  '    let _ = const_readiness_contract as fn(zio::Readiness) -> ([bool; 8], [zio::Readiness; 5]);' \
   '    readiness |= zio::Readiness::ERROR;' \
   '    readiness &= zio::Readiness::READ_CLOSED | zio::Readiness::ERROR;' \
   '    readiness ^= zio::Readiness::READABLE;' \
@@ -304,6 +306,20 @@ printf '%s\n' \
   'fn assert_debug_send<T: std::fmt::Debug + Send>() {}' \
   '' \
   'fn assert_clone_debug_send_sync<T: Clone + std::fmt::Debug + Send + Sync>() {}' \
+  '' \
+  'const fn const_interest_contract(interest: zio::Interest) -> ([bool; 5], [zio::Interest; 5]) {' \
+  '    (' \
+  '        [interest.is_empty(), interest.contains(zio::Interest::READABLE), interest.intersects(zio::Interest::WRITABLE), interest.is_readable(), interest.is_writable()],' \
+  '        [interest.union(zio::Interest::READABLE), interest.intersection(zio::Interest::READABLE), interest.difference(zio::Interest::READABLE), interest.symmetric_difference(zio::Interest::READABLE), interest.complement()],' \
+  '    )' \
+  '}' \
+  '' \
+  'const fn const_readiness_contract(readiness: zio::Readiness) -> ([bool; 8], [zio::Readiness; 5]) {' \
+  '    (' \
+  '        [readiness.is_empty(), readiness.contains(zio::Readiness::READABLE), readiness.intersects(zio::Readiness::WRITABLE), readiness.is_readable(), readiness.is_writable(), readiness.is_read_closed(), readiness.is_write_closed(), readiness.is_error()],' \
+  '        [readiness.union(zio::Readiness::READABLE), readiness.intersection(zio::Readiness::READABLE), readiness.difference(zio::Readiness::READABLE), readiness.symmetric_difference(zio::Readiness::READABLE), readiness.complement()],' \
+  '    )' \
+  '}' \
   '' \
   'const fn event_cardinality(events: &Events) -> (usize, bool, usize, bool) {' \
   '    (events.len(), events.is_empty(), events.remaining_capacity(), events.is_full())' \
