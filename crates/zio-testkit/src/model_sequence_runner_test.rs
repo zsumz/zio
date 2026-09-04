@@ -203,6 +203,7 @@ const fn mode_byte(mode: zio::Mode) -> u8 {
     match mode {
         zio::Mode::Level => 0,
         zio::Mode::OneShot => 1,
+        _ => 2,
     }
 }
 

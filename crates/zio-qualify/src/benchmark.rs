@@ -13,6 +13,8 @@ mod config_test;
 mod json;
 #[cfg(test)]
 mod json_test;
+#[cfg(feature = "kqueue-skew")]
+mod kqueue_skew;
 mod lifecycle_workload;
 mod measure;
 #[cfg(test)]
@@ -68,6 +70,9 @@ pub fn run_perf(args: impl IntoIterator<Item = OsString>) -> Result<(), String> 
     }
     run(args, Metric::Timing)
 }
+
+#[cfg(feature = "kqueue-skew")]
+pub use kqueue_skew::run as run_kqueue_skew;
 
 /// Runs the allocation-only private resource qualification command.
 #[cfg(feature = "allocation-metrics")]

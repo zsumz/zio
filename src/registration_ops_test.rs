@@ -1,22 +1,26 @@
 //! Lazy owner assignment through the public mutation surface.
 
 use std::{
+    cell::Cell,
     error::Error as StdError,
     os::{
-        fd::{AsFd, AsRawFd},
+        fd::{AsFd, AsRawFd, BorrowedFd},
         unix::net::UnixStream,
     },
 };
 
 use crate::{
-    ArmState, DescriptorOwnership, Error, Interest, Key, Mode, Poll, RegisterOwnedError,
-    RegistrationState,
+    ArmState, DescriptorOwnership, Error, Interest, Key, Mode, Poll, RegisterError,
+    RegisterOwnedError, RegistrationState,
 };
 
 #[test]
 fn registration_info_tracks_committed_configuration() -> Result<(), Box<dyn StdError>> {
     let (source, _peer) = UnixStream::pair()?;
-    let mut poll = Poll::with_capacity(1, 1)?;
+    let mut poll = Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(1)
+        .build()?;
     let registration = poll.register(&source, Key::new(7), Interest::READABLE, Mode::Level)?;
 
     let initial = poll.registration_info(&registration)?;
@@ -56,7 +60,10 @@ fn owned_registration_round_trips_the_transferred_descriptor() -> Result<(), Box
     let (source, _peer) = UnixStream::pair()?;
     let descriptor = source.as_fd().try_clone_to_owned()?;
     let raw = descriptor.as_raw_fd();
-    let mut poll = Poll::with_capacity(1, 1)?;
+    let mut poll = Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(1)
+        .build()?;
 
     let registration =
         poll.register_owned(descriptor, Key::new(8), Interest::READABLE, Mode::Level)?;
@@ -75,7 +82,10 @@ fn owned_registration_round_trips_the_transferred_descriptor() -> Result<(), Box
 #[test]
 fn duplicated_registration_releases_its_owned_duplicate() -> Result<(), Box<dyn StdError>> {
     let (source, _peer) = UnixStream::pair()?;
-    let mut poll = Poll::with_capacity(1, 1)?;
+    let mut poll = Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(1)
+        .build()?;
     let registration = poll.register(&source, Key::new(10), Interest::READABLE, Mode::Level)?;
     let retained = poll.registration_fd(&registration)?.as_raw_fd();
 
@@ -92,7 +102,10 @@ fn rejected_owned_registration_returns_the_transferred_descriptor() -> Result<()
     let (source, _peer) = UnixStream::pair()?;
     let descriptor = source.as_fd().try_clone_to_owned()?;
     let raw = descriptor.as_raw_fd();
-    let mut poll = Poll::with_capacity(1, 1)?;
+    let mut poll = Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(1)
+        .build()?;
 
     let Err(RegisterOwnedError::Returned { error, descriptor }) =
         poll.register_owned(descriptor, Key::new(9), Interest::EMPTY, Mode::Level)
@@ -110,7 +123,10 @@ fn rejected_owned_registration_returns_the_transferred_descriptor() -> Result<()
 #[test]
 fn invalid_interest_leaves_owner_unassigned() -> Result<(), Box<dyn StdError>> {
     let (source, _peer) = UnixStream::pair()?;
-    let mut poll = Poll::with_capacity(1, 1)?;
+    let mut poll = Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(1)
+        .build()?;
 
     let Err(error) = poll.register(&source, Key::new(1), Interest::EMPTY, Mode::Level) else {
         return Err("empty interest unexpectedly registered".into());
@@ -122,10 +138,46 @@ fn invalid_interest_leaves_owner_unassigned() -> Result<(), Box<dyn StdError>> {
 }
 
 #[test]
+fn full_safe_registration_does_not_borrow_or_duplicate_the_source() -> Result<(), Box<dyn StdError>>
+{
+    let (retained, _retained_peer) = UnixStream::pair()?;
+    let (candidate, _candidate_peer) = UnixStream::pair()?;
+    let candidate = ObservedSource {
+        source: candidate,
+        borrows: Cell::new(0),
+    };
+    let mut poll = Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(1)
+        .build()?;
+    let registration = poll.register(&retained, Key::new(20), Interest::READABLE, Mode::Level)?;
+
+    let result = poll.register(&candidate, Key::new(21), Interest::READABLE, Mode::Level);
+
+    assert!(matches!(
+        result.as_ref().map_err(RegisterError::error),
+        Err(Error::Capacity {
+            kind: crate::CapacityKind::Registration,
+            limit: 1,
+            reason: crate::CapacityReason::Exhausted,
+        })
+    ));
+    assert_eq!(candidate.borrows.get(), 0);
+    poll.delete(registration)?;
+    Ok(())
+}
+
+#[test]
 fn wrong_poller_check_does_not_assign_stranger() -> Result<(), Box<dyn StdError>> {
     let (source, _peer) = UnixStream::pair()?;
-    let mut owner = Poll::with_capacity(1, 1)?;
-    let mut stranger = Poll::with_capacity(1, 1)?;
+    let mut owner = Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(1)
+        .build()?;
+    let mut stranger = Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(1)
+        .build()?;
     let registration = owner.register(&source, Key::new(2), Interest::READABLE, Mode::Level)?;
 
     let result = stranger.registration_state(&registration);
@@ -146,8 +198,14 @@ fn wrong_poller_check_does_not_assign_stranger() -> Result<(), Box<dyn StdError>
 #[test]
 fn membership_tracks_exact_retained_generations() -> Result<(), Box<dyn StdError>> {
     let (source, _peer) = UnixStream::pair()?;
-    let mut poll = Poll::with_capacity(1, 1)?;
-    let stranger = Poll::with_capacity(1, 1)?;
+    let mut poll = Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(1)
+        .build()?;
+    let stranger = Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(1)
+        .build()?;
     assert!(poll.is_empty());
 
     let registration = poll.register(&source, Key::new(4), Interest::READABLE, Mode::Level)?;
@@ -159,4 +217,16 @@ fn membership_tracks_exact_retained_generations() -> Result<(), Box<dyn StdError
     assert!(!poll.contains(&registration));
     assert!(poll.is_empty());
     Ok(())
+}
+
+struct ObservedSource {
+    source: UnixStream,
+    borrows: Cell<usize>,
+}
+
+impl AsFd for ObservedSource {
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        self.borrows.set(self.borrows.get().saturating_add(1));
+        self.source.as_fd()
+    }
 }

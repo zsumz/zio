@@ -190,7 +190,6 @@ printf '%s\n' \
   '    let _: usize = zio::DEFAULT_REGISTRATION_CAPACITY;' \
   '    let _ = Poll::has_native_backend as fn() -> bool;' \
   '    let _ = Poll::new as fn() -> Result<Poll, Error>;' \
-  '    let _ = Poll::with_capacity as fn(usize, usize) -> Result<Poll, Error>;' \
   '    let _ = Poll::events as fn(&Poll) -> Result<Events, Error>;' \
   '    let _ = Waker::key as fn(&Waker) -> Key;' \
   '    let _ = Waker::will_wake as fn(&Waker, &Waker) -> bool;' \
@@ -441,6 +440,7 @@ printf '%s\n' \
   '    match mode {' \
   '        Mode::Level => 0,' \
   '        Mode::OneShot => 1,' \
+  '        _ => 2,' \
   '    }' \
   '}' \
   '' \
@@ -555,6 +555,21 @@ printf '%s\n' \
   > "$consumer_dir/examples/capacity-reason-without-wildcard.rs"
 
 printf '%s\n' \
+  'use zio::Mode;' \
+  '' \
+  'fn main() {' \
+  '    let _ = classify(Mode::Level);' \
+  '}' \
+  '' \
+  'fn classify(mode: Mode) -> u8 {' \
+  '    match mode {' \
+  '        Mode::Level => 0,' \
+  '        Mode::OneShot => 1,' \
+  '    }' \
+  '}' \
+  > "$consumer_dir/examples/mode-without-wildcard.rs"
+
+printf '%s\n' \
   'use zio::Error;' \
   '' \
   'fn main() {' \
@@ -617,7 +632,7 @@ printf '%s\n' \
   > "$consumer_dir/examples/must-use-values.rs"
 
 printf '%s\n' \
-  'use zio::{DeleteAllError, DeleteError, DeleteOwnedError, Error, Mode, MutationError, PollBuilder, RegisterError, RegisterOwnedError, RegistrationId};' \
+  'use zio::{DeleteAllError, DeleteError, DeleteOwnedError, Error, Mode, MutationError, Poll, PollBuilder, RegisterError, RegisterOwnedError, RegistrationId};' \
   '' \
   'fn main() {}' \
   '' \
@@ -627,6 +642,7 @@ printf '%s\n' \
   '    let _ = mode.is_one_shot();' \
   '    let _ = id.get();' \
   '    let _ = PollBuilder::new().build_with_events();' \
+  '    let _ = Poll::with_capacity(1, 1);' \
   '}' \
   '' \
   '#[allow(dead_code)]' \
@@ -758,9 +774,9 @@ assert_intentional_omissions() {
     exit 1
   fi
 
-  test "$(grep -Ec '^error\[E[0-9]+\]:' "$stderr_file")" -eq 9
+  test "$(grep -Ec '^error\[E[0-9]+\]:' "$stderr_file")" -eq 10
   test "$(grep -Fc 'error[E0277]:' "$stderr_file")" -eq 5
-  test "$(grep -Fc 'error[E0599]:' "$stderr_file")" -eq 2
+  test "$(grep -Fc 'error[E0599]:' "$stderr_file")" -eq 3
   test "$(grep -Fc 'error[E0624]:' "$stderr_file")" -eq 2
   grep -Fq 'no method named `into_source`' "$stderr_file"
   grep -Fq 'method `is_one_shot` is private' "$stderr_file"
@@ -775,6 +791,7 @@ for toolchain in 1.88.0 1.97.1; do
     "$toolchain" capacity-kind-without-wildcard CapacityKind CapacityKind
   assert_non_exhaustive_match \
     "$toolchain" capacity-reason-without-wildcard CapacityReason CapacityReason
+  assert_non_exhaustive_match "$toolchain" mode-without-wildcard Mode Mode
   assert_non_exhaustive_fields "$toolchain"
   assert_receive_only_variant "$toolchain" construct-resource Resource
   assert_receive_only_variant "$toolchain" construct-wake Wake
@@ -795,6 +812,8 @@ capacity_kind_msrv_sha256="$(shasum -a 256 "$receipt_dir/capacity-kind-without-w
 capacity_kind_current_sha256="$(shasum -a 256 "$receipt_dir/capacity-kind-without-wildcard-1.97.1.stderr" | awk '{print $1}')"
 capacity_reason_msrv_sha256="$(shasum -a 256 "$receipt_dir/capacity-reason-without-wildcard-1.88.0.stderr" | awk '{print $1}')"
 capacity_reason_current_sha256="$(shasum -a 256 "$receipt_dir/capacity-reason-without-wildcard-1.97.1.stderr" | awk '{print $1}')"
+mode_msrv_sha256="$(shasum -a 256 "$receipt_dir/mode-without-wildcard-1.88.0.stderr" | awk '{print $1}')"
+mode_current_sha256="$(shasum -a 256 "$receipt_dir/mode-without-wildcard-1.97.1.stderr" | awk '{print $1}')"
 capacity_msrv_sha256="$(shasum -a 256 "$receipt_dir/capacity-without-rest-1.88.0.stderr" | awk '{print $1}')"
 capacity_current_sha256="$(shasum -a 256 "$receipt_dir/capacity-without-rest-1.97.1.stderr" | awk '{print $1}')"
 resource_msrv_sha256="$(shasum -a 256 "$receipt_dir/construct-resource-1.88.0.stderr" | awk '{print $1}')"
@@ -817,6 +836,8 @@ jq -n \
   --arg capacity_kind_current_sha256 "$capacity_kind_current_sha256" \
   --arg capacity_reason_msrv_sha256 "$capacity_reason_msrv_sha256" \
   --arg capacity_reason_current_sha256 "$capacity_reason_current_sha256" \
+  --arg mode_msrv_sha256 "$mode_msrv_sha256" \
+  --arg mode_current_sha256 "$mode_current_sha256" \
   --arg capacity_msrv_sha256 "$capacity_msrv_sha256" \
   --arg capacity_current_sha256 "$capacity_current_sha256" \
   --arg resource_msrv_sha256 "$resource_msrv_sha256" \
@@ -829,7 +850,7 @@ jq -n \
   --arg must_use_current_sha256 "$must_use_current_sha256" \
   --arg omissions_msrv_sha256 "$omissions_msrv_sha256" \
   --arg omissions_current_sha256 "$omissions_current_sha256" \
-  '{schema:"zio.public-api-contract.v1", status:"passed", version:$version, toolchains:["1.88.0","1.97.1"], open_enums:["Error","Operation","CapacityKind","CapacityReason"], closed_enums:["Event","CommitStatus","DescriptorOwnership","Mode","Wait","ArmState","RegistrationState","RegisterOwnedError","DeleteOwnedError"], field_extensible_variants:["Error::Capacity"], receive_only_variants:["Event::Resource","Event::Wake"], intentional_omissions:["MutationError::into_source","Mode::is_one_shot","RegistrationId::get","PollBuilder::build_with_events"], non_discarding_errors:["RegisterError","RegisterOwnedError","DeleteError","DeleteOwnedError","DeleteAllError"], must_use_types:["PollBuilder","Registration","WaitReport","Waker"], auto_traits:{poll_not_sync_msrv:$poll_not_sync_msrv_sha256,poll_not_sync_current:$poll_not_sync_current_sha256}, diagnostics:{error_msrv:$error_msrv_sha256,error_current:$error_current_sha256,operation_msrv:$operation_msrv_sha256,operation_current:$operation_current_sha256,capacity_kind_msrv:$capacity_kind_msrv_sha256,capacity_kind_current:$capacity_kind_current_sha256,capacity_reason_msrv:$capacity_reason_msrv_sha256,capacity_reason_current:$capacity_reason_current_sha256,capacity_msrv:$capacity_msrv_sha256,capacity_current:$capacity_current_sha256,resource_msrv:$resource_msrv_sha256,resource_current:$resource_current_sha256,wake_msrv:$wake_msrv_sha256,wake_current:$wake_current_sha256,must_use_msrv:$must_use_msrv_sha256,must_use_current:$must_use_current_sha256,omissions_msrv:$omissions_msrv_sha256,omissions_current:$omissions_current_sha256}}' \
+  '{schema:"zio.public-api-contract.v1", status:"passed", version:$version, toolchains:["1.88.0","1.97.1"], open_enums:["Error","Operation","CapacityKind","CapacityReason","Mode"], closed_enums:["Event","CommitStatus","DescriptorOwnership","Wait","ArmState","RegistrationState","RegisterOwnedError","DeleteOwnedError"], field_extensible_variants:["Error::Capacity"], receive_only_variants:["Event::Resource","Event::Wake"], intentional_omissions:["MutationError::into_source","Mode::is_one_shot","RegistrationId::get","PollBuilder::build_with_events","Poll::with_capacity"], non_discarding_errors:["RegisterError","RegisterOwnedError","DeleteError","DeleteOwnedError","DeleteAllError"], must_use_types:["PollBuilder","Registration","WaitReport","Waker"], auto_traits:{poll_not_sync_msrv:$poll_not_sync_msrv_sha256,poll_not_sync_current:$poll_not_sync_current_sha256}, diagnostics:{error_msrv:$error_msrv_sha256,error_current:$error_current_sha256,operation_msrv:$operation_msrv_sha256,operation_current:$operation_current_sha256,capacity_kind_msrv:$capacity_kind_msrv_sha256,capacity_kind_current:$capacity_kind_current_sha256,capacity_reason_msrv:$capacity_reason_msrv_sha256,capacity_reason_current:$capacity_reason_current_sha256,mode_msrv:$mode_msrv_sha256,mode_current:$mode_current_sha256,capacity_msrv:$capacity_msrv_sha256,capacity_current:$capacity_current_sha256,resource_msrv:$resource_msrv_sha256,resource_current:$resource_current_sha256,wake_msrv:$wake_msrv_sha256,wake_current:$wake_current_sha256,must_use_msrv:$must_use_msrv_sha256,must_use_current:$must_use_current_sha256,omissions_msrv:$omissions_msrv_sha256,omissions_current:$omissions_current_sha256}}' \
   > "$evidence_dir/public-api-contract.json"
 
 printf 'API evolution contract passed: zio %s\n' "$version"

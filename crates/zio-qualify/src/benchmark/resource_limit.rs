@@ -67,7 +67,7 @@ pub(crate) fn preflight(
     }))
 }
 
-fn soft_limit() -> Option<(u64, &'static str)> {
+pub(super) fn soft_limit() -> Option<(u64, &'static str)> {
     linux_limit()
         .map(|limit| (limit, "/proc/self/limits"))
         .or_else(|| shell_limit().map(|limit| (limit, "sh_ulimit_n")))

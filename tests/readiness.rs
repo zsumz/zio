@@ -106,7 +106,7 @@ fn future_deadline_wait_is_wakeable() -> Result<(), Box<dyn std::error::Error>> 
 fn duplicate_keys_preserve_registration_identity() -> Result<(), Box<dyn std::error::Error>> {
     let (first, mut first_peer) = UnixStream::pair()?;
     let (second, mut second_peer) = UnixStream::pair()?;
-    let mut poll = Poll::with_capacity(2, 2)?;
+    let mut poll = bounded_poll(2, 2)?;
     let key = Key::new(42);
     let first_registration = poll.register(&first, key, Interest::READABLE, Mode::Level)?;
     let second_registration = poll.register(&second, key, Interest::READABLE, Mode::Level)?;
@@ -141,7 +141,7 @@ fn duplicate_keys_preserve_registration_identity() -> Result<(), Box<dyn std::er
 fn one_shot_coalesces_readable_and_writable_at_capacity_one()
 -> Result<(), Box<dyn std::error::Error>> {
     let (source, mut peer) = UnixStream::pair()?;
-    let mut poll = Poll::with_capacity(1, 1)?;
+    let mut poll = bounded_poll(1, 1)?;
     let registration = poll.register(
         &source,
         Key::new(42),
@@ -182,7 +182,7 @@ fn one_shot_coalescing_is_complete_with_competing_registrations()
 -> Result<(), Box<dyn std::error::Error>> {
     let (first, mut first_peer) = UnixStream::pair()?;
     let (second, mut second_peer) = UnixStream::pair()?;
-    let mut poll = Poll::with_capacity(1, 2)?;
+    let mut poll = bounded_poll(1, 2)?;
     let interest = Interest::READABLE | Interest::WRITABLE;
     let first_registration = poll.register(&first, Key::new(51), interest, Mode::OneShot)?;
     let second_registration = poll.register(&second, Key::new(52), interest, Mode::OneShot)?;
@@ -218,7 +218,7 @@ fn one_shot_coalescing_is_complete_with_competing_registrations()
 
 #[test]
 fn wait_rejects_an_undersized_destination() -> Result<(), Box<dyn std::error::Error>> {
-    let mut poll = Poll::with_capacity(4, 4)?;
+    let mut poll = bounded_poll(4, 4)?;
     let mut events = Events::with_capacity(3)?;
     let result = poll.wait(&mut events, Wait::NoBlock);
     assert!(matches!(
@@ -235,7 +235,7 @@ fn wait_rejects_an_undersized_destination() -> Result<(), Box<dyn std::error::Er
 #[test]
 fn wait_rejection_clears_a_previous_observation() -> Result<(), Box<dyn std::error::Error>> {
     let (source, mut peer) = UnixStream::pair()?;
-    let mut source_poll = Poll::with_capacity(1, 1)?;
+    let mut source_poll = bounded_poll(1, 1)?;
     let registration =
         source_poll.register(&source, Key::new(44), Interest::READABLE, Mode::Level)?;
     peer.write_all(b"ready")?;
@@ -245,7 +245,7 @@ fn wait_rejection_clears_a_previous_observation() -> Result<(), Box<dyn std::err
         .into_result()?;
     assert!(!events.is_empty());
 
-    let mut rejecting_poll = Poll::with_capacity(2, 1)?;
+    let mut rejecting_poll = bounded_poll(2, 1)?;
     assert!(matches!(
         rejecting_poll.wait(&mut events, Wait::NoBlock),
         Err(Error::EventsTooSmall { .. })
@@ -285,4 +285,11 @@ fn has_key(events: &Events, expected: Key) -> bool {
     events
         .iter()
         .any(|event| matches!(event, Event::Resource { key, .. } if *key == expected))
+}
+
+fn bounded_poll(event_capacity: usize, registration_capacity: usize) -> Result<Poll, Error> {
+    Poll::builder()
+        .event_capacity(event_capacity)
+        .registration_capacity(registration_capacity)
+        .build()
 }

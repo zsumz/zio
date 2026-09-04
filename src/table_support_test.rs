@@ -14,7 +14,14 @@ impl RegistrationTable {
         interest: Interest,
         mode: Mode,
     ) -> Result<RegistrationId, Error> {
-        let (id, reservation) = if self.has_reusable_slot() {
+        let (id, reservation) = if self.has_virgin_slot() {
+            let permit = self.fresh_permit()?;
+            let id = permit.id();
+            let (reservation, ()) = permit
+                .reserve_with(descriptor, key, interest, mode, |_, _| ())
+                .map_err(super::permit::ReservationFailure::discard_descriptor)?;
+            (id, reservation)
+        } else if self.has_reusable_slot() {
             let permit = self.reused_permit()?;
             let id = permit.id();
             let (reservation, ()) = permit

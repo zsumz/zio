@@ -21,7 +21,10 @@ use support::descriptor_flags;
 
 #[test]
 fn raw_descriptor_matches_the_safe_borrow() -> Result<(), zio::Error> {
-    let poll = Poll::with_capacity(1, 1)?;
+    let poll = Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(1)
+        .build()?;
 
     assert_eq!(poll.as_raw_fd(), poll.as_fd().as_raw_fd());
     Ok(())
@@ -29,7 +32,10 @@ fn raw_descriptor_matches_the_safe_borrow() -> Result<(), zio::Error> {
 
 #[test]
 fn selector_descriptor_is_close_on_exec() -> Result<(), Box<dyn std::error::Error>> {
-    let poll = Poll::with_capacity(1, 1)?;
+    let poll = Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(1)
+        .build()?;
 
     let flags = descriptor_flags(poll.as_fd())?;
     assert_ne!(flags & libc::FD_CLOEXEC, 0);
@@ -38,8 +44,14 @@ fn selector_descriptor_is_close_on_exec() -> Result<(), Box<dyn std::error::Erro
 
 #[test]
 fn nested_poller_readiness_clears_and_reactivates() -> Result<(), Box<dyn std::error::Error>> {
-    let mut inner = Poll::with_capacity(1, 1)?;
-    let mut outer = Poll::with_capacity(1, 1)?;
+    let mut inner = Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(1)
+        .build()?;
+    let mut outer = Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(1)
+        .build()?;
     let nested = outer.register(&inner, Key::new(1), Interest::READABLE, Mode::Level)?;
     let waker = inner.waker(Key::new(2))?;
     waker.wake()?;

@@ -1,7 +1,10 @@
 //! Readiness delivery modes.
 
 /// Delivery behavior for one registered resource.
+///
+/// Future zio 1.x releases may add delivery modes. Match with a fallback arm.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[non_exhaustive]
 pub enum Mode {
     /// Continue reporting readiness while the resource remains ready.
     Level,

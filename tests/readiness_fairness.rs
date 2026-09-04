@@ -18,7 +18,10 @@ fn ready_set_larger_than_event_capacity_makes_progress() -> Result<(), Box<dyn s
 }
 
 fn verify(mode: Mode) -> Result<(), Box<dyn std::error::Error>> {
-    let mut poll = Poll::with_capacity(1, 3)?;
+    let mut poll = Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(3)
+        .build()?;
     let mut sources = Vec::new();
     let mut peers = Vec::new();
     let mut registrations = Vec::new();

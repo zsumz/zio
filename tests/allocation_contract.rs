@@ -22,7 +22,10 @@ use support::require_no_recovery;
 #[test]
 fn successful_one_shot_wait_allocates_nothing() -> Result<(), Box<dyn std::error::Error>> {
     let (source, mut peer) = UnixStream::pair()?;
-    let mut poll = Poll::with_capacity(1, 1)?;
+    let mut poll = Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(1)
+        .build()?;
     let registration = poll.register(&source, Key::new(81), Interest::READABLE, Mode::OneShot)?;
     let mut events = poll.events()?;
     peer.write_all(b"ready")?;
@@ -59,7 +62,10 @@ fn successful_one_shot_wait_allocates_nothing() -> Result<(), Box<dyn std::error
 
 #[test]
 fn successful_wake_roundtrip_allocates_nothing() -> Result<(), Box<dyn std::error::Error>> {
-    let mut poll = Poll::with_capacity(1, 1)?;
+    let mut poll = Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(1)
+        .build()?;
     let waker = poll.waker(Key::new(82))?;
     let mut events = poll.events()?;
     let mut wake_result = None;
@@ -90,7 +96,10 @@ fn successful_wake_roundtrip_allocates_nothing() -> Result<(), Box<dyn std::erro
 #[test]
 fn registration_iteration_allocates_nothing() -> Result<(), Box<dyn std::error::Error>> {
     let (source, _peer) = UnixStream::pair()?;
-    let mut poll = Poll::with_capacity(1, 1)?;
+    let mut poll = Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(1)
+        .build()?;
     let registration = poll.register(&source, Key::new(83), Interest::READABLE, Mode::Level)?;
     let mut observed = None;
     let mut failed = false;
@@ -116,7 +125,10 @@ fn registration_iteration_allocates_nothing() -> Result<(), Box<dyn std::error::
 fn successful_bulk_deletion_allocates_nothing() -> Result<(), Box<dyn std::error::Error>> {
     let (first, _first_peer) = UnixStream::pair()?;
     let (second, _second_peer) = UnixStream::pair()?;
-    let mut poll = Poll::with_capacity(2, 2)?;
+    let mut poll = Poll::builder()
+        .event_capacity(2)
+        .registration_capacity(2)
+        .build()?;
     let first_registration =
         poll.register(&first, Key::new(84), Interest::READABLE, Mode::Level)?;
     let second_registration =

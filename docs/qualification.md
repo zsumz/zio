@@ -59,6 +59,16 @@ The release graph starts with the canonical gate, then verifies the clean crate
 archive, VCS provenance, package contents, MSRV/current extracted tests,
 rustdoc, and an independent consumer. It does not publish or tag.
 
+Stable 1.0 additionally requires the native kqueue skew matrix in
+[Performance](performance.md), performance qualification, and release rehearsal
+to run against the exact candidate commit. Hosted checks, native guest receipts,
+and packaged-artifact evidence are separate gates.
+
+The kqueue skew runner emits exact source and host provenance and structured
+unsupported rows when the descriptor limit is insufficient. A complete gate
+requires passed rows on macOS and at least one BSD; unsupported receipts are
+diagnostic evidence, not a substitute for that native coverage.
+
 ## Dependency roles
 
 Normal zio builds use target-gated `libc` and Rustix's Linux epoll syscall

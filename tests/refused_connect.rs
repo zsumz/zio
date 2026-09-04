@@ -43,7 +43,10 @@ fn verify_refused_connect(mode: Mode) -> Result<(), Box<dyn std::error::Error>> 
             return Err(failure("immediate ECONNREFUSED", error).into());
         }
     };
-    let mut poll = zio::Poll::with_capacity(1, 1)?;
+    let mut poll = zio::Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(1)
+        .build()?;
     let registration = poll.register(&stream, KEY, Interest::WRITABLE, mode)?;
     let mut events = poll.events()?;
     let report = poll.wait(&mut events, Wait::For(DEADLINE))?;

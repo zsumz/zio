@@ -20,6 +20,7 @@ zio = { path = "../..", version = "=0.0.1-dev.1" }
 [features]
 default = []
 allocation-metrics = ["dep:allocation-counter"]
+kqueue-skew = ["allocation-metrics", "zio/unstable-test-support"]
 
 [[bin]]
 name = "zio-perf"
@@ -29,6 +30,11 @@ path = "src/bin/zio-perf.rs"
 name = "zio-perf-alloc"
 path = "src/bin/zio-perf-alloc.rs"
 required-features = ["allocation-metrics"]
+
+[[bin]]
+name = "zio-kqueue-skew"
+path = "src/bin/zio-kqueue-skew.rs"
+required-features = ["kqueue-skew"]
 
 [lints]
 workspace = true

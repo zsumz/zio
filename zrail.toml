@@ -66,8 +66,11 @@ inputs = [
     ".gitattributes",
     ".github/workflows/ci.yml",
     ".gitignore",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
     "Cargo.toml",
     "Cargo.lock",
+    "SECURITY.md",
     "README.md",
     "zio-logo.svg",
     "LICENSE",
@@ -81,6 +84,12 @@ inputs = [
     "docs/contracts.md",
     "docs/performance.md",
     "docs/qualification.md",
+    "examples/borrowed.md",
+    "examples/level.rs",
+    "examples/nested.md",
+    "examples/one_shot.rs",
+    "examples/owned.rs",
+    "examples/recovery.rs",
     "scripts/check-api-evolution",
     "scripts/rehearse-release",
 ]
@@ -105,6 +114,7 @@ inputs = [
     "Cargo.lock",
     "Cargo.toml",
     "crates/zio-qualify/Cargo.toml",
+    "crates/zio-qualify/src/bin/zio-kqueue-skew.rs",
     "crates/zio-qualify/src/bin/zio-perf-alloc.rs",
     "crates/zio-qualify/src/bin/zio-perf.rs",
     "crates/zio-qualify/src/benchmark.rs",
@@ -118,6 +128,15 @@ inputs = [
     "crates/zio-qualify/src/benchmark/config_test.rs",
     "crates/zio-qualify/src/benchmark/json.rs",
     "crates/zio-qualify/src/benchmark/json_test.rs",
+    "crates/zio-qualify/src/benchmark/kqueue_skew.rs",
+    "crates/zio-qualify/src/benchmark/kqueue_skew/config.rs",
+    "crates/zio-qualify/src/benchmark/kqueue_skew/config_test.rs",
+    "crates/zio-qualify/src/benchmark/kqueue_skew/fixture.rs",
+    "crates/zio-qualify/src/benchmark/kqueue_skew/model.rs",
+    "crates/zio-qualify/src/benchmark/kqueue_skew/receipt.rs",
+    "crates/zio-qualify/src/benchmark/kqueue_skew/receipt_test.rs",
+    "crates/zio-qualify/src/benchmark/kqueue_skew/resource.rs",
+    "crates/zio-qualify/src/benchmark/kqueue_skew/runner.rs",
     "crates/zio-qualify/src/benchmark/lifecycle_workload.rs",
     "crates/zio-qualify/src/benchmark/measure.rs",
     "crates/zio-qualify/src/benchmark/measure_test.rs",
@@ -157,24 +176,38 @@ inputs = [
     "crates/zio-qualify/src/model.rs",
     "crates/zio-qualify/src/lib.rs",
     "crates/zio-qualify/src/polling_registration.rs",
+    "crates/zio-qualify/README.md",
     "docs/performance.md",
     "rust-toolchain.toml",
+    "src/observe.rs",
+    "src/poll.rs",
+    "src/test_support/mod.rs",
+    "src/test_support/wait_metrics.rs",
 ]
 kind = "ci"
 name = "performance"
 path = ".github/workflows/performance.yml"
-reason = "Hosted Linux and macOS runs retain reproducible timing, allocation, descriptor, and syscall receipts."
+reason = "Hosted Linux and macOS runs retain reproducible timing, allocation, descriptor, syscall, and kqueue skew smoke receipts."
 requires = ["check"]
 
 [[gate]]
 inputs = [
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
     "Cargo.lock",
     "Cargo.toml",
     "LICENSE",
     "README.md",
+    "SECURITY.md",
     "docs/contracts.md",
     "docs/performance.md",
     "docs/qualification.md",
+    "examples/borrowed.md",
+    "examples/level.rs",
+    "examples/nested.md",
+    "examples/one_shot.rs",
+    "examples/owned.rs",
+    "examples/recovery.rs",
     "rust-toolchain.toml",
     "scripts/check-api-evolution",
     "scripts/rehearse-release",
@@ -198,7 +231,7 @@ evidence = [
 ]
 id = "API-01"
 status = "enforced"
-title = "Diagnostics stay extensible while semantic domains stay closed"
+title = "Public enums keep their declared open or closed evolution contracts"
 
 [[invariant]]
 document = "docs/contracts.md#api-evolution"
@@ -253,6 +286,7 @@ evidence = [
     "rust-test:crates/zio-testkit/tests/terminal_identity.rs::delete_applied_stale_handle_survives_slot_reuse",
     "rust-test:crates/zio-testkit/tests/terminal_ownership.rs::wrong_poller_delete_returns_exact_handle_to_owner",
     "rust-test:crates/zio-testkit/tests/terminal_ownership.rs::wrong_poller_delete_owned_returns_exact_handle_to_owner",
+    "rust-test:src/registration_ops_test.rs::full_safe_registration_does_not_borrow_or_duplicate_the_source",
     "gate:check",
     "gate:ci",
 ]
@@ -291,6 +325,7 @@ evidence = [
     "rust-test:tests/registration_lifetime.rs::reactor_copy_reclaims_after_task_copy_is_abandoned",
     "rust-test:tests/registration_lifetime.rs::successful_delete_stales_every_surviving_copy",
     "rust-test:tests/registration_lifetime.rs::stale_copy_cannot_target_reused_generation",
+    "rust-test:src/token_test.rs::encoded_identity_round_trips_across_deterministic_samples",
     "rust-test:crates/zio-testkit/tests/lifetime_delete.rs::delete_outcome_branches_update_every_surviving_copy",
     "rust-test:crates/zio-testkit/tests/stale_delete_owned.rs::stale_capabilities_cannot_target_reused_generation",
     "rust-test:crates/zio-testkit/tests/lifetime_ownership.rs::copied_handle_rejects_wrong_poller_without_backend_calls",
@@ -301,6 +336,21 @@ evidence = [
 id = "LIFETIME-01"
 status = "enforced"
 title = "Copyable handles preserve exact-generation cleanup authority"
+
+[[invariant]]
+document = "docs/contracts.md#registration-lifetime"
+evidence = [
+    "rust-test:src/table_churn_test.rs::sustained_single_registration_churn_rotates_evenly",
+    "rust-test:src/table_test.rs::virgin_slots_are_used_before_any_generation_is_recycled",
+    "rust-test:src/table_test.rs::virgin_capacity_precedes_a_nearly_exhausted_reusable_slot",
+    "rust-test:src/table_test.rs::retired_slots_are_reused_in_fifo_order",
+    "rust-test:src/table_reserve_test.rs::retire_appends_to_the_fifo_free_queue",
+    "gate:check",
+    "gate:ci",
+]
+id = "LIFETIME-CHURN-01"
+status = "enforced"
+title = "Slot allocation distributes generation churn across fixed capacity"
 
 [[invariant]]
 document = "docs/contracts.md#borrowed-registration"
@@ -362,6 +412,24 @@ evidence = [
 id = "READINESS-01"
 status = "enforced"
 title = "Portable readiness preserves directional closure and resource errors"
+
+[[invariant]]
+document = "docs/contracts.md#readiness-contract"
+evidence = [
+    "rust-test:tests/readiness_fairness.rs::ready_set_larger_than_event_capacity_makes_progress",
+    "rust-test:src/pending_kqueue_test.rs::delivery_rotates_with_full_batches_without_reordering_output",
+    "rust-test:src/pending_kqueue_test.rs::capacity_plus_one_and_two_keep_every_batch_full",
+    "rust-test:src/pending_kqueue_test.rs::capacity_one_cycles_across_the_ready_set",
+    "rust-test:src/pending_kqueue_test.rs::a_disappeared_cursor_restarts_at_first_observation",
+    "rust-test:src/pending_kqueue_test.rs::cyclic_selection_properties_hold_across_small_capacity_pairs",
+    "rust-test:src/observe_selection_test.rs::wrapped_selection_preserves_output_and_one_shot_disarm_order",
+    "rust-test:tests/wake.rs::repeated_wakes_do_not_shrink_wrapped_resource_batches",
+    "gate:check",
+    "gate:ci",
+]
+id = "FAIRNESS-01"
+status = "enforced"
+title = "Kqueue fills cyclic batches while preserving observation order"
 
 [[invariant]]
 document = "docs/contracts.md#recovery-behavior"
@@ -547,6 +615,10 @@ document = "docs/performance.md#performance"
 evidence = [
     "rust-test:crates/zio-qualify/src/benchmark/config_test.rs::defaults_are_scenario_aware_and_explicit_is_exact",
     "rust-test:crates/zio-qualify/src/benchmark/config_test.rs::help_names_every_stable_scenario_for_each_binary",
+    "rust-test:crates/zio-qualify/src/benchmark/kqueue_skew/config_test.rs::default_matrix_is_exact",
+    "rust-test:crates/zio-qualify/src/benchmark/kqueue_skew/config_test.rs::smoke_is_small_and_explicit",
+    "rust-test:crates/zio-qualify/src/benchmark/kqueue_skew/receipt_test.rs::passed_receipt_names_every_required_metric",
+    "rust-test:crates/zio-qualify/src/benchmark/kqueue_skew/receipt_test.rs::unsupported_receipt_preserves_parameters_and_limits",
     "rust-test:crates/zio-qualify/src/benchmark/receipt_test.rs::timing_receipt_has_timing_and_no_allocation_fields",
     "rust-test:crates/zio-qualify/src/benchmark/receipt_test.rs::allocation_receipt_has_allocations_and_no_timing_fields",
     "rust-test:crates/zio-qualify/src/benchmark/receipt_test.rs::source_and_exact_versions_are_stable",

@@ -31,11 +31,13 @@ fn corrupted_reused_slot_is_rejected_without_table_mutation() -> Result<(), Box<
     let generation = table.slots[0].generation;
     let next_free = table.slots[0].next_free;
     table.free_head = 0;
+    table.free_tail = 0;
 
     let result = table.reused_permit();
 
     assert!(matches!(result, Err(Error::Invariant)));
     assert_eq!(table.free_head, 0);
+    assert_eq!(table.free_tail, 0);
     assert_eq!(table.slots[0].generation, generation);
     assert_eq!(table.slots[0].next_free, next_free);
     let entry = table.slots[0].entry.as_ref().ok_or(Error::Invariant)?;
@@ -54,11 +56,13 @@ fn corrupted_reused_slot_is_rejected_without_table_mutation() -> Result<(), Box<
 fn out_of_range_reused_head_is_rejected_without_table_mutation() -> Result<(), Box<dyn StdError>> {
     let mut table = table(1)?;
     table.free_head = 1;
+    table.free_tail = 1;
 
     let result = table.reused_permit();
 
     assert!(matches!(result, Err(Error::Invariant)));
     assert_eq!(table.free_head, 1);
+    assert_eq!(table.free_tail, 1);
     assert!(table.slots.is_empty());
     Ok(())
 }
@@ -75,13 +79,14 @@ fn terminal_reused_head_is_rejected_without_table_mutation() -> Result<(), Box<d
 
     assert!(matches!(result, Err(Error::Invariant)));
     assert_eq!(table.free_head, 0);
+    assert_eq!(table.free_tail, 0);
     assert_eq!(table.slots[0].generation, MAX_GENERATION);
     assert!(table.slots[0].entry.is_none());
     Ok(())
 }
 
 #[test]
-fn retire_overwrites_stale_occupied_free_link() -> Result<(), Box<dyn StdError>> {
+fn retire_appends_to_the_fifo_free_queue() -> Result<(), Box<dyn StdError>> {
     let mut table = table(2)?;
     let source = File::open("/dev/null")?;
     let first = reserve(&mut table, &source, Key::new(1))?;
@@ -91,17 +96,24 @@ fn retire_overwrites_stale_occupied_free_link() -> Result<(), Box<dyn StdError>>
     let first_index = index(first)?;
     let second_index = index(second)?;
 
-    let reused_second = reserve(&mut table, &source, Key::new(3))?;
     assert_eq!(
-        table.slots[second_index].next_free,
-        u32::try_from(first_index)?
+        table.slots[first_index].next_free,
+        u32::try_from(second_index)?
     );
-    let reused_first = reserve(&mut table, &source, Key::new(4))?;
-    assert_eq!(table.free_head, FREE_END);
-
-    retire(&mut table, reused_second)?;
     assert_eq!(table.slots[second_index].next_free, FREE_END);
+
+    let reused_first = reserve(&mut table, &source, Key::new(3))?;
+    assert_eq!(index(reused_first)?, first_index);
+    assert_eq!(table.free_head, u32::try_from(second_index)?);
+    assert_eq!(table.free_tail, u32::try_from(second_index)?);
+    let reused_second = reserve(&mut table, &source, Key::new(4))?;
+    assert_eq!(index(reused_second)?, second_index);
+    assert_eq!(table.free_head, FREE_END);
+    assert_eq!(table.free_tail, FREE_END);
+
     retire(&mut table, reused_first)?;
+    assert_eq!(table.slots[first_index].next_free, FREE_END);
+    retire(&mut table, reused_second)?;
     assert_eq!(
         table.slots[first_index].next_free,
         u32::try_from(second_index)?
@@ -129,7 +141,14 @@ fn reserve(
 ) -> Result<RegistrationId, Box<dyn StdError>> {
     let descriptor = source.as_fd().try_clone_to_owned()?;
     let descriptor = Descriptor::owned(descriptor);
-    let (id, reservation) = if table.has_reusable_slot() {
+    let (id, reservation) = if table.has_virgin_slot() {
+        let permit = table.fresh_permit()?;
+        let id = permit.id();
+        let (reservation, ()) = permit
+            .reserve_with(descriptor, key, Interest::READABLE, Mode::Level, |_, _| ())
+            .map_err(super::permit::ReservationFailure::discard_descriptor)?;
+        (id, reservation)
+    } else if table.has_reusable_slot() {
         let permit = table.reused_permit()?;
         let id = permit.id();
         let (reservation, ()) = permit

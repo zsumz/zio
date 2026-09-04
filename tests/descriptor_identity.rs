@@ -42,7 +42,10 @@ fn numeric_descriptor_reuse_does_not_alias_retained_registration() -> TestResult
     let _guard = descriptor_test_guard()?;
     let (source, mut original_peer) = UnixStream::pair()?;
     let caller_descriptor = source.as_raw_fd();
-    let mut poll = Poll::with_capacity(2, 2)?;
+    let mut poll = Poll::builder()
+        .event_capacity(2)
+        .registration_capacity(2)
+        .build()?;
     let original = poll.register(&source, ORIGINAL_KEY, Interest::READABLE, Mode::OneShot)?;
     drop(source);
 
@@ -86,7 +89,10 @@ fn duplicated_handles_have_independent_registrations() -> TestResult {
         source.as_raw_fd() != duplicate.as_raw_fd(),
         "duplicated handles unexpectedly shared one numeric descriptor",
     )?;
-    let mut poll = Poll::with_capacity(2, 2)?;
+    let mut poll = Poll::builder()
+        .event_capacity(2)
+        .registration_capacity(2)
+        .build()?;
     let first = poll.register(&source, FIRST_DUP_KEY, Interest::READABLE, Mode::OneShot)?;
     let second = poll.register(
         &duplicate,
@@ -127,7 +133,10 @@ fn duplicated_handles_have_independent_registrations() -> TestResult {
 fn one_handle_can_have_independent_registrations() -> TestResult {
     let _guard = descriptor_test_guard()?;
     let (source, mut peer) = UnixStream::pair()?;
-    let mut poll = Poll::with_capacity(2, 2)?;
+    let mut poll = Poll::builder()
+        .event_capacity(2)
+        .registration_capacity(2)
+        .build()?;
     let first = poll.register(&source, FIRST_SHARED_KEY, Interest::READABLE, Mode::Level)?;
     let second = poll.register(&source, SECOND_SHARED_KEY, Interest::READABLE, Mode::Level)?;
     ensure(

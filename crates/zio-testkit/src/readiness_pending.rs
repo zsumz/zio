@@ -16,14 +16,18 @@ pub(crate) fn observe_pending_eof<F: AsFd + Read>(
     payload: &[u8],
     scenario: ReadinessScenario,
 ) -> Result<(), ReadinessFailure> {
-    let mut poll = zio::Poll::with_capacity(4, 1).map_err(|error| {
-        observed(
-            scenario,
-            ReadinessCheck::Setup,
-            "constructed poller",
-            &error,
-        )
-    })?;
+    let mut poll = zio::Poll::builder()
+        .event_capacity(4)
+        .registration_capacity(1)
+        .build()
+        .map_err(|error| {
+            observed(
+                scenario,
+                ReadinessCheck::Setup,
+                "constructed poller",
+                &error,
+            )
+        })?;
     let registration = poll
         .register(source, RESOURCE_KEY, scenario.interest(), scenario.mode())
         .map_err(|error| {

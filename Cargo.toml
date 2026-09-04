@@ -32,9 +32,13 @@ categories = ["asynchronous", "concurrency", "network-programming"]
 include = [
   "/src/**",
   "/tests/**",
+  "/examples/**",
   "/Cargo.toml",
   "/Cargo.lock",
+  "/CHANGELOG.md",
+  "/CONTRIBUTING.md",
   "/README.md",
+  "/SECURITY.md",
   "/docs/contracts.md",
   "/docs/performance.md",
   "/docs/qualification.md",

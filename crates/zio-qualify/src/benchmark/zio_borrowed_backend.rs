@@ -44,7 +44,11 @@ impl Backend for ZioBorrowedBackend {
     type Wake = Waker;
 
     fn new(event_capacity: usize, registration_capacity: usize) -> Result<Self, String> {
-        let poll = Poll::with_capacity(event_capacity, registration_capacity).map_err(display)?;
+        let poll = Poll::builder()
+            .event_capacity(event_capacity)
+            .registration_capacity(registration_capacity)
+            .build()
+            .map_err(display)?;
         let events = poll.events().map_err(display)?;
         Ok(Self {
             poll: Some(poll),
@@ -82,13 +86,9 @@ impl Backend for ZioBorrowedBackend {
     fn rearm(
         &mut self,
         registration: &Self::Registration<'_>,
-        profile: Profile,
+        _profile: Profile,
     ) -> Result<(), String> {
-        let result = self.poll_mut()?.modify(
-            &registration.registration,
-            zio::Interest::READABLE,
-            mode(profile),
-        );
+        let result = self.poll_mut()?.rearm(&registration.registration);
         result.map_err(|error| self.invalidate(error))
     }
 

@@ -21,6 +21,9 @@ impl<Driver: MutationDriver> MutationSession<'_, Driver> {
         mode: Mode,
     ) -> Result<Registration, RegisterError> {
         validate_interest(interest).map_err(|error| RegisterError::new(error, None))?;
+        self.registrations
+            .ensure_reservable()
+            .map_err(|error| RegisterError::new(error, None))?;
         let descriptor = source.as_fd().try_clone_to_owned().map_err(|source| {
             RegisterError::new(
                 Error::Io {

@@ -52,6 +52,47 @@ Initial readiness includes registration and deletion. Persistent readiness
 isolates the already-registered hot path. Large batches are skipped with a
 structured reason when the process file-descriptor limit is too small.
 
+## Kqueue skew gate
+
+Kqueue currently requests enough native space to observe both filters for every
+registration, then delivers at most the configured logical event capacity. That
+preserves complete split-filter snapshots and zio-controlled fairness, but its
+cost scales with the ready registration set rather than only the delivered
+batch.
+
+Before stable 1.0, run the following matrix on macOS and at least one BSD. These
+are dedicated-host measurements, not ordinary hosted-runner thresholds.
+
+| Registrations | Event capacity | Ready fraction |
+| ---: | ---: | ---: |
+| 100,000 | 64 | 0.1% |
+| 100,000 | 256 | 1% |
+| 100,000 | 256 | 50% |
+| 100,000 | 1,024 | 100% |
+| 1,000,000 | 1,024 | sparse |
+
+The `sparse` row makes 1,024 of the million registrations ready. Run the fixed
+matrix with:
+
+```sh
+cargo run -p zio-qualify --release --no-default-features \
+  --features kqueue-skew --bin zio-kqueue-skew -- \
+  --output target/kqueue-skew.ndjson
+```
+
+Each row measures one complete fair cycle for level and one-shot delivery. Its
+`zio.kqueue-skew.v1` receipt retains raw native events returned, logical events
+delivered, nanoseconds per delivered event, waits required to complete the
+cycle, receipt-checked one-shot disarm submission cost, and currently retained
+heap bytes. It also records the file-descriptor limit and skips a row explicitly
+when the host cannot support it. `--smoke` replaces the matrix with five
+registrations, capacity two, and three ready registrations.
+
+The runner uses the semver-exempt `unstable-test-support` wait counters; they are
+not stable application API. The results decide whether 1.x preserves complete
+snapshots or adopts batch-bounded native collection with a correspondingly
+weaker coalescing contract.
+
 ## Evidence
 
 The `Performance qualification` workflow records five independent Linux and

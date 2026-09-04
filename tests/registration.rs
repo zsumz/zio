@@ -104,7 +104,10 @@ fn key_changes_affect_only_future_events() -> Result<(), Box<dyn std::error::Err
 fn registration_capacity_is_fixed() -> Result<(), Box<dyn std::error::Error>> {
     let (first, _first_peer) = UnixStream::pair()?;
     let (second, _second_peer) = UnixStream::pair()?;
-    let mut poll = Poll::with_capacity(4, 1)?;
+    let mut poll = Poll::builder()
+        .event_capacity(4)
+        .registration_capacity(1)
+        .build()?;
     assert_eq!(poll.event_capacity(), 4);
     assert_eq!(poll.registration_capacity(), 1);
     assert_eq!(poll.registration_count(), 0);
@@ -148,7 +151,10 @@ fn retained_registrations_iterate_in_place() -> Result<(), Box<dyn std::error::E
     let (first_source, _first_peer) = UnixStream::pair()?;
     let (second_source, _second_peer) = UnixStream::pair()?;
     let (third_source, _third_peer) = UnixStream::pair()?;
-    let mut poll = Poll::with_capacity(3, 3)?;
+    let mut poll = Poll::builder()
+        .event_capacity(3)
+        .registration_capacity(3)
+        .build()?;
     assert_eq!(poll.iter_registrations()?.len(), 0);
     let first = poll.register(&first_source, Key::new(14), Interest::READABLE, Mode::Level)?;
     let second = poll.register(
@@ -183,7 +189,10 @@ fn retained_registrations_iterate_in_place() -> Result<(), Box<dyn std::error::E
 fn delete_all_retires_every_registration() -> Result<(), Box<dyn std::error::Error>> {
     let (first, _first_peer) = UnixStream::pair()?;
     let (second, _second_peer) = UnixStream::pair()?;
-    let mut poll = Poll::with_capacity(2, 2)?;
+    let mut poll = Poll::builder()
+        .event_capacity(2)
+        .registration_capacity(2)
+        .build()?;
     let first = poll.register(&first, Key::new(1), Interest::READABLE, Mode::Level)?;
     let second = poll.register(&second, Key::new(2), Interest::WRITABLE, Mode::OneShot)?;
 
@@ -202,7 +211,10 @@ fn delete_all_retires_every_registration() -> Result<(), Box<dyn std::error::Err
 #[test]
 fn poll_can_move_to_its_owning_thread() -> Result<(), Box<dyn std::error::Error>> {
     let (source, _peer) = UnixStream::pair()?;
-    let poll = Poll::with_capacity(1, 1)?;
+    let poll = Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(1)
+        .build()?;
     let remaining = thread::spawn(move || {
         let mut poll = poll;
         let registration = poll

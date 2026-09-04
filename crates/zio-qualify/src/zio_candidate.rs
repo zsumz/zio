@@ -29,7 +29,11 @@ impl Candidate for ZioCandidate {
     }
 
     fn register(source: &UnixStream, spec: RegistrationSpec) -> CandidateResult<Self::Session<'_>> {
-        let mut poll = Poll::with_capacity(4, 1).map_err(display)?;
+        let mut poll = Poll::builder()
+            .event_capacity(4)
+            .registration_capacity(1)
+            .build()
+            .map_err(display)?;
         let registration = poll
             .register(
                 source,
@@ -83,13 +87,7 @@ impl CandidateSession for ZioSession<'_> {
     }
 
     fn rearm(&mut self) -> CandidateResult<()> {
-        self.poll
-            .modify(
-                &self.registration,
-                interest(self.spec.interest),
-                mode(self.spec.profile),
-            )
-            .map_err(display)
+        self.poll.rearm(&self.registration).map_err(display)
     }
 
     fn delete(mut self) -> CandidateResult<()> {

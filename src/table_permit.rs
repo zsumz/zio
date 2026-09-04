@@ -16,6 +16,7 @@ use super::{
 pub(crate) struct FreshPermit<'table> {
     pub(super) slots: &'table mut Vec<Slot>,
     pub(super) free_head: &'table mut u32,
+    pub(super) free_tail: &'table mut u32,
     pub(super) exhausted: &'table mut usize,
     pub(super) live: &'table mut usize,
     pub(super) slot_index: usize,
@@ -25,10 +26,12 @@ pub(crate) struct FreshPermit<'table> {
 
 /// Capacity proof retaining direct access to one exact retired slot.
 pub(crate) struct ReusedPermit<'table> {
-    pub(super) slot: &'table mut Slot,
+    pub(super) slots: &'table mut Vec<Slot>,
     pub(super) free_head: &'table mut u32,
+    pub(super) free_tail: &'table mut u32,
     pub(super) exhausted: &'table mut usize,
     pub(super) live: &'table mut usize,
+    pub(super) slot_index: usize,
     pub(super) free_index: u32,
     pub(super) next_free: u32,
     pub(super) next_generation: u32,
@@ -82,6 +85,7 @@ impl<'table> FreshPermit<'table> {
         let Self {
             slots,
             free_head,
+            free_tail,
             exhausted,
             live,
             slot_index,
@@ -100,15 +104,19 @@ impl<'table> FreshPermit<'table> {
             let _ = slots.pop();
             return Err(ReservationFailure::new(Error::Invariant, descriptor));
         }
-        let Some(slot) = slots.last_mut() else {
-            return Err(ReservationFailure::new(Error::Invariant, descriptor));
+        let output = {
+            let Some(slot) = slots.last_mut() else {
+                return Err(ReservationFailure::new(Error::Invariant, descriptor));
+            };
+            let entry = slot
+                .entry
+                .insert(Entry::registered(descriptor, key, interest, mode));
+            *live = next_live;
+            apply(entry.descriptor.as_fd(), id.id())
         };
-        let entry = slot
-            .entry
-            .insert(Entry::registered(descriptor, key, interest, mode));
-        *live = next_live;
-        let output = apply(entry.descriptor.as_fd(), id.id());
-        let lease = SlotLease::new(slot, free_head, exhausted, live, free_index);
+        let lease = SlotLease::new(
+            slots, slot_index, free_head, free_tail, exhausted, live, free_index,
+        );
         Ok((Reservation { lease }, output))
     }
 }
@@ -134,10 +142,12 @@ impl<'table> ReusedPermit<'table> {
         apply: impl for<'descriptor> FnOnce(BorrowedFd<'descriptor>, RegistrationId) -> Output,
     ) -> Result<(Reservation<'table>, Output), ReservationFailure> {
         let Self {
-            slot,
+            slots,
             free_head,
+            free_tail,
             exhausted,
             live,
+            slot_index,
             free_index,
             next_free,
             next_generation,
@@ -146,17 +156,45 @@ impl<'table> ReusedPermit<'table> {
         let Some(next_live) = live.checked_add(1) else {
             return Err(ReservationFailure::new(Error::Invariant, descriptor));
         };
-        if slot.entry.is_some() {
+        let tail = *free_tail;
+        if (next_free == FREE_END && tail != free_index)
+            || (next_free != FREE_END && (tail == FREE_END || tail == free_index))
+        {
             return Err(ReservationFailure::new(Error::Invariant, descriptor));
         }
-        let entry = slot
-            .entry
-            .insert(Entry::registered(descriptor, key, interest, mode));
-        *free_head = next_free;
-        slot.generation = next_generation;
-        *live = next_live;
-        let output = apply(entry.descriptor.as_fd(), id.id());
-        let lease = SlotLease::new(slot, free_head, exhausted, live, free_index);
+        if tail != free_index {
+            let Ok(tail_index) = usize::try_from(tail) else {
+                return Err(ReservationFailure::new(Error::Invariant, descriptor));
+            };
+            let Some(tail_slot) = slots.get(tail_index) else {
+                return Err(ReservationFailure::new(Error::Invariant, descriptor));
+            };
+            if tail_slot.entry.is_some() || tail_slot.next_free != FREE_END {
+                return Err(ReservationFailure::new(Error::Invariant, descriptor));
+            }
+        }
+        let output = {
+            let Some(slot) = slots.get_mut(slot_index) else {
+                return Err(ReservationFailure::new(Error::Invariant, descriptor));
+            };
+            if slot.entry.is_some() {
+                return Err(ReservationFailure::new(Error::Invariant, descriptor));
+            }
+            let entry = slot
+                .entry
+                .insert(Entry::registered(descriptor, key, interest, mode));
+            slot.next_free = FREE_END;
+            slot.generation = next_generation;
+            *free_head = next_free;
+            if next_free == FREE_END {
+                *free_tail = FREE_END;
+            }
+            *live = next_live;
+            apply(entry.descriptor.as_fd(), id.id())
+        };
+        let lease = SlotLease::new(
+            slots, slot_index, free_head, free_tail, exhausted, live, free_index,
+        );
         Ok((Reservation { lease }, output))
     }
 }

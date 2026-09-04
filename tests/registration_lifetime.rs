@@ -35,7 +35,10 @@ fn registration_handle_traits_are_stable() -> TestResult {
 #[test]
 fn reactor_copy_reclaims_after_task_copy_is_abandoned() -> TestResult {
     let (source, _peer) = UnixStream::pair()?;
-    let mut poll = Poll::with_capacity(1, 1)?;
+    let mut poll = Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(1)
+        .build()?;
     let registered = poll.register(&source, Key::new(901), Interest::READABLE, Mode::Level)?;
     let reactor = registered;
 
@@ -49,7 +52,10 @@ fn dropping_poller_closes_a_transferred_descriptor() -> TestResult {
     let (source, mut peer) = UnixStream::pair()?;
     peer.set_read_timeout(Some(Duration::from_secs(1)))?;
     let descriptor: OwnedFd = source.into();
-    let mut poll = Poll::with_capacity(1, 1)?;
+    let mut poll = Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(1)
+        .build()?;
     let _registration =
         poll.register_owned(descriptor, Key::new(907), Interest::READABLE, Mode::Level)?;
 
@@ -65,7 +71,10 @@ fn dropping_poller_closes_a_transferred_descriptor() -> TestResult {
 fn live_waker_does_not_retain_a_transferred_descriptor() -> TestResult {
     let (source, mut peer) = UnixStream::pair()?;
     peer.set_read_timeout(Some(Duration::from_secs(1)))?;
-    let mut poll = Poll::with_capacity(1, 1)?;
+    let mut poll = Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(1)
+        .build()?;
     let _registration = poll.register_owned(
         source.into(),
         Key::new(908),
@@ -87,7 +96,10 @@ fn live_waker_does_not_retain_a_transferred_descriptor() -> TestResult {
 #[test]
 fn successful_delete_stales_every_surviving_copy() -> TestResult {
     let (source, _peer) = UnixStream::pair()?;
-    let mut poll = Poll::with_capacity(1, 1)?;
+    let mut poll = Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(1)
+        .build()?;
     let registered = poll.register(&source, Key::new(902), Interest::READABLE, Mode::Level)?;
     let first_survivor = registered;
     let second_survivor = registered;
@@ -114,7 +126,10 @@ fn successful_delete_stales_every_surviving_copy() -> TestResult {
 #[test]
 fn owned_delete_returns_a_stale_handle_without_a_descriptor() -> TestResult {
     let (source, _peer) = UnixStream::pair()?;
-    let mut poll = Poll::with_capacity(1, 1)?;
+    let mut poll = Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(1)
+        .build()?;
     let registration = poll.register(&source, Key::new(905), Interest::READABLE, Mode::Level)?;
     poll.delete(registration)?;
 
@@ -136,8 +151,14 @@ fn owned_delete_returns_a_stale_handle_without_a_descriptor() -> TestResult {
 #[test]
 fn owned_delete_returns_a_foreign_handle_without_mutation() -> TestResult {
     let (source, _peer) = UnixStream::pair()?;
-    let mut owner = Poll::with_capacity(1, 1)?;
-    let mut stranger = Poll::with_capacity(1, 1)?;
+    let mut owner = Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(1)
+        .build()?;
+    let mut stranger = Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(1)
+        .build()?;
     let registration = owner.register(&source, Key::new(906), Interest::READABLE, Mode::Level)?;
 
     let Err(DeleteOwnedError::Retained {
@@ -168,7 +189,10 @@ fn owned_delete_returns_a_foreign_handle_without_mutation() -> TestResult {
 fn stale_copy_cannot_target_reused_generation() -> TestResult {
     let (first_source, _first_peer) = UnixStream::pair()?;
     let (replacement_source, _replacement_peer) = UnixStream::pair()?;
-    let mut poll = Poll::with_capacity(1, 1)?;
+    let mut poll = Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(1)
+        .build()?;
     let first = poll.register(
         &first_source,
         Key::new(903),

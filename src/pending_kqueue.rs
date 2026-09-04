@@ -1,8 +1,8 @@
 //! Sparse-slot coalescing in first-observation order for kqueue filters.
 
-#![cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
+#![cfg(any(test, target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
 
-use core::{num::NonZeroUsize, ops::Range};
+use core::{num::NonZeroUsize, ops::Range, slice};
 
 use crate::{CapacityKind, CapacityReason, Error, Key, Readiness, RegistrationId};
 
@@ -14,6 +14,74 @@ pub(crate) struct PendingResource {
     pub(crate) registration: RegistrationId,
     pub(crate) key: Key,
     pub(crate) readiness: Readiness,
+}
+
+/// One cyclically selected batch, exposed in first-observation order.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct DeliverySelection {
+    first: Range<usize>,
+    second: Range<usize>,
+    len: usize,
+}
+
+impl DeliverySelection {
+    const fn empty() -> Self {
+        Self {
+            first: 0..0,
+            second: 0..0,
+            len: 0,
+        }
+    }
+
+    pub(crate) const fn len(&self) -> usize {
+        self.len
+    }
+
+    pub(crate) fn try_iter<'entries>(
+        &self,
+        entries: &'entries [PendingResource],
+    ) -> Result<DeliveryIter<'entries>, Error> {
+        let first = entries.get(self.first.clone()).ok_or(Error::Invariant)?;
+        let second = entries.get(self.second.clone()).ok_or(Error::Invariant)?;
+        if first.len().saturating_add(second.len()) != self.len {
+            return Err(Error::Invariant);
+        }
+        Ok(DeliveryIter {
+            first: first.iter(),
+            second: second.iter(),
+            remaining: self.len,
+        })
+    }
+}
+
+/// Allocation-free traversal over a cyclic selection's ordered ranges.
+#[derive(Clone, Debug)]
+pub(crate) struct DeliveryIter<'entries> {
+    first: slice::Iter<'entries, PendingResource>,
+    second: slice::Iter<'entries, PendingResource>,
+    remaining: usize,
+}
+
+impl<'entries> Iterator for DeliveryIter<'entries> {
+    type Item = &'entries PendingResource;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let next = self.first.next().or_else(|| self.second.next());
+        if next.is_some() {
+            self.remaining = self.remaining.saturating_sub(1);
+        }
+        next
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.remaining, Some(self.remaining))
+    }
+}
+
+impl ExactSizeIterator for DeliveryIter<'_> {
+    fn len(&self) -> usize {
+        self.remaining
+    }
 }
 
 #[derive(Debug)]
@@ -104,30 +172,40 @@ impl KqueuePending {
         Ok(())
     }
 
-    /// Selects the next non-wrapping window in observation order.
-    pub(crate) fn delivery_range(&mut self, limit: usize) -> Range<usize> {
+    /// Selects a full cyclic batch and exposes it in observation order.
+    pub(crate) fn delivery_selection(&mut self, limit: usize) -> DeliverySelection {
         let len = self.entries.len();
-        let start = if limit >= len {
-            0
-        } else {
-            self.last_delivered
-                .and_then(|registration| {
-                    let slot = crate::token::decode(registration).ok()?.0;
-                    let entry_index = usize::try_from(*self.by_slot.get(slot)?).ok()?;
-                    let entry = self.entries.get(entry_index)?;
-                    (entry.registration == registration).then_some(if entry_index + 1 == len {
-                        0
-                    } else {
-                        entry_index + 1
-                    })
-                })
-                .unwrap_or(0)
-        };
-        let end = start.saturating_add(limit).min(len);
-        if start < end {
-            self.last_delivered = Some(self.entries[end - 1].registration);
+        let count = limit.min(len);
+        if count == 0 {
+            return DeliverySelection::empty();
         }
-        start..end
+        let start = self
+            .last_delivered
+            .and_then(|registration| {
+                let slot = crate::token::decode(registration).ok()?.0;
+                let entry_index = usize::try_from(*self.by_slot.get(slot)?).ok()?;
+                let entry = self.entries.get(entry_index)?;
+                (entry.registration == registration).then_some(if entry_index + 1 == len {
+                    0
+                } else {
+                    entry_index + 1
+                })
+            })
+            .unwrap_or(0);
+        let available_high = len - start;
+        let (first, second, last_selected) = if count <= available_high {
+            let end = start + count;
+            (start..end, 0..0, end - 1)
+        } else {
+            let wrapped = count - available_high;
+            (0..wrapped, start..len, wrapped - 1)
+        };
+        self.last_delivered = Some(self.entries[last_selected].registration);
+        DeliverySelection {
+            first,
+            second,
+            len: count,
+        }
     }
 
     pub(crate) fn as_slice(&self) -> &[PendingResource] {

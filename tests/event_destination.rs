@@ -19,8 +19,14 @@ use support::require_no_recovery;
 fn larger_destination_is_reusable_across_pollers() -> Result<(), Box<dyn std::error::Error>> {
     let (first_source, mut first_peer) = UnixStream::pair()?;
     let (second_source, mut second_peer) = UnixStream::pair()?;
-    let mut first_poll = Poll::with_capacity(1, 1)?;
-    let mut second_poll = Poll::with_capacity(2, 1)?;
+    let mut first_poll = Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(1)
+        .build()?;
+    let mut second_poll = Poll::builder()
+        .event_capacity(2)
+        .registration_capacity(1)
+        .build()?;
     let first = first_poll.register(&first_source, Key::new(1), Interest::READABLE, Mode::Level)?;
     let second =
         second_poll.register(&second_source, Key::new(2), Interest::READABLE, Mode::Level)?;
@@ -50,7 +56,10 @@ fn larger_destination_is_reusable_across_pollers() -> Result<(), Box<dyn std::er
 #[test]
 fn drain_preserves_capacity_for_reuse() -> Result<(), Box<dyn std::error::Error>> {
     let (source, mut peer) = UnixStream::pair()?;
-    let mut poll = Poll::with_capacity(1, 1)?;
+    let mut poll = Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(1)
+        .build()?;
     let registration = poll.register(&source, Key::new(3), Interest::READABLE, Mode::Level)?;
     let mut events = poll.events()?;
     peer.write_all(b"ready")?;
@@ -88,7 +97,10 @@ fn drain_preserves_capacity_for_reuse() -> Result<(), Box<dyn std::error::Error>
 fn owned_iteration_preserves_delivery_order() -> Result<(), Box<dyn std::error::Error>> {
     let (first_source, mut first_peer) = UnixStream::pair()?;
     let (second_source, mut second_peer) = UnixStream::pair()?;
-    let mut poll = Poll::with_capacity(2, 2)?;
+    let mut poll = Poll::builder()
+        .event_capacity(2)
+        .registration_capacity(2)
+        .build()?;
     let first = poll.register(&first_source, Key::new(4), Interest::READABLE, Mode::Level)?;
     let second = poll.register(&second_source, Key::new(5), Interest::READABLE, Mode::Level)?;
     let mut events = poll.events()?;

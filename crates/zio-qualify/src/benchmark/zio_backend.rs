@@ -17,7 +17,11 @@ impl Backend for ZioBackend {
     type Wake = Waker;
 
     fn new(event_capacity: usize, registration_capacity: usize) -> Result<Self, String> {
-        let poll = Poll::with_capacity(event_capacity, registration_capacity).map_err(display)?;
+        let poll = Poll::builder()
+            .event_capacity(event_capacity)
+            .registration_capacity(registration_capacity)
+            .build()
+            .map_err(display)?;
         let events = poll.events().map_err(display)?;
         Ok(Self {
             poll,
@@ -41,11 +45,9 @@ impl Backend for ZioBackend {
     fn rearm(
         &mut self,
         registration: &Self::Registration<'_>,
-        profile: Profile,
+        _profile: Profile,
     ) -> Result<(), String> {
-        self.poll
-            .modify(registration, zio::Interest::READABLE, mode(profile))
-            .map_err(display)
+        self.poll.rearm(registration).map_err(display)
     }
 
     fn delete(&mut self, registration: Self::Registration<'_>) -> Result<(), String> {

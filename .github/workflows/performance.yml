@@ -77,6 +77,33 @@ jobs:
           --output "$PERF_DIR/allocation.ndjson"
           2> "$PERF_DIR/allocation-summary.txt"
 
+      - name: Validate kqueue skew receipt path
+        if: runner.os == 'macOS'
+        env:
+          PERF_DIR: ${{ runner.temp }}/zio-performance
+        run: |
+          cargo +1.97.1 build -p zio-qualify --bin zio-kqueue-skew \
+            --release --no-default-features --features kqueue-skew \
+            --locked --offline
+          target/release/zio-kqueue-skew --smoke \
+            --output "$PERF_DIR/kqueue-skew-smoke.ndjson"
+          jq -e '
+            .schema == "zio.kqueue-skew.v1" and
+            .status == "passed" and
+            .git.sha == env.GITHUB_SHA and
+            .git.dirty == false and
+            .parameters.registrations == 5 and
+            .parameters.event_capacity == 2 and
+            .parameters.ready_registrations == 3 and
+            .level.waits_to_complete_cycle == 2 and
+            .level.unique_registrations_delivered == 3 and
+            .one_shot.waits_to_complete_cycle == 2 and
+            .one_shot.logical_events_delivered == 3 and
+            .one_shot.disarmed_registrations == 3 and
+            .one_shot.disarm_submissions == 2 and
+            .one_shot.retained_heap.bytes_current > 0
+          ' "$PERF_DIR/kqueue-skew-smoke.ndjson"
+
       - name: Validate complete receipt coverage
         env:
           PERF_DIR: ${{ runner.temp }}/zio-performance

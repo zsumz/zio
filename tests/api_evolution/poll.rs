@@ -11,7 +11,6 @@ use super::support::*;
 #[test]
 fn poll_exposes_construction_and_observation() {
     let _ = Poll::new as fn() -> Result<Poll, Error>;
-    let _ = Poll::with_capacity as fn(usize, usize) -> Result<Poll, Error>;
     let _ = Poll::events as fn(&Poll) -> Result<Events, Error>;
     let _ = Poll::waker as fn(&mut Poll, Key) -> Result<Waker, Error>;
     let _ = Poll::wait as fn(&mut Poll, &mut Events, Wait) -> Result<WaitReport, Error>;

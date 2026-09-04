@@ -11,6 +11,8 @@ use crate::{
 
 #[path = "table_capacity.rs"]
 mod capacity;
+#[path = "table_free_queue.rs"]
+mod free_queue;
 #[path = "table_permit.rs"]
 mod permit;
 #[path = "table_reserve.rs"]
@@ -33,6 +35,7 @@ pub(crate) struct RegistrationTable {
     limit: NonZeroUsize,
     slots: Vec<Slot>,
     free_head: u32,
+    free_tail: u32,
     exhausted: usize,
     live: usize,
 }
@@ -52,6 +55,7 @@ impl RegistrationTable {
             limit,
             slots,
             free_head: FREE_END,
+            free_tail: FREE_END,
             exhausted: 0,
             live: 0,
         })
@@ -219,6 +223,9 @@ impl RegistrationTable {
     }
 }
 
+#[cfg(test)]
+#[path = "table_churn_test.rs"]
+mod churn_tests;
 #[cfg(test)]
 #[path = "table_count_test.rs"]
 mod count_tests;

@@ -50,6 +50,7 @@ pub(super) fn mode_class(mode: Mode) -> &'static str {
     match mode {
         Mode::Level => "level",
         Mode::OneShot => "one-shot",
+        _ => "other",
     }
 }
 

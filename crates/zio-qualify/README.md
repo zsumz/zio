@@ -20,5 +20,13 @@ cargo run -p zio-qualify --no-default-features --features allocation-metrics \
 Timing builds do not link the allocation instrumentor. Receipts contain one
 metric kind only.
 
+On a kqueue host, run the review-defined registration/event-capacity skew gate:
+
+```sh
+cargo run -p zio-qualify --release --no-default-features \
+  --features kqueue-skew --bin zio-kqueue-skew -- \
+  --output target/kqueue-skew.ndjson
+```
+
 See [Performance](../../docs/performance.md) for the receipt format and method.
 This crate is unpublished and absent from `zio`'s production graph.

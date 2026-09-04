@@ -20,7 +20,6 @@ pub const DEFAULT_EVENT_CAPACITY: usize = 1_024;
 pub const DEFAULT_REGISTRATION_CAPACITY: usize = 1_024;
 
 /// Owner-local portable readiness poller.
-///
 /// Pollers are `Send` but not `Sync`; operations require exclusive access. zio
 /// does not change descriptor blocking modes. Dropping one closes every owned
 /// retained resource descriptor; borrowed descriptors remain caller-owned.
@@ -35,6 +34,8 @@ pub struct Poll {
     #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
     pub(crate) deferred_wake: bool,
     pub(crate) pending: crate::pending::PendingBatch,
+    #[cfg(feature = "unstable-test-support")]
+    pub(crate) test_wait_metrics: (usize, usize, u128),
     _owner_local: OwnerLocal,
 }
 
@@ -66,8 +67,10 @@ impl fmt::Debug for Poll {
     target_os = "netbsd"
 ))]
 impl std::os::fd::AsFd for Poll {
-    /// Borrows the native selector for readiness nesting. External waits or
-    /// registration changes invalidate zio's guarantees.
+    /// Borrows the native selector through a trusted composition escape hatch.
+    ///
+    /// Readiness nesting is supported. External waits or registration changes
+    /// invalidate zio's guarantees.
     fn as_fd(&self) -> std::os::fd::BorrowedFd<'_> {
         self.backend.as_fd()
     }
@@ -80,8 +83,10 @@ impl std::os::fd::AsFd for Poll {
     target_os = "netbsd"
 ))]
 impl std::os::fd::AsRawFd for Poll {
-    /// Returns the native selector for readiness nesting. External waits or
-    /// registration changes invalidate zio's guarantees.
+    /// Returns the native selector through a trusted composition escape hatch.
+    ///
+    /// Readiness nesting is supported. External waits or registration changes
+    /// invalidate zio's guarantees.
     fn as_raw_fd(&self) -> std::os::fd::RawFd {
         std::os::fd::AsRawFd::as_raw_fd(&std::os::fd::AsFd::as_fd(self))
     }
@@ -95,11 +100,10 @@ impl Poll {
 
     /// Creates a poller with the default fixed capacities.
     pub fn new() -> Result<Self, Error> {
-        Self::with_capacity(DEFAULT_EVENT_CAPACITY, DEFAULT_REGISTRATION_CAPACITY)
+        Self::build_with_capacity(DEFAULT_EVENT_CAPACITY, DEFAULT_REGISTRATION_CAPACITY)
     }
 
-    /// Creates a poller with fixed non-zero event and registration capacities.
-    pub fn with_capacity(
+    pub(super) fn build_with_capacity(
         event_capacity: usize,
         registration_capacity: usize,
     ) -> Result<Self, Error> {
@@ -135,6 +139,8 @@ impl Poll {
             #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
             deferred_wake: false,
             pending: crate::pending::PendingBatch::new(registration_capacity)?,
+            #[cfg(feature = "unstable-test-support")]
+            test_wait_metrics: (0, 0, 0),
             _owner_local: OwnerLocal(PhantomData),
         })
     }

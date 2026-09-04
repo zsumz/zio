@@ -9,6 +9,15 @@
 zio is a small synchronous poller built directly on epoll and kqueue. It is not
 an async runtime.
 
+## Why zio?
+
+zio owns descriptor identity, rejects stale generations, bounds retained
+storage, and reports whether failed kernel mutations were applied. Use it when
+those ownership and recovery guarantees matter more than broad portability.
+
+Use Mio when you need Windows, WASI, provided networking types, or its wider
+ecosystem. Use `polling` when you need a broader backend set or edge delivery.
+
 ## Support
 
 | Platform | Backend | Status |
@@ -50,6 +59,25 @@ Callers choose registration and event limits, interests, delivery modes, keys,
 and wait behavior. Ordinary waits reuse fixed zio-owned storage. A recovery
 report may allocate one bounded snapshot.
 
+Use duplicate-by-default `register` when integrating a caller-owned descriptor.
+High-cardinality reactors that transfer descriptor ownership should prefer
+`register_owned`, which avoids the duplicate and returns the descriptor through
+`delete_owned`. See the [owned example](examples/owned.rs).
+
+For non-default limits, use named construction:
+
+```rust
+# use zio::Poll;
+# fn main() -> Result<(), zio::Error> {
+let poll = Poll::builder()
+    .event_capacity(1_024)
+    .registration_capacity(65_536)
+    .build()?;
+# drop(poll);
+# Ok(())
+}
+```
+
 ## Contracts
 
 - Pollers duplicate descriptors by default.
@@ -58,10 +86,20 @@ report may allocate one bounded snapshot.
 - Level delivery repeats; one-shot delivery requires explicit rearming.
 - Readiness is advisory. Nonblocking I/O remains the source of truth.
 - Pollers are `Send`, not `Sync`; wakers are `Send + Sync`.
-- Wake signals coalesce, drain on observation, and remain reusable.
+- Wake triggers may coalesce. One observation consumes the logical pending
+  notification, and a later successful trigger remains observable.
 - Mutation and recovery failures report whether backend state changed.
 
 See [Contracts](docs/contracts.md) for the precise guarantees.
+
+## Examples
+
+- [Level readiness](examples/level.rs)
+- [One-shot rearming](examples/one_shot.rs)
+- [Owned descriptor transfer](examples/owned.rs)
+- [Unsafe borrowed registration](examples/borrowed.md)
+- [Recovery-aware dispatch](examples/recovery.rs)
+- [Nested pollers](examples/nested.md)
 
 ## Crates
 
@@ -79,6 +117,10 @@ zrail diff --base HEAD --deny-grants
 
 See [Qualification](docs/qualification.md) for the evidence model and
 [Performance](docs/performance.md) for reproducible peer measurements.
+
+The [API and MSRV policies](docs/contracts.md#api-evolution),
+[changelog](CHANGELOG.md), [contribution guide](CONTRIBUTING.md), and
+[security policy](SECURITY.md) describe the release boundary.
 
 ## Scope
 

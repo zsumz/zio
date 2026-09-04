@@ -11,7 +11,10 @@ pub(crate) fn poll(
     event_capacity: usize,
     registration_capacity: usize,
 ) -> Result<Poll, WakeFailure> {
-    Poll::with_capacity(event_capacity, registration_capacity)
+    Poll::builder()
+        .event_capacity(event_capacity)
+        .registration_capacity(registration_capacity)
+        .build()
         .map_err(|error| observed(scenario, WakeCheck::Setup, "constructed poller", &error))
 }
 

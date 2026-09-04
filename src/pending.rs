@@ -46,7 +46,10 @@ impl PendingBatch {
     }
 
     #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
-    pub(crate) fn delivery_range(&mut self, limit: usize) -> core::ops::Range<usize> {
-        self.inner.delivery_range(limit)
+    pub(crate) fn delivery_selection(
+        &mut self,
+        limit: usize,
+    ) -> crate::pending_kqueue::DeliverySelection {
+        self.inner.delivery_selection(limit)
     }
 }

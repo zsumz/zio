@@ -42,7 +42,7 @@ fn recovery_retains_exactly_one_bounded_allocation() -> Result<(), Box<dyn StdEr
             Some(owner()),
             &mut registrations,
             &mut events,
-            &pending,
+            pending.iter(),
             pending.len(),
             false,
             None,

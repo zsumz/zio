@@ -74,26 +74,19 @@ impl<'state, Driver: MutationDriver> MutationSession<'state, Driver> {
                 desired_mode: mode,
             })
         };
-        if let Err(failure) = result {
-            match failure.commit() {
-                CommitStatus::NotApplied => {}
-                CommitStatus::Applied => {
-                    self.registrations
-                        .commit_modify(registration.id(), key, interest, mode)?;
-                }
-                CommitStatus::Unknown => {
-                    self.registrations.mark_uncertain(registration.id())?;
-                }
-            }
-            return Err(mutation_error(Operation::Modify, failure));
-        }
-        self.registrations
-            .commit_modify(registration.id(), key, interest, mode)
+        settle_modify(
+            self.registrations,
+            registration.id(),
+            key,
+            interest,
+            mode,
+            result,
+        )
     }
 
     pub(crate) fn rearm(&mut self, registration: &Registration) -> Result<(), Error> {
         require_owner(self.owner.current(), registration)?;
-        let interest = {
+        let modification = {
             let binding = self.registrations.binding(registration.id(), false)?;
             match (binding.mode, binding.state) {
                 (
@@ -101,7 +94,18 @@ impl<'state, Driver: MutationDriver> MutationSession<'state, Driver> {
                     RegistrationState::Registered {
                         arm: ArmState::Disarmed,
                     },
-                ) => Some(binding.interest),
+                ) => Some((
+                    binding.interest,
+                    self.driver.modify(ModifyRequest {
+                        descriptor: binding.descriptor,
+                        registration: registration.id(),
+                        previous_interest: binding.interest,
+                        previous_mode: binding.mode,
+                        previous_arm: ArmState::Disarmed,
+                        desired_interest: binding.interest,
+                        desired_mode: Mode::OneShot,
+                    }),
+                )),
                 (
                     _,
                     RegistrationState::Registered {
@@ -123,11 +127,41 @@ impl<'state, Driver: MutationDriver> MutationSession<'state, Driver> {
                 }
             }
         };
-        match interest {
-            Some(interest) => self.modify(registration, interest, Mode::OneShot),
+        match modification {
+            Some((interest, result)) => settle_modify(
+                self.registrations,
+                registration.id(),
+                None,
+                interest,
+                Mode::OneShot,
+                result,
+            ),
             None => Ok(()),
         }
     }
+}
+
+fn settle_modify(
+    registrations: &mut RegistrationTable,
+    registration: crate::RegistrationId,
+    key: Option<Key>,
+    interest: Interest,
+    mode: Mode,
+    result: Result<(), crate::sys::MutationFailure>,
+) -> Result<(), Error> {
+    if let Err(failure) = result {
+        match failure.commit() {
+            CommitStatus::NotApplied => {}
+            CommitStatus::Applied => {
+                registrations.commit_modify(registration, key, interest, mode)?;
+            }
+            CommitStatus::Unknown => {
+                registrations.mark_uncertain(registration)?;
+            }
+        }
+        return Err(mutation_error(Operation::Modify, failure));
+    }
+    registrations.commit_modify(registration, key, interest, mode)
 }
 
 pub(super) fn mutation_error(operation: Operation, failure: crate::sys::MutationFailure) -> Error {

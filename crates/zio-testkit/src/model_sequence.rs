@@ -188,5 +188,6 @@ const fn mode_name(mode: Mode) -> &'static str {
     match mode {
         Mode::Level => "level",
         Mode::OneShot => "one_shot",
+        _ => "unknown",
     }
 }

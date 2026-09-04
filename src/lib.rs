@@ -1,5 +1,4 @@
 //! Synchronous, fixed-capacity epoll/kqueue I/O with duplicate-by-default descriptors.
-//!
 //! ```no_run
 //! use std::{net::TcpListener, time::Duration};
 //! use zio::{Interest, Key, Mode, Poll, Wait};
@@ -19,7 +18,6 @@
 //! # Ok(())
 //! # }
 //! ```
-//!
 //! Readiness is advisory; perform nonblocking I/O until it returns `WouldBlock`.
 #![deny(missing_debug_implementations, missing_docs, unreachable_pub)]
 #![deny(unsafe_code)]
@@ -37,6 +35,8 @@ mod observe;
 #[cfg(test)]
 mod observe_allocation_test;
 mod observe_recovery;
+#[cfg(test)]
+mod observe_selection_test;
 #[cfg(test)]
 mod observe_test;
 #[cfg(test)]

@@ -59,6 +59,17 @@ pub(super) fn register_descriptor<Driver: MutationDriver>(
     interest: Interest,
     mode: Mode,
 ) -> Result<Registration, RegisterFailure> {
+    if registrations.has_virgin_slot() {
+        return register_fresh(
+            owner,
+            registrations,
+            driver,
+            descriptor,
+            key,
+            interest,
+            mode,
+        );
+    }
     if registrations.has_reusable_slot() {
         return register_reused(
             owner,

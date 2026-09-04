@@ -19,11 +19,15 @@ fn waker_normalized_construction_stays_compact() -> Result<(), Box<dyn StdError>
 
     let allocations = allocation_counter::measure(|| {
         retained = Some(
-            Poll::with_capacity(CAPACITY, CAPACITY).and_then(|mut poll| {
-                let events = poll.events()?;
-                let waker = poll.waker(Key::new(1))?;
-                Ok((poll, events, waker))
-            }),
+            Poll::builder()
+                .event_capacity(CAPACITY)
+                .registration_capacity(CAPACITY)
+                .build()
+                .and_then(|mut poll| {
+                    let events = poll.events()?;
+                    let waker = poll.waker(Key::new(1))?;
+                    Ok((poll, events, waker))
+                }),
         );
     });
 

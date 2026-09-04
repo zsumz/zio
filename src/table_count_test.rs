@@ -61,6 +61,7 @@ fn count_overflow_rejects_reservation_before_mutation() -> Result<(), Box<dyn St
     assert_eq!(descriptor.as_raw_fd(), raw_descriptor);
     assert!(table.slots.is_empty());
     assert_eq!(table.free_head, FREE_END);
+    assert_eq!(table.free_tail, FREE_END);
     assert_eq!(table.live, usize::MAX);
     assert_eq!(table.remaining(), 0);
     Ok(())
@@ -78,6 +79,7 @@ fn count_underflow_rejects_retirement_before_mutation() -> Result<(), Box<dyn St
     assert!(matches!(result, Err(Error::Invariant)));
     assert!(table.slots[0].entry.is_some());
     assert_eq!(table.free_head, FREE_END);
+    assert_eq!(table.free_tail, FREE_END);
     assert_eq!(table.live, 0);
     Ok(())
 }
@@ -91,7 +93,20 @@ fn reserve(
     source: &File,
 ) -> Result<RegistrationId, Box<dyn StdError>> {
     let descriptor = Descriptor::owned(source.as_fd().try_clone_to_owned()?);
-    let (id, reservation) = if table.has_reusable_slot() {
+    let (id, reservation) = if table.has_virgin_slot() {
+        let permit = table.fresh_permit()?;
+        let id = permit.id();
+        let (reservation, ()) = permit
+            .reserve_with(
+                descriptor,
+                Key::ZERO,
+                Interest::READABLE,
+                Mode::Level,
+                |_, _| (),
+            )
+            .map_err(super::permit::ReservationFailure::discard_descriptor)?;
+        (id, reservation)
+    } else if table.has_reusable_slot() {
         let permit = table.reused_permit()?;
         let id = permit.id();
         let (reservation, ()) = permit

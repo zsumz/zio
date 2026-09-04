@@ -34,7 +34,11 @@ impl Candidate for ZioBorrowedCandidate {
         reason = "the session retains source until successful deletion and owns the poller"
     )]
     fn register(source: &UnixStream, spec: RegistrationSpec) -> CandidateResult<Self::Session<'_>> {
-        let mut poll = Poll::with_capacity(4, 1).map_err(display)?;
+        let mut poll = Poll::builder()
+            .event_capacity(4)
+            .registration_capacity(1)
+            .build()
+            .map_err(display)?;
         // SAFETY: the session retains `source` until successful deletion and
         // owns `poll`, so the descriptor cannot close before the poller.
         let registration = unsafe {
@@ -91,13 +95,7 @@ impl CandidateSession for ZioBorrowedSession<'_> {
     }
 
     fn rearm(&mut self) -> CandidateResult<()> {
-        self.poll
-            .modify(
-                &self.registration,
-                interest(self.spec.interest),
-                mode(self.spec.profile),
-            )
-            .map_err(display)
+        self.poll.rearm(&self.registration).map_err(display)
     }
 
     fn delete(mut self) -> CandidateResult<()> {

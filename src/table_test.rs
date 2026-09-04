@@ -162,7 +162,7 @@ fn reservation_releases_the_exact_owned_descriptor() -> Result<(), Box<dyn StdEr
 }
 
 #[test]
-fn retired_slots_are_reused_in_lifo_order() -> Result<(), Box<dyn StdError>> {
+fn retired_slots_are_reused_in_fifo_order() -> Result<(), Box<dyn StdError>> {
     let mut table = table(3)?;
     let source = File::open("/dev/null")?;
     let first = reserve(&mut table, &source, Key::new(1))?;
@@ -174,8 +174,28 @@ fn retired_slots_are_reused_in_lifo_order() -> Result<(), Box<dyn StdError>> {
     let first_reused = reserve(&mut table, &source, Key::new(4))?;
     let second_reused = reserve(&mut table, &source, Key::new(5))?;
 
-    assert_reused(first, first_reused)?;
-    assert_reused(second, second_reused)?;
+    assert_reused(second, first_reused)?;
+    assert_reused(first, second_reused)?;
+    Ok(())
+}
+
+#[test]
+fn virgin_slots_are_used_before_any_generation_is_recycled() -> Result<(), Box<dyn StdError>> {
+    let mut table = table(3)?;
+    let source = File::open("/dev/null")?;
+
+    let first = reserve(&mut table, &source, Key::new(1))?;
+    table.retire(first)?;
+    let second = reserve(&mut table, &source, Key::new(2))?;
+    table.retire(second)?;
+    let third = reserve(&mut table, &source, Key::new(3))?;
+
+    assert_eq!(decode(first)?.0, 0);
+    assert_eq!(decode(second)?.0, 1);
+    assert_eq!(decode(third)?.0, 2);
+    assert_eq!(decode(first)?.1.get(), 1);
+    assert_eq!(decode(second)?.1.get(), 1);
+    assert_eq!(decode(third)?.1.get(), 1);
     Ok(())
 }
 
@@ -210,22 +230,29 @@ fn permanent_exhaustion_is_distinct_from_live_capacity() -> Result<(), Box<dyn S
 }
 
 #[test]
-fn virgin_capacity_remains_after_an_initialized_slot_exhausts() -> Result<(), Box<dyn StdError>> {
+fn virgin_capacity_precedes_a_nearly_exhausted_reusable_slot() -> Result<(), Box<dyn StdError>> {
     let mut table = table(2)?;
     let source = File::open("/dev/null")?;
     let seeded = reserve(&mut table, &source, Key::new(1))?;
     table.retire(seeded)?;
     table.slots[0].generation = MAX_GENERATION - 1;
-    let exhausted = reserve(&mut table, &source, Key::new(2))?;
-    table.retire(exhausted)?;
-
-    assert_eq!(table.remaining(), 1);
-
-    let registration = reserve(&mut table, &source, Key::new(3))?;
-    let (index, generation) = decode(registration)?;
+    let virgin = reserve(&mut table, &source, Key::new(2))?;
+    let (index, generation) = decode(virgin)?;
     assert_eq!(index, 1);
     assert_eq!(generation.get(), 1);
+    assert_eq!(table.exhausted, 0);
+
+    table.retire(virgin)?;
+    let terminal = reserve(&mut table, &source, Key::new(3))?;
+    assert_eq!(decode(terminal)?.0, 0);
+    assert_eq!(decode(terminal)?.1.get(), MAX_GENERATION);
+    table.retire(terminal)?;
+
     assert_eq!(table.exhausted, 1);
+    assert_eq!(table.remaining(), 1);
+    let reused = reserve(&mut table, &source, Key::new(4))?;
+    assert_eq!(decode(reused)?.0, 1);
+    assert_eq!(decode(reused)?.1.get(), 2);
     Ok(())
 }
 

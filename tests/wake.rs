@@ -35,7 +35,10 @@ fn wake_before_wait_is_observable() -> Result<(), Box<dyn std::error::Error>> {
 
 #[test]
 fn wake_coalesces_drains_and_remains_reusable() -> Result<(), Box<dyn std::error::Error>> {
-    let mut poll = Poll::with_capacity(1, 1)?;
+    let mut poll = Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(1)
+        .build()?;
     let key = Key::new(101);
     let waker = poll.waker(key)?;
     let mut events = poll.events()?;
@@ -58,7 +61,10 @@ fn wake_coalesces_drains_and_remains_reusable() -> Result<(), Box<dyn std::error
 fn wake_and_resource_share_capacity_without_loss() -> Result<(), Box<dyn std::error::Error>> {
     let (source, mut peer) = UnixStream::pair()?;
     source.set_nonblocking(true)?;
-    let mut poll = Poll::with_capacity(1, 1)?;
+    let mut poll = Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(1)
+        .build()?;
     let resource_key = Key::new(102);
     let wake_key = Key::new(103);
     let registration = poll.register(&source, resource_key, Interest::READABLE, Mode::OneShot)?;
@@ -96,7 +102,10 @@ fn wake_and_resource_share_capacity_without_loss() -> Result<(), Box<dyn std::er
 fn repeated_wakes_do_not_starve_a_ready_resource() -> Result<(), Box<dyn std::error::Error>> {
     let (source, mut peer) = UnixStream::pair()?;
     source.set_nonblocking(true)?;
-    let mut poll = Poll::with_capacity(1, 1)?;
+    let mut poll = Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(1)
+        .build()?;
     let resource_key = Key::new(104);
     let registration = poll.register(&source, resource_key, Interest::READABLE, Mode::Level)?;
     let waker = poll.waker(Key::new(105))?;
@@ -133,8 +142,55 @@ fn repeated_wakes_preserve_ready_set_fairness() -> Result<(), Box<dyn std::error
     verify_wake_pressure_fairness(Mode::OneShot)
 }
 
+#[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
+#[test]
+fn repeated_wakes_do_not_shrink_wrapped_resource_batches() -> Result<(), Box<dyn std::error::Error>>
+{
+    let mut poll = Poll::builder()
+        .event_capacity(2)
+        .registration_capacity(3)
+        .build()?;
+    let mut sources = Vec::new();
+    let mut peers = Vec::new();
+    for key in [Key::new(120), Key::new(121), Key::new(122)] {
+        let (source, mut peer) = UnixStream::pair()?;
+        source.set_nonblocking(true)?;
+        peer.write_all(b"ready")?;
+        let _registration = poll.register(&source, key, Interest::READABLE, Mode::Level)?;
+        sources.push(source);
+        peers.push(peer);
+    }
+    let wake_key = Key::new(123);
+    let waker = poll.waker(wake_key)?;
+    let mut events = poll.events()?;
+    let mut full_resource_batches = 0;
+    let mut saw_wake = false;
+
+    for _ in 0..8 {
+        waker.wake()?;
+        require_no_recovery(poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?)?;
+        let resources = events.iter().filter(|event| event.is_resource()).count();
+        if resources != 0 {
+            assert_eq!(resources, 2);
+            full_resource_batches += 1;
+        }
+        saw_wake |= events
+            .iter()
+            .any(|event| event.is_wake() && event.key() == wake_key);
+    }
+
+    assert!(full_resource_batches >= 3);
+    assert!(saw_wake);
+    poll.delete_all()?;
+    drop((sources, peers));
+    Ok(())
+}
+
 fn verify_wake_pressure_fairness(mode: Mode) -> Result<(), Box<dyn std::error::Error>> {
-    let mut poll = Poll::with_capacity(1, 3)?;
+    let mut poll = Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(3)
+        .build()?;
     let mut sources = Vec::new();
     let mut peers = Vec::new();
     let mut registrations = Vec::new();

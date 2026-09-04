@@ -7,9 +7,9 @@ matching nonblocking operation is always authoritative.
 
 Public enums have two evolution contracts:
 
-- `Error`, `Operation`, `CapacityKind`, and `CapacityReason` are open
-  diagnostics. Downstream matches need a fallback arm.
-- `Event`, `CommitStatus`, `DescriptorOwnership`, `Mode`, `Wait`, `ArmState`,
+- `Error`, `Operation`, `CapacityKind`, `CapacityReason`, and `Mode` are open.
+  Downstream matches need a fallback arm.
+- `Event`, `CommitStatus`, `DescriptorOwnership`, `Wait`, `ArmState`,
   `RegistrationState`, `RegisterOwnedError`, and `DeleteOwnedError` are closed.
   Variant changes are breaking. Event fields may grow; match with `..`.
 
@@ -33,6 +33,13 @@ work in const contexts. `Interest` and `Readiness` set operations and queries do
 `Events` and `RecoveryFailure` cardinality and slice queries work in const
 contexts.
 
+The `unstable-test-support` Cargo feature and every item reachable only through
+it are test infrastructure, not stable API. They may change or disappear in any
+release without a semver-major version change.
+
+The minimum supported Rust version is 1.88. A future MSRV increase requires a
+minor release and an entry in `CHANGELOG.md`; patch releases do not raise it.
+
 `BackendLimit` rejects capacities that native or token representations cannot hold.
 `Error::capacity_limit` reports the configured or attempted logical capacity.
 
@@ -44,6 +51,10 @@ one source or its duplicated handles. Caller close and numeric descriptor reuse
 cannot redirect later mutations. Handles are poller-scoped; another poller
 rejects them. Keys need not be unique. Each resource event carries its exact
 registration handle.
+
+Interest and logical capacity are validated before the safe path borrows or
+duplicates the source descriptor. A full table therefore reports zio capacity
+rather than attempting a duplicate that cannot be retained.
 
 `Poll::register_owned` transfers an `OwnedFd` without duplication. Rejected and
 `NotApplied` calls return it; `Applied` and `Unknown` failures return the
@@ -66,9 +77,10 @@ new poller can restore registration capacity.
 `Poll::set_key` changes only future resource-event routing and does no backend work.
 `Poll::modify_with_key` settles key, interest, and mode under one commit outcome.
 `RegistrationState::arm` returns `None` when backend state is uncertain.
-On supported targets, `Poll` implements `AsFd` and `AsRawFd`. Its selector is
-close-on-exec; readability means a nonblocking wait may observe an event. Use
-it as a readiness source; do not wait on or modify the selector outside zio.
+On supported targets, `Poll` implements `AsFd` and `AsRawFd` as a trusted native
+escape hatch. Its selector is close-on-exec; readability means a nonblocking
+wait may observe an event. Readiness nesting is supported, but waiting on or
+modifying the selector outside zio invalidates zio's exact-state guarantees.
 Draining a nested poller clears readiness; a later event reactivates it.
 
 ## Borrowed registration
@@ -104,6 +116,11 @@ Successful deletion retires the generation and makes every copy stale. An
 prior state; `Unknown` makes every copy uncertain and allows a delete retry.
 Stale and wrong-poller copies are rejected before backend work and cannot affect
 a reused slot.
+
+Registration consumes never-used slots before recycling retired slots. Once
+every slot has been used, retired slots are reused in FIFO order. This spreads
+generation churn across the fixed registration capacity while preserving the
+generation-exhaustion defense.
 
 `Poll::delete_all` validates retained handles, then stops at the first failure.
 Earlier deletions may have succeeded; later entries are untouched.
@@ -186,6 +203,17 @@ Kqueue retains raw space for both filters of every registration plus the wake
 filter, and one coalesced entry per registration. A delivered registration
 therefore receives its complete split-filter snapshot. One-shot recovery plans
 and receipts are bounded separately by the smaller configured limit.
+
+For registration capacity `R` and event capacity `E`, the shared kqueue arena
+retains `max(2R + 1, 4 * min(E, R))` native `kevent` records. The registration
+table, coalesced entries, and slot-index map add storage linear in `R`; disarm
+plans add storage linear in `min(E, R)`. Exact bytes are ABI-dependent and are
+recorded by the construction-allocation qualification receipts.
+
+Consequently, kqueue collection work and retained native-event storage scale
+with registration capacity, even when event capacity is much smaller. This
+preserves complete split-filter snapshots and zio-controlled fairness; measure
+that tradeoff for workloads with highly skewed capacities.
 
 A failed post-delivery recovery alone creates one owned `Vec` snapshot, bounded
 by the smaller configured event and registration limit. Allocation exhaustion

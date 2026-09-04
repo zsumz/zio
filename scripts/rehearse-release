@@ -36,11 +36,20 @@ tar -tzf "$archive" > "$listing"
 for required in \
   "$package_name/Cargo.toml" \
   "$package_name/Cargo.lock" \
+  "$package_name/CHANGELOG.md" \
+  "$package_name/CONTRIBUTING.md" \
   "$package_name/LICENSE" \
   "$package_name/README.md" \
+  "$package_name/SECURITY.md" \
   "$package_name/docs/contracts.md" \
   "$package_name/docs/performance.md" \
   "$package_name/docs/qualification.md" \
+  "$package_name/examples/borrowed.md" \
+  "$package_name/examples/level.rs" \
+  "$package_name/examples/nested.md" \
+  "$package_name/examples/one_shot.rs" \
+  "$package_name/examples/owned.rs" \
+  "$package_name/examples/recovery.rs" \
   "$package_name/zio-logo.svg"; do
   grep -Fxq "$required" "$listing"
 done
@@ -84,7 +93,7 @@ printf '%s\n' \
   > "$consumer_dir/Cargo.toml"
 printf '%s\n' \
   'use std::{io, time::Duration};' \
-  'use zio::{Event, Key, Poll, Wait};' \
+  'use zio::{Key, Poll, Wait};' \
   '' \
   'fn main() -> Result<(), Box<dyn std::error::Error>> {' \
   '    let mut poll = Poll::new()?;' \
@@ -92,7 +101,11 @@ printf '%s\n' \
   '    let mut events = poll.events()?;' \
   '    waker.wake()?;' \
   '    let report = poll.wait(&mut events, Wait::For(Duration::from_secs(1)))?;' \
-  '    if events.as_slice() != [Event::Wake { key: Key::new(91) }] {' \
+  '    let delivered = matches!(' \
+  '        events.as_slice(),' \
+  '        [event] if event.is_wake() && event.key() == Key::new(91)' \
+  '    );' \
+  '    if !delivered {' \
   '        return Err(io::Error::other("registry consumer missed wake").into());' \
   '    }' \
   '    if let Some(recovery) = report.into_recovery() {' \
@@ -142,6 +155,8 @@ cp "$api_contract_dir/error-without-wildcard-1.88.0.stderr" "$evidence_dir/"
 cp "$api_contract_dir/error-without-wildcard-1.97.1.stderr" "$evidence_dir/"
 cp "$api_contract_dir/operation-without-wildcard-1.88.0.stderr" "$evidence_dir/"
 cp "$api_contract_dir/operation-without-wildcard-1.97.1.stderr" "$evidence_dir/"
+cp "$api_contract_dir/mode-without-wildcard-1.88.0.stderr" "$evidence_dir/"
+cp "$api_contract_dir/mode-without-wildcard-1.97.1.stderr" "$evidence_dir/"
 cp "$api_contract_dir/public-api-contract.json" "$evidence_dir/"
 copied_sha256="$(shasum -a 256 "$evidence_dir/$archive_basename" | awk '{print $1}')"
 test "$copied_sha256" = "$archive_sha256"

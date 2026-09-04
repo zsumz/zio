@@ -15,6 +15,10 @@ impl Poll {
     /// ready sets larger than the batch rotate across calls, even with repeated
     /// wakes.
     pub fn wait(&mut self, events: &mut Events, wait: Wait) -> Result<WaitReport, Error> {
+        #[cfg(feature = "unstable-test-support")]
+        {
+            self.test_wait_metrics = (0, 0, 0);
+        }
         events.clear();
         self.pending.clear();
         let result = self.observe(events, wait);
@@ -61,6 +65,10 @@ impl Poll {
                 operation: Operation::Wait,
                 source,
             })?;
+        #[cfg(feature = "unstable-test-support")]
+        {
+            self.test_wait_metrics.0 = observed;
+        }
         #[cfg(target_os = "linux")]
         {
             self.translate_linux(observed, events)?;
@@ -129,25 +137,34 @@ impl Poll {
                 .add(resource.id, resource.key, raw.readiness())?;
         }
         let capacity = self.event_capacity.get();
-        let delivery = self.pending.delivery_range(capacity);
+        let delivery = self.pending.delivery_selection(capacity);
         let deliver_wake = woke && delivery.len() < capacity;
         if woke && self.wake_key.is_none() {
             return Err(Error::Invariant);
         }
         self.deferred_wake = woke;
-        self.prepare_disarms(delivery.clone())?;
+        let disarm_count = self.prepare_disarms(&delivery)?;
+        #[cfg(feature = "unstable-test-support")]
+        let disarm_started = Instant::now();
         let recovery = self.backend.submit_disarms(&mut self.raw_events).err();
-        let pending = self
-            .pending
-            .as_slice()
-            .get(delivery)
-            .ok_or(Error::Invariant)?;
+        #[cfg(feature = "unstable-test-support")]
+        {
+            self.test_wait_metrics.1 = disarm_count;
+            self.test_wait_metrics.2 = if disarm_count == 0 {
+                0
+            } else {
+                disarm_started.elapsed().as_nanos()
+            };
+        }
+        #[cfg(not(feature = "unstable-test-support"))]
+        let _ = disarm_count;
+        let pending = delivery.try_iter(self.pending.as_slice())?;
         let result = crate::observe_recovery::finish(
             owner,
             &mut self.registrations,
             events,
             pending,
-            pending.len(),
+            delivery.len(),
             deliver_wake,
             self.wake_key,
             self.raw_events.disarm_outcomes(),
@@ -160,10 +177,14 @@ impl Poll {
     }
 
     #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
-    fn prepare_disarms(&mut self, delivery: core::ops::Range<usize>) -> Result<(), Error> {
+    fn prepare_disarms(
+        &mut self,
+        delivery: &crate::pending_kqueue::DeliverySelection,
+    ) -> Result<usize, Error> {
         self.raw_events.clear_disarms();
-        for index in delivery {
-            let pending = *self.pending.as_slice().get(index).ok_or(Error::Invariant)?;
+        let mut count = 0_usize;
+        for pending in delivery.try_iter(self.pending.as_slice())? {
+            let pending = *pending;
             let binding = self.registrations.binding(pending.registration, false)?;
             if !binding.mode.is_one_shot() {
                 continue;
@@ -175,7 +196,8 @@ impl Poll {
                     binding.interest,
                 )
                 .ok_or(Error::Invariant)?;
+            count = count.saturating_add(1);
         }
-        Ok(())
+        Ok(count)
     }
 }

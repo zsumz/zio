@@ -26,7 +26,10 @@ fn native_backend_query_matches_target_selection() {
 #[test]
 fn unsupported_target_rejects_construction_before_capacity_validation() {
     assert!(matches!(
-        Poll::with_capacity(0, 0),
+        Poll::builder()
+            .event_capacity(0)
+            .registration_capacity(0)
+            .build(),
         Err(Error::UnsupportedPlatform)
     ));
 }
@@ -34,7 +37,10 @@ fn unsupported_target_rejects_construction_before_capacity_validation() {
 #[test]
 fn zero_capacities_report_their_kind() {
     assert!(matches!(
-        Poll::with_capacity(0, 1),
+        Poll::builder()
+            .event_capacity(0)
+            .registration_capacity(1)
+            .build(),
         Err(Error::Capacity {
             kind: CapacityKind::Event,
             limit: 0,
@@ -42,7 +48,10 @@ fn zero_capacities_report_their_kind() {
         })
     ));
     assert!(matches!(
-        Poll::with_capacity(1, 0),
+        Poll::builder()
+            .event_capacity(1)
+            .registration_capacity(0)
+            .build(),
         Err(Error::Capacity {
             kind: CapacityKind::Registration,
             limit: 0,
@@ -55,7 +64,10 @@ fn zero_capacities_report_their_kind() {
 #[cfg(target_pointer_width = "64")]
 fn oversized_registration_capacity_reports_the_backend_limit() {
     assert!(matches!(
-        Poll::with_capacity(1, usize::MAX),
+        Poll::builder()
+            .event_capacity(1)
+            .registration_capacity(usize::MAX)
+            .build(),
         Err(Error::Capacity {
             kind: CapacityKind::Registration,
             limit: usize::MAX,
@@ -68,7 +80,10 @@ fn oversized_registration_capacity_reports_the_backend_limit() {
 #[cfg(target_os = "linux")]
 fn oversized_event_capacity_reports_the_backend_limit() {
     assert!(matches!(
-        Poll::with_capacity(usize::MAX, 1),
+        Poll::builder()
+            .event_capacity(usize::MAX)
+            .registration_capacity(1)
+            .build(),
         Err(Error::Capacity {
             kind: CapacityKind::Event,
             limit: usize::MAX,
@@ -82,7 +97,7 @@ fn oversized_event_capacity_reports_the_backend_limit() {
 fn oversized_kqueue_observation_capacity_reports_the_backend_limit() -> Result<(), Error> {
     let limit = usize::try_from(u32::MAX).map_err(|_| Error::Invariant)?;
     assert!(matches!(
-        Poll::with_capacity(1, limit),
+        Poll::builder().event_capacity(1).registration_capacity(limit).build(),
         Err(Error::Capacity {
             kind: CapacityKind::Registration,
             limit: actual,
@@ -94,7 +109,10 @@ fn oversized_kqueue_observation_capacity_reports_the_backend_limit() -> Result<(
 
 #[test]
 fn debug_output_is_backend_neutral() -> Result<(), crate::Error> {
-    let mut poll = Poll::with_capacity(3, 5)?;
+    let mut poll = Poll::builder()
+        .event_capacity(3)
+        .registration_capacity(5)
+        .build()?;
 
     assert_eq!(
         format!("{poll:?}"),
@@ -112,8 +130,14 @@ fn debug_output_is_backend_neutral() -> Result<(), crate::Error> {
 #[test]
 fn waker_identity_tracks_the_keyed_poller_target() -> Result<(), crate::Error> {
     let key = Key::new(8);
-    let mut first_poll = Poll::with_capacity(1, 1)?;
-    let mut second_poll = Poll::with_capacity(1, 1)?;
+    let mut first_poll = Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(1)
+        .build()?;
+    let mut second_poll = Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(1)
+        .build()?;
     let first = first_poll.waker(key)?;
     let clone = first.clone();
     let reacquired = first_poll.waker(key)?;
@@ -128,7 +152,10 @@ fn waker_identity_tracks_the_keyed_poller_target() -> Result<(), crate::Error> {
 
 #[test]
 fn waker_can_outlive_its_poller() -> Result<(), crate::Error> {
-    let mut poll = Poll::with_capacity(1, 1)?;
+    let mut poll = Poll::builder()
+        .event_capacity(1)
+        .registration_capacity(1)
+        .build()?;
     let waker = poll.waker(Key::new(9))?;
 
     drop(poll);
@@ -139,7 +166,10 @@ fn waker_can_outlive_its_poller() -> Result<(), crate::Error> {
 #[cfg(any(target_os = "macos", target_os = "freebsd", target_os = "netbsd"))]
 #[test]
 fn undersized_destination_does_not_consume_deferred_wake() -> Result<(), Error> {
-    let mut poll = Poll::with_capacity(2, 1)?;
+    let mut poll = Poll::builder()
+        .event_capacity(2)
+        .registration_capacity(1)
+        .build()?;
     let key = Key::new(10);
     let _waker = poll.waker(key)?;
     poll.deferred_wake = true;

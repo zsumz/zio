@@ -21,6 +21,8 @@ mod runner;
 mod zio_borrowed_candidate;
 mod zio_candidate;
 
+#[cfg(feature = "kqueue-skew")]
+pub use benchmark::run_kqueue_skew;
 pub use benchmark::run_perf;
 #[cfg(feature = "allocation-metrics")]
 pub use benchmark::run_perf_alloc;

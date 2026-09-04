@@ -35,7 +35,7 @@ impl PollBuilder {
 
     /// Validates both capacities and builds the poller.
     pub fn build(self) -> Result<Poll, Error> {
-        Poll::with_capacity(self.event_capacity, self.registration_capacity)
+        Poll::build_with_capacity(self.event_capacity, self.registration_capacity)
     }
 }
 
