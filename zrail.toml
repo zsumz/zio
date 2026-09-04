@@ -247,6 +247,7 @@ evidence = [
     "rust-test:tests/descriptor_identity.rs::duplicated_handles_have_independent_registrations",
     "rust-test:tests/descriptor_identity.rs::one_handle_can_have_independent_registrations",
     "rust-test:crates/zio-testkit/tests/owned_registration.rs::owned_register_failures_return_the_exact_capability",
+    "rust-test:crates/zio-testkit/tests/owned_registration.rs::owned_capacity_failure_returns_exact_descriptor_without_backend_work",
     "rust-test:crates/zio-testkit/tests/owned_registration.rs::owned_delete_failures_return_the_exact_capability",
     "rust-test:crates/zio-testkit/tests/terminal_identity.rs::delete_applied_stale_handle_survives_slot_reuse",
     "rust-test:crates/zio-testkit/tests/terminal_ownership.rs::wrong_poller_delete_returns_exact_handle_to_owner",

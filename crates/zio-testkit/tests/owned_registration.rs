@@ -2,14 +2,14 @@
 
 use std::{
     error::Error as StdError,
-    io,
-    os::fd::{AsFd, AsRawFd},
+    io::{self, Read, Write},
+    os::fd::{AsFd, AsRawFd, OwnedFd},
     os::unix::net::UnixStream,
 };
 
 use zio::{
-    ArmState, CommitStatus, DeleteOwnedError, Error, Interest, Key, Mode, RegisterOwnedError,
-    RegistrationState,
+    ArmState, CapacityKind, CapacityReason, CommitStatus, DeleteOwnedError, Error, Interest, Key,
+    Mode, RegisterOwnedError, RegistrationState,
 };
 use zio_testkit::support::{MutationOutcome, MutationStep, ScriptedPoll};
 
@@ -25,6 +25,64 @@ fn owned_register_failures_return_the_exact_capability() -> TestResult {
     ] {
         verify_register_failure(commit)?;
     }
+    Ok(())
+}
+
+#[test]
+fn owned_capacity_failure_returns_exact_descriptor_without_backend_work() -> TestResult {
+    let filler = UnixStream::pair()?.0;
+    let (source, mut peer) = UnixStream::pair()?;
+    let descriptor: OwnedFd = source.into();
+    let raw = descriptor.as_raw_fd();
+    let mut poll = ScriptedPoll::with_capacity(
+        1,
+        [
+            MutationStep::Register(MutationOutcome::Success),
+            MutationStep::Delete(MutationOutcome::Success),
+        ],
+    )?;
+    let retained = poll.register(&filler, Key::new(820), Interest::READABLE, Mode::Level)?;
+    let calls = poll.calls().len();
+
+    let Err(error) = poll.register_owned(descriptor, KEY, Interest::WRITABLE, Mode::OneShot) else {
+        return Err("owned registration unexpectedly exceeded capacity".into());
+    };
+    let descriptor = match error {
+        RegisterOwnedError::Returned {
+            error:
+                Error::Capacity {
+                    kind: CapacityKind::Registration,
+                    limit: 1,
+                    reason: CapacityReason::Exhausted,
+                    ..
+                },
+            descriptor,
+        } => descriptor,
+        actual => {
+            return Err(io::Error::other(format!(
+                "expected returned capacity failure, observed {actual:?}"
+            ))
+            .into());
+        }
+    };
+
+    assert_eq!(descriptor.as_raw_fd(), raw);
+    assert_eq!(poll.calls().len(), calls);
+    assert_eq!(poll.registration_count(), 1);
+    assert_eq!(
+        poll.registration_state(&retained)?,
+        RegistrationState::Registered {
+            arm: ArmState::Armed,
+        }
+    );
+    let mut returned = UnixStream::from(descriptor);
+    peer.write_all(b"z")?;
+    let mut byte = [0_u8; 1];
+    returned.read_exact(&mut byte)?;
+    assert_eq!(byte, *b"z");
+
+    poll.delete(retained)?;
+    poll.finish()?;
     Ok(())
 }
 
