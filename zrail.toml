@@ -223,6 +223,17 @@ status = "enforced"
 title = "Public value and capability traits remain stable"
 
 [[invariant]]
+document = "docs/contracts.md#api-evolution"
+evidence = [
+    "rust-test:tests/api_evolution/values.rs::fixed_batch_cardinality_queries_are_const",
+    "gate:check",
+    "gate:ci",
+]
+id = "API-CONST-01"
+status = "enforced"
+title = "Fixed-batch cardinality queries remain const"
+
+[[invariant]]
 document = "docs/contracts.md#registration-ownership"
 evidence = [
     "rust-test:tests/descriptor_identity.rs::numeric_descriptor_reuse_does_not_alias_retained_registration",

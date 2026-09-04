@@ -100,12 +100,12 @@ impl RecoveryFailure {
     }
 
     /// Returns the number of exact registration outcomes.
-    pub fn len(&self) -> usize {
+    pub const fn len(&self) -> usize {
         self.outcomes.len()
     }
 
     /// Returns whether no registration outcome is retained.
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.outcomes.is_empty()
     }
 

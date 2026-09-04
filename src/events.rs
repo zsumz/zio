@@ -43,22 +43,22 @@ impl Events {
     }
 
     /// Returns the retained event count.
-    pub fn len(&self) -> usize {
+    pub const fn len(&self) -> usize {
         self.events.len()
     }
 
     /// Returns whether no event is retained.
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.events.is_empty()
     }
 
     /// Returns the number of unused logical event slots.
-    pub fn remaining_capacity(&self) -> usize {
+    pub const fn remaining_capacity(&self) -> usize {
         self.capacity().saturating_sub(self.len())
     }
 
     /// Returns whether every logical event slot is occupied.
-    pub fn is_full(&self) -> bool {
+    pub const fn is_full(&self) -> bool {
         self.remaining_capacity() == 0
     }
 

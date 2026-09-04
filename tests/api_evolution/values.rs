@@ -2,8 +2,8 @@
 
 use zio::{
     ArmState, CapacityKind, CapacityReason, CommitStatus, DescriptorOwnership, Event, Events, Key,
-    Mode, Operation, Poll, PollBuilder, Readiness, RecoveryOutcome, Registration, RegistrationId,
-    RegistrationInfo, RegistrationState, Wait, WaitReport, Waker,
+    Mode, Operation, Poll, PollBuilder, Readiness, RecoveryFailure, RecoveryOutcome, Registration,
+    RegistrationId, RegistrationInfo, RegistrationState, Wait, WaitReport, Waker,
 };
 
 use super::support::*;
@@ -38,6 +38,25 @@ fn public_defaults_are_named_values() {
     assert_eq!(zio::Interest::default(), zio::Interest::EMPTY);
     assert_eq!(Readiness::default(), Readiness::EMPTY);
     assert_eq!(PollBuilder::default(), PollBuilder::new());
+}
+
+#[test]
+fn fixed_batch_cardinality_queries_are_const() {
+    const fn event_cardinality(events: &Events) -> (usize, bool, usize, bool) {
+        (
+            events.len(),
+            events.is_empty(),
+            events.remaining_capacity(),
+            events.is_full(),
+        )
+    }
+
+    const fn recovery_cardinality(recovery: &RecoveryFailure) -> (usize, bool) {
+        (recovery.len(), recovery.is_empty())
+    }
+
+    let _ = event_cardinality as fn(&Events) -> (usize, bool, usize, bool);
+    let _ = recovery_cardinality as fn(&RecoveryFailure) -> (usize, bool);
 }
 
 #[test]
