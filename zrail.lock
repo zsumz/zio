@@ -2,7 +2,7 @@
 schema = 2
 semantics = 3
 producer = "0.0.3-rc.4"
-contract_sha256 = "f2d647a33da3bfe6a8c17d3e40efb958bffdef2ac628297e9fd3ff27e20f8132"
+contract_sha256 = "6a86b1ba754c35c5727f33a5dd1a9951f9442526ffa1f2d52a2a2a074cf0c214"
 
 [analysis]
 inventory_sha256 = "17f80f5418bba142936f0eae0223974e7b025caa67604df5a449e86c7c0ec1b6"
@@ -13,7 +13,7 @@ targets = 41
 physical_rust_files = 278
 base_source_contexts = 465
 derived_source_contexts = 0
-source_facts = 82180
+source_facts = 82327
 projection_queries = 0
 projected_facts = 0
 unresolved_bindings = 0
@@ -21,7 +21,7 @@ analyzer_semantics = 3
 
 [[analysis.contract_source]]
 path = "zrail.toml"
-sha256 = "a7f6fbc67da3ce40125afcb5633a62bbf28b137409a08881e9f2ea18242b7395"
+sha256 = "52eaebfc728586a145c43de12a58a18669437799e1f00a284a0da4094ac1f301"
 
 [[package]]
 name = "zio"
@@ -240,7 +240,7 @@ sha256 = "2a4b286bea1a4a7ccba09cfcdc7855595f2a7092f519d440f745e4e7f97ef067"
 
 [[gate.input]]
 path = "docs/contracts.md"
-sha256 = "d3fe9d87da69b665750362680dddf12c79a78c8a3e6bead5040f08836f502d74"
+sha256 = "9fc24a6a5c49550ee98f2ced840f7cc53f1d561331daa9f5e445e4077b2f3fba"
 
 [[gate.input]]
 path = "docs/performance.md"
@@ -260,7 +260,7 @@ sha256 = "45e07033c8cd89ed400ee4e96ec608e338e89822233abd6e56c85040ece66520"
 
 [[gate.input]]
 path = "scripts/check-api-evolution"
-sha256 = "35c13898eaa9ba03ead7015bec8cc149471eb1883be2ce7034890730f0b344f2"
+sha256 = "e75d5ef835272001b47f785dfcad3c14beb79de524d1625d34b553e8495998d9"
 
 [[gate.input]]
 path = "scripts/rehearse-release"
@@ -539,7 +539,7 @@ sha256 = "73303f1eba53b406bf8d8bfade18750b7d1a1971d0d3fa3498582e1b335439d3"
 
 [[gate.input]]
 path = "docs/contracts.md"
-sha256 = "d3fe9d87da69b665750362680dddf12c79a78c8a3e6bead5040f08836f502d74"
+sha256 = "9fc24a6a5c49550ee98f2ced840f7cc53f1d561331daa9f5e445e4077b2f3fba"
 
 [[gate.input]]
 path = "docs/performance.md"
@@ -555,7 +555,7 @@ sha256 = "279d77167cec5426fa80f457cd066dc74a360fbe4e2816f4f3fa01487a918fdc"
 
 [[gate.input]]
 path = "scripts/check-api-evolution"
-sha256 = "35c13898eaa9ba03ead7015bec8cc149471eb1883be2ce7034890730f0b344f2"
+sha256 = "e75d5ef835272001b47f785dfcad3c14beb79de524d1625d34b553e8495998d9"
 
 [[gate.input]]
 path = "scripts/rehearse-release"

@@ -48,6 +48,11 @@ printf '%s\n' \
   'fn main() {' \
   '    assert_eq!(classify_error(&Error::Invariant), 1);' \
   '    assert_eq!(Error::Invariant.to_string(), "internal state failed validation");' \
+  '    let io_error = Error::Io { operation: Operation::Wait, source: std::io::Error::other("native failure") };' \
+  '    let io_source = std::error::Error::source(&io_error);' \
+  '    assert_eq!(io_source.map(ToString::to_string).as_deref(), Some("native failure"));' \
+  '    assert!(io_source.and_then(std::error::Error::source).is_none());' \
+  '    assert!(std::error::Error::source(&Error::Invariant).is_none());' \
   '    assert_eq!(u64::from(Key::from(9_u64)), 9);' \
   '    assert_eq!(Key::new(9).to_string(), "9");' \
   '    assert_eq!(Key::default(), Key::ZERO);' \

@@ -214,13 +214,14 @@ title = "Public defaults remain named zero or capacity values"
 [[invariant]]
 document = "docs/contracts.md#api-evolution"
 evidence = [
+    "rust-test:tests/api_evolution/diagnostics.rs::public_errors_preserve_standard_source_chains",
     "rust-test:tests/api_evolution/values.rs::public_values_keep_common_traits",
     "gate:check",
     "gate:ci",
 ]
 id = "API-TRAIT-01"
 status = "enforced"
-title = "Public value and capability traits remain stable"
+title = "Public value, capability, and error traits remain stable"
 
 [[invariant]]
 document = "docs/contracts.md#api-evolution"

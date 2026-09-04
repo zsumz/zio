@@ -25,6 +25,8 @@ the named capacity constants.
 Copyable public values are debuggable, comparable, hashable, `Send`, and
 `Sync`. `Poll`, `Events`, `WaitReport`, and `Waker` are debuggable; wakers are
 cloneable.
+Public failures implement `std::error::Error`; I/O-backed chains retain the
+native error.
 `PollBuilder`, `Registration`, `WaitReport`, and `Waker` warn when discarded.
 `Key` construction and access, `Wait` queries, and `PollBuilder` configuration
 work in const contexts. `Interest` and `Readiness` set operations and queries do too.

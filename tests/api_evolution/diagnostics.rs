@@ -24,6 +24,22 @@ fn errors_expose_common_diagnostics_without_matching() {
 }
 
 #[test]
+fn public_errors_preserve_standard_source_chains() {
+    let error = Error::Io {
+        operation: Operation::Wait,
+        source: std::io::Error::other("native failure"),
+    };
+    let source = std::error::Error::source(&error);
+
+    assert_eq!(
+        source.map(ToString::to_string).as_deref(),
+        Some("native failure")
+    );
+    assert!(source.and_then(std::error::Error::source).is_none());
+    assert!(std::error::Error::source(&Error::Invariant).is_none());
+}
+
+#[test]
 fn capacity_diagnostics_are_open() {
     assert_display::<CapacityKind>();
     assert_display::<CapacityReason>();

@@ -1,6 +1,6 @@
 //! Mutation failure detail regressions.
 
-use std::io;
+use std::{error::Error as _, io};
 
 use crate::{CapacityKind, CapacityReason, Registration, RegistrationId};
 
@@ -111,6 +111,28 @@ fn diagnostics_use_plain_display_names() {
         Error::Invariant.to_string(),
         "internal state failed validation"
     );
+}
+
+#[test]
+fn error_sources_preserve_every_layer() {
+    let native = io::Error::other("native failure");
+    let mutation = Error::Mutation(MutationError::new(
+        Operation::Modify,
+        CommitStatus::Unknown,
+        native,
+    ));
+    let register = RegisterError::new(mutation, None);
+
+    let error_source = register.source();
+    assert!(error_source.is_some_and(<dyn std::error::Error>::is::<Error>));
+    let mutation_source = error_source.and_then(std::error::Error::source);
+    assert!(mutation_source.is_some_and(<dyn std::error::Error>::is::<MutationError>));
+    let native_source = mutation_source.and_then(std::error::Error::source);
+    assert_eq!(
+        native_source.map(ToString::to_string).as_deref(),
+        Some("native failure")
+    );
+    assert!(native_source.and_then(std::error::Error::source).is_none());
 }
 
 #[test]
