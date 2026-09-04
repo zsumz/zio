@@ -25,6 +25,7 @@ the named capacity constants.
 Copyable public values are debuggable, comparable, hashable, `Send`, and
 `Sync`. `Poll`, `Events`, `WaitReport`, and `Waker` are debuggable; wakers are
 cloneable.
+`PollBuilder`, `Registration`, `WaitReport`, and `Waker` warn when discarded.
 `Events` and `RecoveryFailure` cardinality and slice queries work in const
 contexts.
 

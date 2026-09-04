@@ -563,6 +563,23 @@ printf '%s\n' \
   > "$consumer_dir/examples/poll-is-not-sync.rs"
 
 printf '%s\n' \
+  '#![deny(unused_must_use)]' \
+  '' \
+  'use zio::{PollBuilder, Registration, WaitReport, Waker};' \
+  '' \
+  'fn main() {' \
+  '    PollBuilder::new();' \
+  '}' \
+  '' \
+  '#[allow(dead_code, path_statements)]' \
+  'fn discard(registration: Registration, report: WaitReport, waker: Waker) {' \
+  '    registration;' \
+  '    report;' \
+  '    waker;' \
+  '}' \
+  > "$consumer_dir/examples/must-use-values.rs"
+
+printf '%s\n' \
   'use zio::{DeleteAllError, DeleteError, DeleteOwnedError, Error, Mode, MutationError, PollBuilder, RegisterError, RegisterOwnedError, RegistrationId};' \
   '' \
   'fn main() {}' \
@@ -673,6 +690,25 @@ assert_not_sync() {
   grep -Fq 'within `zio::Poll`' "$stderr_file"
 }
 
+assert_must_use_values() {
+  local toolchain="$1"
+  local stderr_file="$receipt_dir/must-use-values-$toolchain.stderr"
+
+  if CARGO_TERM_COLOR=never cargo "+$toolchain" check \
+    --manifest-path "$consumer_dir/Cargo.toml" \
+    --example must-use-values --locked --offline \
+    > /dev/null 2> "$stderr_file"; then
+    echo 'discarded must-use values unexpectedly compiled' >&2
+    exit 1
+  fi
+
+  test "$(grep -Ec '^error: unused .* that must be used$' "$stderr_file")" -eq 4
+  grep -Fq 'call build to create a poller' "$stderr_file"
+  grep -Fq 'retain a registration handle for explicit early deletion' "$stderr_file"
+  grep -Fq 'process delivered events, then inspect the recovery report' "$stderr_file"
+  grep -Fq 'retain the waker to signal the poller' "$stderr_file"
+}
+
 assert_intentional_omissions() {
   local toolchain="$1"
   local stderr_file="$receipt_dir/intentional-omissions-$toolchain.stderr"
@@ -706,6 +742,7 @@ for toolchain in 1.88.0 1.97.1; do
   assert_receive_only_variant "$toolchain" construct-resource Resource
   assert_receive_only_variant "$toolchain" construct-wake Wake
   assert_not_sync "$toolchain"
+  assert_must_use_values "$toolchain"
   assert_intentional_omissions "$toolchain"
 done
 
@@ -729,6 +766,8 @@ wake_msrv_sha256="$(shasum -a 256 "$receipt_dir/construct-wake-1.88.0.stderr" | 
 wake_current_sha256="$(shasum -a 256 "$receipt_dir/construct-wake-1.97.1.stderr" | awk '{print $1}')"
 poll_not_sync_msrv_sha256="$(shasum -a 256 "$receipt_dir/poll-is-not-sync-1.88.0.stderr" | awk '{print $1}')"
 poll_not_sync_current_sha256="$(shasum -a 256 "$receipt_dir/poll-is-not-sync-1.97.1.stderr" | awk '{print $1}')"
+must_use_msrv_sha256="$(shasum -a 256 "$receipt_dir/must-use-values-1.88.0.stderr" | awk '{print $1}')"
+must_use_current_sha256="$(shasum -a 256 "$receipt_dir/must-use-values-1.97.1.stderr" | awk '{print $1}')"
 omissions_msrv_sha256="$(shasum -a 256 "$receipt_dir/intentional-omissions-1.88.0.stderr" | awk '{print $1}')"
 omissions_current_sha256="$(shasum -a 256 "$receipt_dir/intentional-omissions-1.97.1.stderr" | awk '{print $1}')"
 jq -n \
@@ -749,9 +788,11 @@ jq -n \
   --arg wake_current_sha256 "$wake_current_sha256" \
   --arg poll_not_sync_msrv_sha256 "$poll_not_sync_msrv_sha256" \
   --arg poll_not_sync_current_sha256 "$poll_not_sync_current_sha256" \
+  --arg must_use_msrv_sha256 "$must_use_msrv_sha256" \
+  --arg must_use_current_sha256 "$must_use_current_sha256" \
   --arg omissions_msrv_sha256 "$omissions_msrv_sha256" \
   --arg omissions_current_sha256 "$omissions_current_sha256" \
-  '{schema:"zio.public-api-contract.v1", status:"passed", version:$version, toolchains:["1.88.0","1.97.1"], open_enums:["Error","Operation","CapacityKind","CapacityReason"], closed_enums:["Event","CommitStatus","DescriptorOwnership","Mode","Wait","ArmState","RegistrationState","RegisterOwnedError","DeleteOwnedError"], field_extensible_variants:["Error::Capacity"], receive_only_variants:["Event::Resource","Event::Wake"], intentional_omissions:["MutationError::into_source","Mode::is_one_shot","RegistrationId::get","PollBuilder::build_with_events"], non_discarding_errors:["RegisterError","RegisterOwnedError","DeleteError","DeleteOwnedError","DeleteAllError"], auto_traits:{poll_not_sync_msrv:$poll_not_sync_msrv_sha256,poll_not_sync_current:$poll_not_sync_current_sha256}, diagnostics:{error_msrv:$error_msrv_sha256,error_current:$error_current_sha256,operation_msrv:$operation_msrv_sha256,operation_current:$operation_current_sha256,capacity_kind_msrv:$capacity_kind_msrv_sha256,capacity_kind_current:$capacity_kind_current_sha256,capacity_reason_msrv:$capacity_reason_msrv_sha256,capacity_reason_current:$capacity_reason_current_sha256,capacity_msrv:$capacity_msrv_sha256,capacity_current:$capacity_current_sha256,resource_msrv:$resource_msrv_sha256,resource_current:$resource_current_sha256,wake_msrv:$wake_msrv_sha256,wake_current:$wake_current_sha256,omissions_msrv:$omissions_msrv_sha256,omissions_current:$omissions_current_sha256}}' \
+  '{schema:"zio.public-api-contract.v1", status:"passed", version:$version, toolchains:["1.88.0","1.97.1"], open_enums:["Error","Operation","CapacityKind","CapacityReason"], closed_enums:["Event","CommitStatus","DescriptorOwnership","Mode","Wait","ArmState","RegistrationState","RegisterOwnedError","DeleteOwnedError"], field_extensible_variants:["Error::Capacity"], receive_only_variants:["Event::Resource","Event::Wake"], intentional_omissions:["MutationError::into_source","Mode::is_one_shot","RegistrationId::get","PollBuilder::build_with_events"], non_discarding_errors:["RegisterError","RegisterOwnedError","DeleteError","DeleteOwnedError","DeleteAllError"], must_use_types:["PollBuilder","Registration","WaitReport","Waker"], auto_traits:{poll_not_sync_msrv:$poll_not_sync_msrv_sha256,poll_not_sync_current:$poll_not_sync_current_sha256}, diagnostics:{error_msrv:$error_msrv_sha256,error_current:$error_current_sha256,operation_msrv:$operation_msrv_sha256,operation_current:$operation_current_sha256,capacity_kind_msrv:$capacity_kind_msrv_sha256,capacity_kind_current:$capacity_kind_current_sha256,capacity_reason_msrv:$capacity_reason_msrv_sha256,capacity_reason_current:$capacity_reason_current_sha256,capacity_msrv:$capacity_msrv_sha256,capacity_current:$capacity_current_sha256,resource_msrv:$resource_msrv_sha256,resource_current:$resource_current_sha256,wake_msrv:$wake_msrv_sha256,wake_current:$wake_current_sha256,must_use_msrv:$must_use_msrv_sha256,must_use_current:$must_use_current_sha256,omissions_msrv:$omissions_msrv_sha256,omissions_current:$omissions_current_sha256}}' \
   > "$evidence_dir/public-api-contract.json"
 
 printf 'API evolution contract passed: zio %s\n' "$version"
