@@ -21,6 +21,7 @@
 //! ```
 //!
 //! Readiness is advisory; perform nonblocking I/O until it returns `WouldBlock`.
+#![deny(missing_docs)]
 #![deny(unsafe_code)]
 mod binding;
 #[cfg(test)]
@@ -62,7 +63,6 @@ mod wait_report;
 #[cfg(test)]
 mod wait_report_test;
 mod waker;
-
 pub use error::{
     CapacityKind, CapacityReason, CommitStatus, DeleteAllError, DeleteError, DeleteOwnedError,
     Error, MutationError, Operation, RecoveryFailure, RecoveryOutcome, RegisterError,
