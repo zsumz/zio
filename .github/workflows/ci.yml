@@ -92,10 +92,25 @@ jobs:
       - name: Install Rust toolchains
         run: |
           rustup toolchain install 1.88.0 --profile minimal
+          rustup target add --toolchain 1.88.0 \
+            aarch64-apple-darwin x86_64-apple-darwin
           rustup toolchain install 1.97.1 --profile minimal --component clippy
+          rustup target add --toolchain 1.97.1 \
+            aarch64-apple-darwin x86_64-apple-darwin
 
       - name: Fetch the locked dependency graph
         run: cargo +1.88.0 fetch --locked
+
+      - name: Check 64-bit macOS target APIs
+        run: |
+          cargo +1.88.0 check --target aarch64-apple-darwin \
+            --workspace --all-targets --all-features --locked --offline
+          cargo +1.97.1 clippy --target aarch64-apple-darwin \
+            --workspace --all-targets --all-features --locked --offline -- -D warnings
+          cargo +1.88.0 check --target x86_64-apple-darwin \
+            --workspace --all-targets --all-features --locked --offline
+          cargo +1.97.1 clippy --target x86_64-apple-darwin \
+            --workspace --all-targets --all-features --locked --offline -- -D warnings
 
       - name: Run kqueue tests on the MSRV
         run: >-

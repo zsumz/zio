@@ -537,6 +537,16 @@ title = "Linux APIs compile on 32-bit x86 and 64-bit Arm"
 [[invariant]]
 document = "docs/qualification.md#coverage"
 evidence = [
+    "rust-test:tests/api_evolution/poll.rs::poll_exposes_selector_composition",
+    "gate:ci",
+]
+id = "PLATFORM-MACOS-ARCH-01"
+status = "enforced"
+title = "macOS APIs compile on 64-bit x86 and Arm"
+
+[[invariant]]
+document = "docs/qualification.md#coverage"
+evidence = [
     "rust-test:src/sys/kqueue_group/kqueue_disarm_test.rs::freebsd_and_netbsd_interruptions_are_applied",
     "rust-test:src/sys/kqueue_group/kqueue_disarm_matrix_test.rs::target_selected_interruption_policy_is_exact",
     "gate:ci",
