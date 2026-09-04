@@ -83,6 +83,9 @@ pub(crate) enum Action {
         mode: Mode,
     },
     Disarm,
+    SetKey {
+        key: Key,
+    },
     Modify {
         outcome: Outcome,
         interest: Interest,
@@ -119,6 +122,7 @@ impl Action {
                 key.get(),
             ),
             Self::Disarm => "delivery.disarm".to_owned(),
+            Self::SetKey { key } => format!("set_key.key_{:016x}", key.get()),
             Self::Modify {
                 outcome,
                 interest,

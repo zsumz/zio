@@ -12,6 +12,10 @@ pub(crate) enum ExpectedState {
 }
 
 impl ExpectedState {
+    const ARMED: Self = Self::Registered {
+        arm: ArmState::Armed,
+    };
+
     pub(crate) const fn portable(self) -> RegistrationState {
         match self {
             Self::Registered { arm } => RegistrationState::Registered { arm },
@@ -117,39 +121,36 @@ impl ReferenceModel {
         interest: Interest,
         mode: Mode,
     ) -> Result<(), &'static str> {
-        self.active = match outcome {
+        let state = match outcome {
             Outcome::NotApplied => {
                 if registration.is_some() {
                     return Err("not-applied register retained a handle");
                 }
-                None
+                self.active = None;
+                return Ok(());
             }
-            Outcome::Success | Outcome::Applied => Some(Entry {
-                registration: registration.ok_or("register omitted its retained handle")?,
-                key,
-                interest,
-                mode,
-                state: ExpectedState::Registered {
-                    arm: ArmState::Armed,
-                },
-            }),
-            Outcome::Unknown => Some(Entry {
-                registration: registration.ok_or("unknown register omitted its handle")?,
-                key,
-                interest,
-                mode,
-                state: ExpectedState::Uncertain,
-            }),
+            Outcome::Success | Outcome::Applied => ExpectedState::ARMED,
+            Outcome::Unknown => ExpectedState::Uncertain,
         };
+        self.active = Some(Entry {
+            registration: registration.ok_or("retaining register omitted its handle")?,
+            key,
+            interest,
+            mode,
+            state,
+        });
+        Ok(())
+    }
+
+    pub(crate) fn set_key(&mut self, key: Key) -> Result<(), &'static str> {
+        let entry = self.active.as_mut().ok_or("set_key requires a handle")?;
+        entry.key = key;
         Ok(())
     }
 
     pub(crate) fn disarm(&mut self) -> Result<RegistrationId, &'static str> {
         let entry = self.active.as_mut().ok_or("disarm requires a handle")?;
-        let armed = ExpectedState::Registered {
-            arm: ArmState::Armed,
-        };
-        if entry.mode != Mode::OneShot || entry.state != armed {
+        if entry.mode != Mode::OneShot || entry.state != ExpectedState::ARMED {
             return Err("disarm requires an armed one-shot registration");
         }
         let registration = entry.registration.id();
@@ -192,9 +193,7 @@ impl ReferenceModel {
             Outcome::Success | Outcome::Applied => {
                 entry.interest = interest;
                 entry.mode = mode;
-                entry.state = ExpectedState::Registered {
-                    arm: ArmState::Armed,
-                };
+                entry.state = ExpectedState::ARMED;
             }
             Outcome::NotApplied => {}
             Outcome::Unknown => entry.state = ExpectedState::Uncertain,

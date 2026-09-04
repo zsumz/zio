@@ -71,7 +71,7 @@ pub fn run_model_sequences() -> ModelSequenceReport {
             ModelSequencePhase::Coverage,
             &trace,
             ModelSequenceCheck::Coverage,
-            "all mutation outcomes, disarm, rearm, reuse, stale, and wrong-poller probes",
+            "all outcomes, key-update states, and lifecycle probes",
             coverage.summary(),
         )
     });
@@ -154,6 +154,7 @@ fn mutation_step(action: Action) -> Option<MutationStep> {
         )),
         Action::RegisterInvalid { .. }
         | Action::Disarm
+        | Action::SetKey { .. }
         | Action::ModifyInvalid { .. }
         | Action::ProbeStale
         | Action::ProbeWrongPoller => None,

@@ -96,10 +96,10 @@ fn curated_sentinels_keep_their_named_behavior() -> Result<(), io::Error> {
 #[test]
 fn sentinel_action_fingerprints_are_stable() -> Result<(), io::Error> {
     let expected = [
-        0xa21d_b0a8_09fb_2aaa,
-        0x9365_899f_667f_c365,
-        0xb844_f520_8502_092b,
-        0xeff8_c280_2f29_8cf5,
+        0x008f_3825_06df_a353,
+        0x5468_3784_1556_cc75,
+        0x01d9_3c58_8a70_ef98,
+        0x8b9a_02c8_34cf_4280,
     ];
     let mut actual = [0_u64; 4];
     for (index, seed) in MODEL_SEQUENCE_SENTINEL_SEEDS.into_iter().enumerate() {
@@ -141,6 +141,12 @@ fn fingerprint(actions: &[Action]) -> u64 {
                 hash = feed(hash, mode_byte(mode));
             }
             Action::Disarm => hash = feed(hash, 2),
+            Action::SetKey { key } => {
+                hash = feed(hash, 8);
+                for byte in key.get().to_le_bytes() {
+                    hash = feed(hash, byte);
+                }
+            }
             Action::Modify {
                 outcome,
                 interest,

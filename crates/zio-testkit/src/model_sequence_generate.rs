@@ -68,17 +68,23 @@ impl Generator {
             {
                 Action::Disarm
             }
+            GeneratedState::Registered {
+                arm: ArmState::Disarmed,
+                ..
+            } if self.choose(4) == 0 => self.set_key(),
             GeneratedState::Registered { .. } => match self.choose(10) {
                 0..=2 => self.modify(),
                 3 | 4 => self.delete(),
                 5 => Action::ProbeWrongPoller,
                 6 => Action::ModifyInvalid { mode: self.mode() },
+                7 => self.set_key(),
                 _ if self.has_stale => Action::ProbeStale,
                 _ => self.delete(),
             },
             GeneratedState::Uncertain => match self.choose(8) {
                 0..=4 => self.delete(),
                 5 => Action::ProbeWrongPoller,
+                6 => self.set_key(),
                 _ if self.has_stale => Action::ProbeStale,
                 _ => self.delete(),
             },
@@ -101,6 +107,12 @@ impl Generator {
             outcome: self.outcome(),
             interest: self.interest(),
             mode: self.mode(),
+        }
+    }
+
+    fn set_key(&mut self) -> Action {
+        Action::SetKey {
+            key: Key::new(self.random.next()),
         }
     }
 
@@ -136,6 +148,18 @@ impl Generator {
                     };
                 }
             }
+            Action::SetKey { .. } => match self.state {
+                GeneratedState::Registered {
+                    arm: ArmState::Armed,
+                    ..
+                } => self.coverage.mark(Coverage::SET_KEY_ARMED),
+                GeneratedState::Registered {
+                    arm: ArmState::Disarmed,
+                    ..
+                } => self.coverage.mark(Coverage::SET_KEY_DISARMED),
+                GeneratedState::Uncertain => self.coverage.mark(Coverage::SET_KEY_UNCERTAIN),
+                GeneratedState::Vacant => {}
+            },
             Action::Modify { outcome, mode, .. } => {
                 self.coverage.modify[outcome.index()] = true;
                 if matches!(

@@ -26,6 +26,7 @@ pub(crate) fn execute(context: &mut SequenceContext, action: Action) -> Result<(
         } => register(context, outcome, key, interest, mode),
         Action::RegisterInvalid { key, mode } => register_invalid(context, key, mode),
         Action::Disarm => disarm(context),
+        Action::SetKey { key } => set_key(context, key),
         Action::Modify {
             outcome,
             interest,
@@ -103,6 +104,23 @@ fn disarm(context: &mut SequenceContext) -> Result<(), Divergence> {
         .poll
         .establish_disarmed(&entry.registration)
         .map_err(|error| result_mismatch("successful delivered one-shot disarm", error))
+}
+
+fn set_key(context: &mut SequenceContext, key: Key) -> Result<(), Divergence> {
+    let entry = context
+        .model
+        .active()
+        .ok_or_else(|| precondition("active handle", "vacant slot"))?;
+    let calls = context.poll.calls().len();
+    context
+        .poll
+        .set_key(&entry.registration, key)
+        .map_err(|error| result_mismatch("successful set_key", error))?;
+    context
+        .model
+        .set_key(key)
+        .map_err(|actual| precondition("active handle", actual))?;
+    expect_call_count(calls, context.poll.calls().len(), "set_key")
 }
 
 fn modify(
