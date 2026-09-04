@@ -310,6 +310,7 @@ evidence = [
     "rust-test:crates/zio-testkit/tests/borrowed_registration.rs::borrowed_register_failures_preserve_exact_lifetime_state",
     "rust-test:crates/zio-testkit/tests/borrowed_modify.rs::borrowed_modify_failures_preserve_exact_lifetime_state",
     "rust-test:crates/zio-testkit/tests/borrowed_registration.rs::borrowed_delete_failures_preserve_exact_lifetime_state",
+    "rust-test:crates/zio-testkit/tests/borrowed_delete_owned.rs::borrowed_delete_owned_returns_handle_without_backend_work",
     "gate:check",
     "gate:ci",
     "gate:performance",
