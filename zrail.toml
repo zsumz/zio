@@ -201,6 +201,17 @@ status = "enforced"
 title = "Diagnostics stay extensible while semantic domains stay closed"
 
 [[invariant]]
+document = "docs/contracts.md#api-evolution"
+evidence = [
+    "rust-test:tests/api_evolution/values.rs::public_defaults_are_named_values",
+    "gate:check",
+    "gate:ci",
+]
+id = "API-DEFAULT-01"
+status = "enforced"
+title = "Public defaults remain named zero or capacity values"
+
+[[invariant]]
 document = "docs/contracts.md#registration-ownership"
 evidence = [
     "rust-test:tests/descriptor_identity.rs::numeric_descriptor_reuse_does_not_alias_retained_registration",

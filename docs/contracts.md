@@ -20,6 +20,8 @@ Use `Error` accessors for structured details. Match `Error::Capacity` with `..`;
 its diagnostic fields may grow.
 
 Public value layouts and flag encodings are opaque.
+`Key`, `Interest`, and `Readiness` default to zero. `PollBuilder` defaults to
+the named capacity constants.
 
 `BackendLimit` rejects capacities that native or token representations cannot hold.
 `Error::capacity_limit` reports the configured or attempted logical capacity.

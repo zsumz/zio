@@ -33,6 +33,14 @@ fn public_values_remain_thread_portable() {
 }
 
 #[test]
+fn public_defaults_are_named_values() {
+    assert_eq!(Key::default(), Key::ZERO);
+    assert_eq!(zio::Interest::default(), zio::Interest::EMPTY);
+    assert_eq!(Readiness::default(), Readiness::EMPTY);
+    assert_eq!(PollBuilder::default(), PollBuilder::new());
+}
+
+#[test]
 fn registration_handles_support_ordered_collections() {
     let _ = Registration::id as fn(&Registration) -> RegistrationId;
     assert_ordered::<Registration>();
