@@ -290,6 +290,7 @@ evidence = [
     "rust-test:tests/registration_lifetime.rs::successful_delete_stales_every_surviving_copy",
     "rust-test:tests/registration_lifetime.rs::stale_copy_cannot_target_reused_generation",
     "rust-test:crates/zio-testkit/tests/lifetime_delete.rs::delete_outcome_branches_update_every_surviving_copy",
+    "rust-test:crates/zio-testkit/tests/stale_delete_owned.rs::stale_delete_owned_cannot_target_reused_generation",
     "rust-test:crates/zio-testkit/tests/lifetime_ownership.rs::copied_handle_rejects_wrong_poller_without_backend_calls",
     "rust-test:crates/zio-testkit/tests/lifetime_register_error.rs::register_error_handles_can_be_copied_before_error_consumption",
     "gate:check",
